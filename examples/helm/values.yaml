@@ -6,7 +6,7 @@
 # ============================================================
 gitops:
   # Repository containing the component charts
-  repoUrl: "https://github.com/rhpds/field-sourced-content.git"
+  repoUrl: "https://github.com/rhpds/field-sourced-content-template.git"
   revision: "main"
   basePath: "examples/helm"
 

@@ -78,7 +78,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/rhpds/field-sourced-content
+    repoURL: https://github.com/rhpds/field-sourced-content-template
     path: examples/helm
     helm:
       parameters:

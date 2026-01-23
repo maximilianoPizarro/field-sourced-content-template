@@ -17,7 +17,7 @@ namespace:
 ansible:
   repository:
     # IMPORTANT: Update this to point to YOUR playbook repository
-    url: "https://github.com/rhpds/field-sourced-content"
+    url: "https://github.com/rhpds/field-sourced-content-template"
     branch: "main"
     # Path within the repo to the playbooks directory
     path: "examples/ansible/playbooks"

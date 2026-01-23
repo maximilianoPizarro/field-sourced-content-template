@@ -27,7 +27,7 @@ ArgoCD deploys your content, and the platform handles health monitoring and data
 
 ```bash
 # Clone this template
-git clone https://github.com/rhpds/field-sourced-content.git my-content
+git clone https://github.com/rhpds/field-sourced-content-template.git my-content
 cd my-content
 
 # Choose an example and start customizing

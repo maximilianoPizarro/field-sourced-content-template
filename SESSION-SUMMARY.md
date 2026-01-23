@@ -30,4 +30,4 @@ Changed from separate deployment types (helm/ansible/kustomize) to **hybrid mode
 - Variable recursion fix: Use underscore-prefixed internal variables
 
 ---
-*Repository: https://github.com/rhpds/field-sourced-content*
+*Repository: https://github.com/rhpds/field-sourced-content-template*

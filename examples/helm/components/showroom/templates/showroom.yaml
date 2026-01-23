@@ -199,6 +199,14 @@ spec:
           value: {{ .Values.showroom.content.antoraPlaybook | quote }}
         - name: DOMAIN
           value: {{ .Values.deployer.domain | quote }}
+        {{- if .Values.showroom.nookbag.enabled }}
+        - name: ZT_BUNDLE
+          value: {{ .Values.showroom.nookbag.bundleUrl | quote }}
+        - name: ZT_UI_ENABLED
+          value: "true"
+        - name: GUID
+          value: {{ .Values.showroom.namespace | quote }}
+        {{- end }}
         volumeMounts:
         - name: user-data
           mountPath: /user_data/

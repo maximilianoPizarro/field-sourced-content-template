@@ -2555,12 +2555,11 @@ spec:
       clientId: neuralbank-frontend
       directAccessGrantsEnabled: true
       name: Frontend Web App
-      publicClient: false
+      publicClient: true
       redirectUris:
       - https://neuralbank.apps.cluster-8wffz.dynamic.redhatworkshops.io/*
       - https://neuralbank.apps.cluster-8wffz.dynamic.redhatworkshops.io/auth/callback
       rootUrl: https://neuralbank.apps.cluster-8wffz.dynamic.redhatworkshops.io
-      secret: FYtNXAyn6eRmWxHIig7oLhK3zxQ1nLaF
       standardFlowEnabled: true
       webOrigins:
       - '*'

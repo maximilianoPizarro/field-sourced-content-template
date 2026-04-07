@@ -13,20 +13,38 @@ subjects:
   name: openshift-gitops-argocd-application-controller
   namespace: openshift-gitops
 ---
-apiVersion: v1
-data:
-  plugin.yaml: |-
-    apiVersion: argoproj.io/v1alpha1
-    kind: ConfigManagementPlugin
-    metadata:
-      name: my-custom-plugin
-    spec:
-      version: v1.0
-      generate:
-        command: ["echo", "Generando manifest desde CMP..."]
-kind: ConfigMap
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
 metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "0"
-  name: my-custom-plugin
+  name: openshift-gitops
   namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-options: ServerSideApply=true
+spec:
+  controller:
+    resources:
+      limits:
+        cpu: "4"
+        memory: 6Gi
+      requests:
+        cpu: 500m
+        memory: 2Gi
+    env:
+      - name: ARGOCD_CONTROLLER_REPLICAS
+        value: "1"
+  repo:
+    resources:
+      limits:
+        cpu: "2"
+        memory: 2Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+  server:
+    resources:
+      limits:
+        cpu: "2"
+        memory: 1Gi
+      requests:
+        cpu: 125m
+        memory: 256Mi

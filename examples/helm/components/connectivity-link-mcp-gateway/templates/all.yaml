@@ -627,52 +627,7 @@ spec:
           from: All
 ---
 ##
-## 7. HTTPRoute — main broker route
-##
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: mcp-gateway-route
-  namespace: mcp-system
-  annotations:
-    argocd.argoproj.io/sync-wave: "3"
-spec:
-  parentRefs:
-    - name: mcp-gateway
-      namespace: mcp-system
-      sectionName: mcp
-  rules:
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /mcp
-      filters:
-        - type: ResponseHeaderModifier
-          responseHeaderModifier:
-            add:
-              - name: Access-Control-Allow-Origin
-                value: '*'
-              - name: Access-Control-Allow-Methods
-                value: 'GET, POST, PUT, DELETE, OPTIONS, HEAD'
-              - name: Access-Control-Allow-Headers
-                value: 'Content-Type, Authorization, Accept, Origin, X-Requested-With'
-              - name: Access-Control-Max-Age
-                value: '3600'
-              - name: Access-Control-Allow-Credentials
-                value: 'true'
-      backendRefs:
-        - name: mcp-broker
-          port: 8080
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /.well-known/oauth-protected-resource
-      backendRefs:
-        - name: mcp-broker
-          port: 8080
----
-##
-## 8. MCPGatewayExtension
+## 7. MCPGatewayExtension (controller creates broker, HTTPRoute, and service)
 ##
 apiVersion: mcp.kuadrant.io/v1alpha1
 kind: MCPGatewayExtension
@@ -680,7 +635,8 @@ metadata:
   name: mcp-gateway-extension
   namespace: mcp-system
   annotations:
-    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   targetRef:
     group: gateway.networking.k8s.io
@@ -693,7 +649,7 @@ spec:
     secretName: trusted-headers-public-key
 ---
 ##
-## 9. Route — OpenShift route to expose the gateway
+## 8. Route — OpenShift route to expose the gateway
 ##
 apiVersion: route.openshift.io/v1
 kind: Route
@@ -701,12 +657,12 @@ metadata:
   name: mcp-gateway
   namespace: mcp-system
   annotations:
-    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-wave: "3"
 spec:
   host: mcp-gateway.{{ .Values.clusterDomain }}
   to:
     kind: Service
-    name: mcp-gateway
+    name: mcp-gateway-istio
     weight: 100
   port:
     targetPort: 8080
@@ -715,7 +671,7 @@ spec:
   wildcardPolicy: None
 ---
 ##
-## 10. HTTPRoute — openshift-mcp-server backend
+## 9. HTTPRoute — openshift-mcp-server backend
 ##
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -723,7 +679,7 @@ metadata:
   name: openshift-mcp-route
   namespace: openshift-lightspeed
   annotations:
-    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-wave: "3"
 spec:
   parentRefs:
     - name: mcp-gateway
@@ -737,7 +693,7 @@ spec:
           port: 8080
 ---
 ##
-## 11. HTTPRoute — kubernetes-mcp-server backend
+## 10. HTTPRoute — kubernetes-mcp-server backend
 ##
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -745,7 +701,7 @@ metadata:
   name: kubernetes-mcp-route
   namespace: openshift-lightspeed
   annotations:
-    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-wave: "3"
 spec:
   parentRefs:
     - name: mcp-gateway
@@ -759,7 +715,7 @@ spec:
           port: 8085
 ---
 ##
-## 12. MCPServerRegistration — openshift-mcp-server
+## 11. MCPServerRegistration — openshift-mcp-server
 ##
 apiVersion: mcp.kuadrant.io/v1alpha1
 kind: MCPServerRegistration
@@ -767,7 +723,8 @@ metadata:
   name: openshift-mcp-server
   namespace: openshift-lightspeed
   annotations:
-    argocd.argoproj.io/sync-wave: "6"
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   toolPrefix: ocp_
   path: /mcp
@@ -777,7 +734,7 @@ spec:
     name: openshift-mcp-route
 ---
 ##
-## 13. MCPServerRegistration — kubernetes-mcp-server
+## 12. MCPServerRegistration — kubernetes-mcp-server
 ##
 apiVersion: mcp.kuadrant.io/v1alpha1
 kind: MCPServerRegistration
@@ -785,7 +742,8 @@ metadata:
   name: kubernetes-mcp-server
   namespace: openshift-lightspeed
   annotations:
-    argocd.argoproj.io/sync-wave: "6"
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   toolPrefix: k8s_
   path: /mcp

@@ -43,23 +43,23 @@ n8n:
     autoImport:
       enabled: true
       urls:
-        - https://gitlab.com/maximilianoPizarro/connectivity-link/-/raw/main/n8n/workflows/workflow-pod-monitor-mcp-agent.json
-        - https://gitlab.com/maximilianoPizarro/connectivity-link/-/raw/main/n8n/workflows/workflow-pod-monitor-mcp-granite.json
-        - https://gitlab.com/maximilianoPizarro/connectivity-link/-/raw/main/n8n/workflows/workflow-deployment-rollout-status.json
-        - https://gitlab.com/maximilianoPizarro/connectivity-link/-/raw/main/n8n/workflows/workflow-resource-quota-monitor.json
-        - https://gitlab.com/maximilianoPizarro/connectivity-link/-/raw/main/n8n/workflows/workflow-security-audit.json
-        - https://gitlab.com/maximilianoPizarro/connectivity-link/-/raw/main/n8n/workflows/workflow-route-tls-expiry.json
-        - https://gitlab.com/maximilianoPizarro/connectivity-link/-/raw/main/n8n/workflows/workflow-event-anomaly-detector.json
-        - https://gitlab.com/maximilianoPizarro/connectivity-link/-/raw/main/n8n/workflows/workflow-cluster-test-suite.json
-        - https://gitlab.com/maximilianoPizarro/connectivity-link/-/raw/main/n8n/workflows/workflow-cluster-revert.json
-        - https://gitlab.com/maximilianoPizarro/connectivity-link/-/raw/main/n8n/workflows/workflow-openshift-health-dashboard.json
-        - https://gitlab.com/maximilianoPizarro/connectivity-link/-/raw/main/n8n/workflows/workflow-resource-provisioner.json
-        - https://gitlab.com/maximilianoPizarro/connectivity-link/-/raw/main/n8n/workflows/workflow-node-capacity-monitor.json
-        - https://gitlab.com/maximilianoPizarro/connectivity-link/-/raw/main/n8n/workflows/workflow-pod-top-monitor.json
-        - https://gitlab.com/maximilianoPizarro/connectivity-link/-/raw/main/n8n/workflows/workflow-namespace-inventory.json
-        - https://gitlab.com/maximilianoPizarro/connectivity-link/-/raw/main/n8n/workflows/workflow-pvc-storage-monitor.json
-        - https://gitlab.com/maximilianoPizarro/connectivity-link/-/raw/main/n8n/workflows/workflow-operator-health-check.json
-        - https://gitlab.com/maximilianoPizarro/connectivity-link/-/raw/main/n8n/workflows/workflow-mcp-gateway-status.json
+        - https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/main/examples/helm/components/connectivity-link-openshift-lightspeed/workflows/workflow-pod-monitor-mcp-agent.json
+        - https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/main/examples/helm/components/connectivity-link-openshift-lightspeed/workflows/workflow-pod-monitor-mcp-granite.json
+        - https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/main/examples/helm/components/connectivity-link-openshift-lightspeed/workflows/workflow-deployment-rollout-status.json
+        - https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/main/examples/helm/components/connectivity-link-openshift-lightspeed/workflows/workflow-resource-quota-monitor.json
+        - https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/main/examples/helm/components/connectivity-link-openshift-lightspeed/workflows/workflow-security-audit.json
+        - https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/main/examples/helm/components/connectivity-link-openshift-lightspeed/workflows/workflow-route-tls-expiry.json
+        - https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/main/examples/helm/components/connectivity-link-openshift-lightspeed/workflows/workflow-event-anomaly-detector.json
+        - https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/main/examples/helm/components/connectivity-link-openshift-lightspeed/workflows/workflow-cluster-test-suite.json
+        - https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/main/examples/helm/components/connectivity-link-openshift-lightspeed/workflows/workflow-cluster-revert.json
+        - https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/main/examples/helm/components/connectivity-link-openshift-lightspeed/workflows/workflow-openshift-health-dashboard.json
+        - https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/main/examples/helm/components/connectivity-link-openshift-lightspeed/workflows/workflow-resource-provisioner.json
+        - https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/main/examples/helm/components/connectivity-link-openshift-lightspeed/workflows/workflow-node-capacity-monitor.json
+        - https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/main/examples/helm/components/connectivity-link-openshift-lightspeed/workflows/workflow-pod-top-monitor.json
+        - https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/main/examples/helm/components/connectivity-link-openshift-lightspeed/workflows/workflow-namespace-inventory.json
+        - https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/main/examples/helm/components/connectivity-link-openshift-lightspeed/workflows/workflow-pvc-storage-monitor.json
+        - https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/main/examples/helm/components/connectivity-link-openshift-lightspeed/workflows/workflow-operator-health-check.json
+        - https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/main/examples/helm/components/connectivity-link-openshift-lightspeed/workflows/workflow-mcp-gateway-status.json
 
 # ============================================================
 # openshift-mcp-server — MCP servers + LiteLLM proxy + Inspector

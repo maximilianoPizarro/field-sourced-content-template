@@ -1,0 +1,364 @@
+{
+  "name": "OpenShift Health Dashboard - MCP",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        180,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "email",
+              "name": "destinationEmail",
+              "value": "maximiliano.pizarro.5@gmail.com",
+              "type": "string"
+            },
+            {
+              "id": "mcpHost",
+              "name": "mcpHost",
+              "value": "field-content-ols.openshift-lightspeed.svc.cluster.local",
+              "type": "string"
+            },
+            {
+              "id": "mcpPort",
+              "name": "mcpPort",
+              "value": "8080",
+              "type": "string"
+            },
+            {
+              "id": "k8sMcpHost",
+              "name": "k8sMcpHost",
+              "value": "field-content-ols-k8s-mcp.openshift-lightspeed.svc.cluster.local",
+              "type": "string"
+            },
+            {
+              "id": "k8sMcpPort",
+              "name": "k8sMcpPort",
+              "value": "8085",
+              "type": "string"
+            },
+            {
+              "id": "litellmHost",
+              "name": "litellmHost",
+              "value": "field-content-ols-litellm.openshift-lightspeed.svc.cluster.local",
+              "type": "string"
+            },
+            {
+              "id": "litellmPort",
+              "name": "litellmPort",
+              "value": "4000",
+              "type": "string"
+            },
+            {
+              "id": "litellmApiKey",
+              "name": "litellmApiKey",
+              "value": "sk-openshift-mcp-1234",
+              "type": "string"
+            },
+            {
+              "id": "ns",
+              "name": "namespace",
+              "value": "openshift-lightspeed",
+              "type": "string"
+            },
+            {
+              "id": "cpuThr",
+              "name": "cpuThreshold",
+              "value": "80",
+              "type": "string"
+            },
+            {
+              "id": "memThr",
+              "name": "memoryThreshold",
+              "value": "85",
+              "type": "string"
+            },
+            {
+              "id": "restartThr",
+              "name": "restartThreshold",
+              "value": "5",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-params",
+      "name": "Set Parameters",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const http = require('http');\nfunction mcpRequest(host, port, body, sessionId) {\n  return new Promise((resolve, reject) => {\n    const data = JSON.stringify(body);\n    const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', 'Content-Length': Buffer.byteLength(data) };\n    if (sessionId) headers['Mcp-Session-Id'] = sessionId;\n    const req = http.request({ hostname: host, port, path: '/mcp', method: 'POST', headers }, (res) => {\n      let body = '';\n      res.on('data', (chunk) => body += chunk);\n      res.on('end', () => {\n        const lines = body.split('\\n');\n        let jsonData = '';\n        for (const line of lines) { if (line.startsWith('data: ')) jsonData = line.substring(6); }\n        resolve({ status: res.statusCode, headers: res.headers, body: jsonData || body });\n      });\n    });\n    req.on('error', reject);\n    req.write(data);\n    req.end();\n  });\n}\nasync function callMcpTool(host, port, toolName, toolArgs) {\n  const init = await mcpRequest(host, port, { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'n8n-workflow', version: '1.0' } } });\n  const sid = init.headers['mcp-session-id'];\n  await mcpRequest(host, port, { jsonrpc: '2.0', method: 'notifications/initialized' }, sid);\n  const result = await mcpRequest(host, port, { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: toolName, arguments: toolArgs } }, sid);\n  const parsed = JSON.parse(result.body);\n  return parsed.result?.content?.[0]?.text || 'Error: ' + JSON.stringify(parsed.error);\n}\nconst j = $input.first().json;\nconst result = await callMcpTool(j.mcpHost, parseInt(j.mcpPort, 10), 'checkClusterHealth', { detailed: 'true' });\nreturn [{ json: { ...j, clusterHealthResult: result } }];\n"
+      },
+      "id": "cluster-health",
+      "name": "Check Cluster Health",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        620,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const http = require('http');\nfunction mcpRequest(host, port, body, sessionId) {\n  return new Promise((resolve, reject) => {\n    const data = JSON.stringify(body);\n    const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', 'Content-Length': Buffer.byteLength(data) };\n    if (sessionId) headers['Mcp-Session-Id'] = sessionId;\n    const req = http.request({ hostname: host, port, path: '/mcp', method: 'POST', headers }, (res) => {\n      let body = '';\n      res.on('data', (chunk) => body += chunk);\n      res.on('end', () => {\n        const lines = body.split('\\n');\n        let jsonData = '';\n        for (const line of lines) { if (line.startsWith('data: ')) jsonData = line.substring(6); }\n        resolve({ status: res.statusCode, headers: res.headers, body: jsonData || body });\n      });\n    });\n    req.on('error', reject);\n    req.write(data);\n    req.end();\n  });\n}\nasync function callMcpTool(host, port, toolName, toolArgs) {\n  const init = await mcpRequest(host, port, { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'n8n-workflow', version: '1.0' } } });\n  const sid = init.headers['mcp-session-id'];\n  await mcpRequest(host, port, { jsonrpc: '2.0', method: 'notifications/initialized' }, sid);\n  const result = await mcpRequest(host, port, { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: toolName, arguments: toolArgs } }, sid);\n  const parsed = JSON.parse(result.body);\n  return parsed.result?.content?.[0]?.text || 'Error: ' + JSON.stringify(parsed.error);\n}\nconst j = $input.first().json;\nconst result = await callMcpTool(j.mcpHost, parseInt(j.mcpPort, 10), 'checkNodeConditions', {});\nreturn [{ json: { ...j, nodeConditionsResult: result } }];\n"
+      },
+      "id": "node-conditions",
+      "name": "Check Node Conditions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        840,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const http = require('http');\nfunction mcpRequest(host, port, body, sessionId) {\n  return new Promise((resolve, reject) => {\n    const data = JSON.stringify(body);\n    const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', 'Content-Length': Buffer.byteLength(data) };\n    if (sessionId) headers['Mcp-Session-Id'] = sessionId;\n    const req = http.request({ hostname: host, port, path: '/mcp', method: 'POST', headers }, (res) => {\n      let body = '';\n      res.on('data', (chunk) => body += chunk);\n      res.on('end', () => {\n        const lines = body.split('\\n');\n        let jsonData = '';\n        for (const line of lines) { if (line.startsWith('data: ')) jsonData = line.substring(6); }\n        resolve({ status: res.statusCode, headers: res.headers, body: jsonData || body });\n      });\n    });\n    req.on('error', reject);\n    req.write(data);\n    req.end();\n  });\n}\nasync function callMcpTool(host, port, toolName, toolArgs) {\n  const init = await mcpRequest(host, port, { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'n8n-workflow', version: '1.0' } } });\n  const sid = init.headers['mcp-session-id'];\n  await mcpRequest(host, port, { jsonrpc: '2.0', method: 'notifications/initialized' }, sid);\n  const result = await mcpRequest(host, port, { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: toolName, arguments: toolArgs } }, sid);\n  const parsed = JSON.parse(result.body);\n  return parsed.result?.content?.[0]?.text || 'Error: ' + JSON.stringify(parsed.error);\n}\nconst j = $input.first().json;\nconst result = await callMcpTool(j.mcpHost, parseInt(j.mcpPort, 10), 'detectResourceIssues', {\n  cpuThresholdStr: j.cpuThreshold,\n  memoryThresholdStr: j.memoryThreshold,\n  restartThresholdStr: j.restartThreshold\n});\nreturn [{ json: { ...j, resourceIssuesResult: result } }];\n"
+      },
+      "id": "detect-issues",
+      "name": "Detect Resource Issues",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1060,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const http = require('http');\nfunction mcpRequest(host, port, body, sessionId) {\n  return new Promise((resolve, reject) => {\n    const data = JSON.stringify(body);\n    const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', 'Content-Length': Buffer.byteLength(data) };\n    if (sessionId) headers['Mcp-Session-Id'] = sessionId;\n    const req = http.request({ hostname: host, port, path: '/mcp', method: 'POST', headers }, (res) => {\n      let body = '';\n      res.on('data', (chunk) => body += chunk);\n      res.on('end', () => {\n        const lines = body.split('\\n');\n        let jsonData = '';\n        for (const line of lines) { if (line.startsWith('data: ')) jsonData = line.substring(6); }\n        resolve({ status: res.statusCode, headers: res.headers, body: jsonData || body });\n      });\n    });\n    req.on('error', reject);\n    req.write(data);\n    req.end();\n  });\n}\nasync function callMcpTool(host, port, toolName, toolArgs) {\n  const init = await mcpRequest(host, port, { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'n8n-workflow', version: '1.0' } } });\n  const sid = init.headers['mcp-session-id'];\n  await mcpRequest(host, port, { jsonrpc: '2.0', method: 'notifications/initialized' }, sid);\n  const result = await mcpRequest(host, port, { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: toolName, arguments: toolArgs } }, sid);\n  const parsed = JSON.parse(result.body);\n  return parsed.result?.content?.[0]?.text || 'Error: ' + JSON.stringify(parsed.error);\n}\nconst j = $input.first().json;\nconst result = await callMcpTool(j.mcpHost, parseInt(j.mcpPort, 10), 'getPerformanceMetrics', {\n  namespace: j.namespace\n});\nreturn [{ json: { ...j, performanceResult: result } }];\n"
+      },
+      "id": "perf-metrics",
+      "name": "Get Performance Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const http = require('http');\nfunction mcpRequest(host, port, body, sessionId) {\n  return new Promise((resolve, reject) => {\n    const data = JSON.stringify(body);\n    const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', 'Content-Length': Buffer.byteLength(data) };\n    if (sessionId) headers['Mcp-Session-Id'] = sessionId;\n    const req = http.request({ hostname: host, port, path: '/mcp', method: 'POST', headers }, (res) => {\n      let body = '';\n      res.on('data', (chunk) => body += chunk);\n      res.on('end', () => {\n        const lines = body.split('\\n');\n        let jsonData = '';\n        for (const line of lines) { if (line.startsWith('data: ')) jsonData = line.substring(6); }\n        resolve({ status: res.statusCode, headers: res.headers, body: jsonData || body });\n      });\n    });\n    req.on('error', reject);\n    req.write(data);\n    req.end();\n  });\n}\nasync function callMcpTool(host, port, toolName, toolArgs) {\n  const init = await mcpRequest(host, port, { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'n8n-workflow', version: '1.0' } } });\n  const sid = init.headers['mcp-session-id'];\n  await mcpRequest(host, port, { jsonrpc: '2.0', method: 'notifications/initialized' }, sid);\n  const result = await mcpRequest(host, port, { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: toolName, arguments: toolArgs } }, sid);\n  const parsed = JSON.parse(result.body);\n  return parsed.result?.content?.[0]?.text || 'Error: ' + JSON.stringify(parsed.error);\n}\nconst j = $input.first().json;\nconst result = await callMcpTool(j.mcpHost, parseInt(j.mcpPort, 10), 'analyzePodDisruptions', {\n  namespace: j.namespace, hoursStr: '24'\n});\nreturn [{ json: { ...j, podDisruptionsResult: result } }];\n"
+      },
+      "id": "pod-disruptions",
+      "name": "Analyze Pod Disruptions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const http = require('http');\nfunction mcpRequest(host, port, body, sessionId) {\n  return new Promise((resolve, reject) => {\n    const data = JSON.stringify(body);\n    const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', 'Content-Length': Buffer.byteLength(data) };\n    if (sessionId) headers['Mcp-Session-Id'] = sessionId;\n    const req = http.request({ hostname: host, port, path: '/mcp', method: 'POST', headers }, (res) => {\n      let body = '';\n      res.on('data', (chunk) => body += chunk);\n      res.on('end', () => {\n        const lines = body.split('\\n');\n        let jsonData = '';\n        for (const line of lines) { if (line.startsWith('data: ')) jsonData = line.substring(6); }\n        resolve({ status: res.statusCode, headers: res.headers, body: jsonData || body });\n      });\n    });\n    req.on('error', reject);\n    req.write(data);\n    req.end();\n  });\n}\nasync function callMcpTool(host, port, toolName, toolArgs) {\n  const init = await mcpRequest(host, port, { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'n8n-workflow', version: '1.0' } } });\n  const sid = init.headers['mcp-session-id'];\n  await mcpRequest(host, port, { jsonrpc: '2.0', method: 'notifications/initialized' }, sid);\n  const result = await mcpRequest(host, port, { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: toolName, arguments: toolArgs } }, sid);\n  const parsed = JSON.parse(result.body);\n  return parsed.result?.content?.[0]?.text || 'Error: ' + JSON.stringify(parsed.error);\n}\nconst j = $input.first().json;\nconst result = await callMcpTool(j.k8sMcpHost, parseInt(j.k8sMcpPort, 10), 'nodes_top', {});\nreturn [{ json: { ...j, nodesTopResult: result } }];\n"
+      },
+      "id": "nodes-top",
+      "name": "Nodes CPU/Mem Top",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1720,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const http = require('http');\nfunction mcpRequest(host, port, body, sessionId) {\n  return new Promise((resolve, reject) => {\n    const data = JSON.stringify(body);\n    const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', 'Content-Length': Buffer.byteLength(data) };\n    if (sessionId) headers['Mcp-Session-Id'] = sessionId;\n    const req = http.request({ hostname: host, port, path: '/mcp', method: 'POST', headers }, (res) => {\n      let body = '';\n      res.on('data', (chunk) => body += chunk);\n      res.on('end', () => {\n        const lines = body.split('\\n');\n        let jsonData = '';\n        for (const line of lines) { if (line.startsWith('data: ')) jsonData = line.substring(6); }\n        resolve({ status: res.statusCode, headers: res.headers, body: jsonData || body });\n      });\n    });\n    req.on('error', reject);\n    req.write(data);\n    req.end();\n  });\n}\nasync function callMcpTool(host, port, toolName, toolArgs) {\n  const init = await mcpRequest(host, port, { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'n8n-workflow', version: '1.0' } } });\n  const sid = init.headers['mcp-session-id'];\n  await mcpRequest(host, port, { jsonrpc: '2.0', method: 'notifications/initialized' }, sid);\n  const result = await mcpRequest(host, port, { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: toolName, arguments: toolArgs } }, sid);\n  const parsed = JSON.parse(result.body);\n  return parsed.result?.content?.[0]?.text || 'Error: ' + JSON.stringify(parsed.error);\n}\nconst j = $input.first().json;\nconst result = await callMcpTool(j.k8sMcpHost, parseInt(j.k8sMcpPort, 10), 'events_list', {\n  namespace: j.namespace\n});\nreturn [{ json: { ...j, eventsResult: result } }];\n"
+      },
+      "id": "events",
+      "name": "List Recent Events",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1940,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const j = $input.first().json;\nconst summary = [\n  '=== CLUSTER HEALTH (checkClusterHealth detailed) ===',\n  j.clusterHealthResult || 'N/A',\n  '\\n=== NODE CONDITIONS (checkNodeConditions) ===',\n  j.nodeConditionsResult || 'N/A',\n  '\\n=== RESOURCE ISSUES (detectResourceIssues cpu>'+j.cpuThreshold+'% mem>'+j.memoryThreshold+'% restarts>'+j.restartThreshold+') ===',\n  j.resourceIssuesResult || 'N/A',\n  '\\n=== PERFORMANCE METRICS - ' + j.namespace + ' (getPerformanceMetrics) ===',\n  j.performanceResult || 'N/A',\n  '\\n=== POD DISRUPTIONS - 24h (analyzePodDisruptions) ===',\n  j.podDisruptionsResult || 'N/A',\n  '\\n=== NODES CPU/MEM TOP (k8s-mcp: nodes_top) ===',\n  j.nodesTopResult || 'N/A',\n  '\\n=== RECENT EVENTS - ' + j.namespace + ' (k8s-mcp: events_list) ===',\n  j.eventsResult || 'N/A'\n].join('\\n');\nreturn [{ json: { ...j, aggregatedOutput: summary, aiPrompt: 'Analyze these OpenShift cluster health metrics. Provide: 1) Overall health score (0-100) with color-coded badge, 2) HTML table per category (cluster, nodes, resources, performance, disruptions, events) with status, 3) Top 3 critical issues, 4) Recommendations. Red Hat style inline CSS.' } }];\n"
+      },
+      "id": "aggregate",
+      "name": "Aggregate All Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const http = require('http');\nconst input = $input.first().json;\nconst litellmHost = input.litellmHost;\nconst litellmPort = parseInt(input.litellmPort, 10);\nconst litellmApiKey = input.litellmApiKey || '';\nconst fullOutput = input.aggregatedOutput || input.mcpOutput || '';\nconst truncated = fullOutput.length > 3000 ? fullOutput.substring(0, 3000) + '\\n[... truncated ...]' : fullOutput;\nconst systemPrompt = input.aiPrompt || 'Analyze this OpenShift output. Provide: 1) HTML summary table of key data, 2) Health verdict (Healthy/Warning/Critical) with color, 3) Recommendations. Use inline CSS, Red Hat style (#DC382D, #151515).';\nconst requestBody = JSON.stringify({\n  model: 'granite',\n  messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: truncated }],\n  temperature: 0.3, max_tokens: 2048\n});\nreturn new Promise((resolve, reject) => {\n  const req = http.request({\n    hostname: litellmHost, port: litellmPort, path: '/v1/chat/completions', method: 'POST',\n    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + litellmApiKey, 'Content-Length': Buffer.byteLength(requestBody) }\n  }, (res) => {\n    let data = '';\n    res.on('data', (chunk) => { data += chunk; });\n    res.on('end', () => {\n      try {\n        const parsed = JSON.parse(data);\n        let rawAI = parsed.choices?.[0]?.message?.content || 'AI analysis unavailable';\n        rawAI = rawAI.replace(/<think>[\\s\\S]*?<\\/think>/g, '').trim();\n        const aiAnalysis = rawAI.length > 1800 ? rawAI.substring(0, 1800) + '\n[... truncated ...]' : rawAI;\n        resolve([{ json: { ...input, aiAnalysis, aiModel: parsed.model || 'granite' } }]);\n      } catch (e) { resolve([{ json: { ...input, aiAnalysis: 'AI failed: ' + e.message, aiModel: 'error' } }]); }\n    });\n  });\n  req.on('error', (e) => { resolve([{ json: { ...input, aiAnalysis: 'AI unreachable: ' + e.message, aiModel: 'unreachable' } }]); });\n  req.write(requestBody);\n  req.end();\n});\n"
+      },
+      "id": "ai-format",
+      "name": "AI Format & Explain",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2380,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const http = require('http');\nconst input = $input.first().json;\nconst email = input.destinationEmail;\nconst aiAnalysis = input.aiAnalysis || '';\nconst aiModel = input.aiModel || 'granite';\nconst ts = new Date().toISOString();\nconst raw = input.aggregatedOutput || input.mcpOutput || '';\nconst escaped = raw.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');\nconst title = 'OpenShift Health Dashboard';\nconst subtitle = 'Cluster health metrics via openshift-mcp-server + kubernetes-mcp-server';\nconst html = `<html><body style=\"margin:0;padding:0;background:#f0f0f0;font-family:'Red Hat Display',Arial,sans-serif;\">\n<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr><td align=\"center\" style=\"padding:24px;\">\n<table width=\"660\" style=\"max-width:660px;width:100%;\">\n<tr><td style=\"background:#151515;padding:16px 32px;border-radius:8px 8px 0 0;\">\n<span style=\"color:#EE0000;font-size:20px;font-weight:700;\">Red Hat</span>\n<span style=\"float:right;color:#C6C6C6;font-size:12px;line-height:28px;\">OpenShift Developer Sandbox</span></td></tr>\n<tr><td style=\"background:#DC382D;padding:28px 32px;\">\n<h1 style=\"margin:0;font-size:22px;color:#FFF;\">${title}</h1>\n<p style=\"margin:6px 0 0;font-size:14px;color:rgba(255,255,255,.85);\">${subtitle}</p></td></tr>\n<tr><td style=\"background:#292929;padding:12px 32px;text-align:right;\">\n<span style=\"color:#A3A3A3;font-size:11px;\">Generated: <b style=\"color:#FFF;\">${ts}</b> &nbsp;|&nbsp; AI: <b style=\"color:#FFF;\">${aiModel}</b></span></td></tr>\n<tr><td style=\"background:#FFF;padding:28px 32px;\">\n<h2 style=\"margin:0 0 16px;font-size:17px;border-bottom:2px solid #DC382D;padding-bottom:10px;\">AI Analysis</h2>\n<div style=\"font-size:14px;line-height:1.6;\">${aiAnalysis}</div></td></tr>\n<tr><td style=\"background:#FFF;padding:0 32px 28px;\">\n<h2 style=\"margin:0 0 12px;font-size:15px;border-bottom:1px solid #E0E0E0;padding-bottom:8px;color:#6A6E73;\">Raw Output</h2>\n<pre style=\"background:#1E1E1E;color:#D4D4D4;padding:16px;border-radius:6px;font-size:11px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word;\">${escaped}</pre></td></tr>\n<tr><td style=\"background:#151515;padding:16px 32px;border-radius:0 0 8px 8px;text-align:center;\">\n<p style=\"margin:0;font-size:11px;color:#A3A3A3;\">Auto-generated by <b style=\"color:#FFF;\">n8n</b> · <b style=\"color:#FFF;\">Red Hat OpenShift Developer Sandbox</b></p>\n</td></tr></table></td></tr></table></body></html>`;\nconst mailBody = JSON.stringify({\n  From: { Name: 'n8n Workflow', Email: 'workflow@n8n.local' },\n  To: [{ Name: 'Admin', Email: email }],\n  Subject: `[Red Hat OpenShift] ${title} | ${ts}`,\n  HTML: html\n});\nreturn new Promise((resolve, reject) => {\n  const req = http.request({\n    hostname: 'n8n-mailpit', port: 8025, path: '/api/v1/send', method: 'POST',\n    headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(mailBody) }\n  }, (res) => {\n    let data = '';\n    res.on('data', (chunk) => { data += chunk; });\n    res.on('end', () => { resolve([{ json: { mailpitStatus: res.statusCode } }]); });\n  });\n  req.on('error', reject);\n  req.write(mailBody);\n  req.end();\n});\n"
+      },
+      "id": "report-email",
+      "name": "Build Report & Send Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2600,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Parameters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Parameters": {
+      "main": [
+        [
+          {
+            "node": "Check Cluster Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Cluster Health": {
+      "main": [
+        [
+          {
+            "node": "Check Node Conditions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Node Conditions": {
+      "main": [
+        [
+          {
+            "node": "Detect Resource Issues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Resource Issues": {
+      "main": [
+        [
+          {
+            "node": "Get Performance Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Performance Metrics": {
+      "main": [
+        [
+          {
+            "node": "Analyze Pod Disruptions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Pod Disruptions": {
+      "main": [
+        [
+          {
+            "node": "Nodes CPU/Mem Top",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nodes CPU/Mem Top": {
+      "main": [
+        [
+          {
+            "node": "List Recent Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Recent Events": {
+      "main": [
+        [
+          {
+            "node": "Aggregate All Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate All Results": {
+      "main": [
+        [
+          {
+            "node": "AI Format & Explain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Format & Explain": {
+      "main": [
+        [
+          {
+            "node": "Build Report & Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "active": false
+}

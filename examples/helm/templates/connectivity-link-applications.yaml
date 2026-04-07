@@ -20,16 +20,37 @@ spec:
     repoURL: {{ $.Values.gitops.repoUrl }}
     targetRevision: {{ $.Values.gitops.revision }}
     path: {{ $.Values.gitops.basePath }}/components/{{ .path }}
+    {{- $domain := $.Values.deployer.domain | default "apps.cluster.example.com" }}
     {{- if eq .path "connectivity-link-operators" }}
     helm:
       valuesObject:
         channel: {{ $.Values.connectivityLink.operators.channel | quote }}
         version: {{ $.Values.connectivityLink.operators.version | quote }}
         subscriptions: {{ $.Values.connectivityLink.operators.subscriptions | toJson }}
+    {{- else if eq .path "connectivity-link-openshift-lightspeed" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+        llmApiKey: {{ $.Values.lightspeed.llmApiKey | quote }}
+        llmEndpoint: {{ $.Values.lightspeed.llmEndpoint | quote }}
+        llmModel: {{ $.Values.lightspeed.model | quote }}
+        n8n:
+          route:
+            host: n8n.{{ $domain }}
+        openshift-mcp-server:
+          litellm:
+            model:
+              apiKey: {{ $.Values.lightspeed.llmApiKey | quote }}
+              name: {{ $.Values.lightspeed.model | quote }}
+              modelId: {{ $.Values.lightspeed.model | quote }}
+              apiBase: {{ $.Values.lightspeed.llmEndpoint | quote }}
+    {{- else if eq .path "connectivity-link-mcp-gateway" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
     {{- else if eq .path "connectivity-link-neuralbank-stack" }}
     helm:
       valuesObject:
-        {{- $domain := $.Values.deployer.domain | default "apps.cluster.example.com" }}
         {{- $nb := deepCopy $.Values.connectivityLink.neuralbank }}
         {{- $kc := deepCopy $nb.keycloak }}
         {{- $_ := set $kc "issuerUrl" (printf "https://rhbk.%s/realms/neuralbank" $domain) }}

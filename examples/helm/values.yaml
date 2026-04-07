@@ -206,6 +206,15 @@ connectivityLink:
       skipDryRunOnMissingResource: true
 
 # ============================================================
+# Lightspeed / MCP — LLM provider config for OLS component
+# Keys are injected at deploy time (RHDP or --set), NOT in git
+# ============================================================
+lightspeed:
+  llmApiKey: ""
+  llmEndpoint: "https://litellm-prod.apps.maas.redhatworkshops.io/v1"
+  model: "granite-3-2-8b-instruct"
+
+# ============================================================
 # LiteMaaS / MaaS (optional — injected by RHDP when enabled on order)
 # ============================================================
 litemaas:

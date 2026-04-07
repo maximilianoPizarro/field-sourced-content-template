@@ -1,4 +1,7 @@
-clusterDomain: apps.cluster-8wffz.dynamic.redhatworkshops.io
+clusterDomain: ""
+llmApiKey: ""
+llmEndpoint: "https://litellm-prod.apps.maas.redhatworkshops.io/v1"
+llmModel: "granite-3-2-8b-instruct"
 
 # ============================================================
 # n8n — Workflow automation (from charts.openshift.io)
@@ -16,7 +19,7 @@ n8n:
     runAsNonRoot: true
   route:
     enabled: true
-    host: n8n.apps.cluster-8wffz.dynamic.redhatworkshops.io
+    host: ""
     tls:
       termination: edge
   main:
@@ -70,10 +73,10 @@ openshift-mcp-server:
     enabled: true
     masterKey: "sk-openshift-mcp-1234"
     model:
-      name: llama-scout-17b
-      modelId: llama-scout-17b
-      apiBase: "https://litellm-prod.apps.maas.redhatworkshops.io/v1"
-      apiKey: "sk-9guuWZPNUC0zY5KS3kbFLA"
+      name: ""
+      modelId: ""
+      apiBase: ""
+      apiKey: ""
     postgres:
       enabled: true
     route:

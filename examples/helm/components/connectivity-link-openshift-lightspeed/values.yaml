@@ -4,6 +4,7 @@ clusterDomain: apps.cluster-8wffz.dynamic.redhatworkshops.io
 # n8n — Workflow automation (from charts.openshift.io)
 # ============================================================
 n8n:
+  fullnameOverride: n8n
   enableServiceLinks: false
   podSecurityContext: {}
   securityContext:
@@ -62,6 +63,7 @@ n8n:
 # (from maximilianopizarro.github.io/openshift-mcp-server)
 # ============================================================
 openshift-mcp-server:
+  fullnameOverride: openshift-mcp-server
   namespace: openshift-lightspeed
   litellm:
     enabled: true

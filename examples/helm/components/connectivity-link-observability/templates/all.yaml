@@ -1,0 +1,408 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: connectivity-link-prometheus-scrape
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  - nodes/metrics
+  - services
+  - endpoints
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses
+  verbs:
+  - get
+  - list
+  - watch
+- nonResourceURLs:
+  - /metrics
+  - /metrics/cadvisor
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: connectivity-link-stack-prometheus-scrape
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: connectivity-link-prometheus-scrape
+subjects:
+- kind: ServiceAccount
+  name: connectivity-link-stack-prometheus
+  namespace: openshift-cluster-observability-operator
+---
+apiVersion: monitoring.rhobs/v1
+kind: PodMonitor
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    k8s-app: waypoint-monitor
+    openshift.io/user-monitoring: "true"
+  name: istio-waypoints-monitor
+  namespace: openshift-cluster-observability-operator
+spec:
+  namespaceSelector:
+    matchNames:
+    - nfl-wallet-prod
+    - nfl-wallet-test
+  podMetricsEndpoints:
+  - interval: 30s
+    path: /stats/prometheus
+    port: http-envoy-prom
+  selector:
+    matchExpressions:
+    - key: gateway.networking.k8s.io/gateway-name
+      operator: In
+      values:
+      - nfl-wallet-waypoint
+---
+apiVersion: monitoring.rhobs/v1
+kind: PodMonitor
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    app.kubernetes.io/component: gateway
+    openshift.io/user-monitoring: "true"
+  name: nfl-wallet-prod-gateway-alt
+  namespace: openshift-cluster-observability-operator
+spec:
+  namespaceSelector:
+    matchNames:
+    - nfl-wallet-prod
+  podMetricsEndpoints:
+  - interval: 30s
+    path: /stats/prometheus
+    port: http-envoy-prom
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gateway
+---
+apiVersion: monitoring.rhobs/v1
+kind: PodMonitor
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    app.kubernetes.io/component: gateway
+    openshift.io/user-monitoring: "true"
+  name: nfl-wallet-prod-gateway-pods
+  namespace: openshift-cluster-observability-operator
+spec:
+  namespaceSelector:
+    matchNames:
+    - nfl-wallet-prod
+  podMetricsEndpoints:
+  - interval: 30s
+    path: /stats/prometheus
+    port: "15090"
+  selector:
+    matchExpressions:
+    - key: gateway.networking.k8s.io/gateway-name
+      operator: In
+      values:
+      - nfl-wallet-gateway
+      - nfl-wallet-gateway-istio
+    matchLabels:
+      app.kubernetes.io/component: gateway
+---
+apiVersion: monitoring.rhobs/v1
+kind: PodMonitor
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    app.kubernetes.io/component: gateway
+    openshift.io/user-monitoring: "true"
+  name: nfl-wallet-test-gateway-alt
+  namespace: openshift-cluster-observability-operator
+spec:
+  namespaceSelector:
+    matchNames:
+    - nfl-wallet-test
+  podMetricsEndpoints:
+  - interval: 30s
+    path: /stats/prometheus
+    port: http-envoy-prom
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gateway
+---
+apiVersion: monitoring.rhobs/v1
+kind: PodMonitor
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    app.kubernetes.io/component: gateway
+    openshift.io/user-monitoring: "true"
+  name: nfl-wallet-test-gateway-pods
+  namespace: openshift-cluster-observability-operator
+spec:
+  namespaceSelector:
+    matchNames:
+    - nfl-wallet-test
+  podMetricsEndpoints:
+  - interval: 30s
+    path: /stats/prometheus
+    port: http-envoy-prom
+  selector:
+    matchExpressions:
+    - key: gateway.networking.k8s.io/gateway-name
+      operator: In
+      values:
+      - nfl-wallet-gateway
+      - nfl-wallet-gateway-istio
+    matchLabels:
+      app.kubernetes.io/component: gateway
+---
+apiVersion: monitoring.rhobs/v1
+kind: ServiceMonitor
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    app.kubernetes.io/name: kuadrant
+    openshift.io/user-monitoring: "true"
+  name: kuadrant
+  namespace: openshift-cluster-observability-operator
+spec:
+  endpoints:
+  - interval: 30s
+    port: metrics
+  - interval: 30s
+    port: https
+    scheme: https
+    tlsConfig:
+      insecureSkipVerify: true
+  namespaceSelector:
+    matchNames:
+    - istio-system
+  selector:
+    matchExpressions:
+    - key: app.kubernetes.io/name
+      operator: In
+      values:
+      - kuadrant-controller-manager
+      - kuadrant
+      - authorino
+---
+apiVersion: monitoring.rhobs/v1
+kind: ServiceMonitor
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    app.kubernetes.io/component: gateway
+    openshift.io/user-monitoring: "true"
+  name: litemaas-gateway-metrics
+  namespace: openshift-cluster-observability-operator
+spec:
+  endpoints:
+  - interval: 30s
+    path: /stats/prometheus
+    port: "15090"
+  namespaceSelector:
+    matchNames:
+    - litemaas
+  selector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: litemaas-gateway
+---
+apiVersion: monitoring.rhobs/v1
+kind: ServiceMonitor
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    app.kubernetes.io/component: gateway
+    openshift.io/user-monitoring: "true"
+  name: neuralbank-gateway-metrics
+  namespace: openshift-cluster-observability-operator
+spec:
+  endpoints:
+  - interval: 30s
+    path: /stats/prometheus
+    port: "15090"
+  namespaceSelector:
+    matchNames:
+    - neuralbank-stack
+  selector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: neuralbank-gateway
+---
+apiVersion: monitoring.rhobs/v1
+kind: ServiceMonitor
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    app.kubernetes.io/component: gateway
+    openshift.io/user-monitoring: "true"
+  name: nfl-wallet-prod-gateway-metrics
+  namespace: openshift-cluster-observability-operator
+spec:
+  endpoints:
+  - interval: 30s
+    path: /stats/prometheus
+    port: http-envoy-prom
+  namespaceSelector:
+    matchNames:
+    - nfl-wallet-prod
+  selector:
+    matchExpressions:
+    - key: gateway.networking.k8s.io/gateway-name
+      operator: In
+      values:
+      - nfl-wallet-gateway
+      - nfl-wallet-gateway-istio
+---
+apiVersion: monitoring.rhobs/v1
+kind: ServiceMonitor
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    app.kubernetes.io/component: waypoint
+    openshift.io/user-monitoring: "true"
+  name: nfl-wallet-prod-waypoint-metrics
+  namespace: openshift-cluster-observability-operator
+spec:
+  endpoints:
+  - interval: 30s
+    path: /stats/prometheus
+    port: "15021"
+  namespaceSelector:
+    matchNames:
+    - nfl-wallet-prod
+  selector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: nfl-wallet-waypoint
+---
+apiVersion: monitoring.rhobs/v1
+kind: ServiceMonitor
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    app.kubernetes.io/component: gateway
+    openshift.io/user-monitoring: "true"
+  name: nfl-wallet-test-gateway-metrics
+  namespace: openshift-cluster-observability-operator
+spec:
+  endpoints:
+  - interval: 30s
+    path: /stats/prometheus
+    port: http-envoy-prom
+  namespaceSelector:
+    matchNames:
+    - nfl-wallet-test
+  selector:
+    matchExpressions:
+    - key: gateway.networking.k8s.io/gateway-name
+      operator: In
+      values:
+      - nfl-wallet-gateway
+      - nfl-wallet-gateway-istio
+---
+apiVersion: monitoring.rhobs/v1
+kind: ServiceMonitor
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    app.kubernetes.io/component: waypoint
+    openshift.io/user-monitoring: "true"
+  name: nfl-wallet-test-waypoint-metrics
+  namespace: openshift-cluster-observability-operator
+spec:
+  endpoints:
+  - interval: 30s
+    path: /stats/prometheus
+    port: "15021"
+  namespaceSelector:
+    matchNames:
+    - nfl-wallet-test
+  selector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: nfl-wallet-waypoint
+---
+apiVersion: monitoring.rhobs/v1alpha1
+kind: MonitoringStack
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    connectivity-link.redhat.com/stack: connectivity-link-stack
+  name: connectivity-link-stack
+  namespace: openshift-cluster-observability-operator
+spec:
+  alertmanagerConfig:
+    disabled: false
+  logLevel: info
+  prometheusConfig:
+    replicas: 1
+  resourceSelector:
+    matchLabels:
+      openshift.io/user-monitoring: "true"
+  retention: 7d
+---
+apiVersion: monitoring.rhobs/v1alpha1
+kind: ThanosQuerier
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  name: connectivity-link-querier
+  namespace: openshift-cluster-observability-operator
+spec:
+  selector:
+    matchLabels:
+      connectivity-link.redhat.com/stack: connectivity-link-stack
+---
+apiVersion: observability.openshift.io/v1alpha1
+kind: UIPlugin
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  name: monitoring
+  namespace: openshift-cluster-observability-operator
+spec:
+  monitoring:
+    acm:
+      alertmanager:
+        url: http://connectivity-link-stack-alertmanager.openshift-cluster-observability-operator.svc.cluster.local:9093
+      enabled: true
+      thanosQuerier:
+        url: http://thanos-querier-connectivity-link-querier.openshift-cluster-observability-operator.svc.cluster.local:9090
+  type: Monitoring
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  name: thanos-querier-connectivity-link
+  namespace: openshift-cluster-observability-operator
+spec:
+  host: thanos-querier.apps.cluster-6tx4w.6tx4w.sandbox5380.opentlc.com
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+  to:
+    kind: Service
+    name: thanos-querier-connectivity-link-querier
+    weight: 100
+  wildcardPolicy: None

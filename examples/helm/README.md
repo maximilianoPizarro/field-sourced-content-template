@@ -1,68 +1,51 @@
 # Helm Example - App of Apps
 
-Deploy workloads using an ArgoCD App of Apps pattern. The master chart generates ArgoCD Applications for each enabled component.
+Deploy workloads using an Argo CD App of Apps pattern. The root chart renders Argo CD `Application` resources that point at standalone Helm charts under `components/`.
 
 ## Quick Start
 
-1. Copy this folder to your own repository
-2. Edit `values.yaml` - enable/disable components under `components:`
-3. Push to your Git repository
-4. Order the **Field Content CI** from RHDP with your repository URL
+1. Fork or clone this repository and point `gitops.repoUrl` in `values.yaml` at your Git remote.
+2. Enable or disable pieces under `components:` (hello-world, showroom) and `connectivityLink.apps:` (connectivity-link stack).
+3. Order **Field Content CI** from RHDP with your repository URL and GitOps path `examples/helm` (or the path you use for this chart).
+
+RHDP injects `deployer.domain` and `deployer.apiUrl`. Optional **LiteMaaS / MaaS** ordering injects `litemaas.apiUrl`, `litemaas.apiKey`, and `litemaas.model` into this chart’s values when enabled.
 
 ## Architecture
 
 ```
-helm/
+examples/helm/
 ├── Chart.yaml
-├── values.yaml              # Central configuration for all components
+├── values.yaml
 ├── templates/
-│   └── applications.yaml    # Generates ArgoCD Applications per component
+│   ├── applications.yaml              # hello-world, showroom, optional single-operator
+│   └── connectivity-link-applications.yaml   # connectivity-link Argo CD apps
 └── components/
-    ├── operator/            # OLM operator subscription
-    ├── hello-world/         # Sample demo application
-    └── showroom/            # Lab guide deployment
+    ├── operator/                      # Optional single OLM subscription (template)
+    ├── hello-world/
+    ├── showroom/                      # Lab guide (showroom-from-zero-to-hero by default)
+    ├── connectivity-link-operators/   # OLM operators (RHCL, mesh, Dev Spaces, RHBK, …)
+    ├── connectivity-link-namespaces/
+    ├── connectivity-link-rhcl-operator/
+    ├── connectivity-link-developer-hub/
+    ├── connectivity-link-observability/
+    ├── connectivity-link-neuralbank-stack/
+    └── …                              # see values.yaml → connectivityLink.apps
 ```
 
-Each component under `components/` is a standalone Helm chart. The master chart creates ArgoCD Applications that deploy these child charts.
-
-## Components
-
-| Component | Description | Default |
-|-----------|-------------|---------|
-| `connectivityLinkOperators` | Import operators from [connectivity-link](https://gitlab.com/maximilianoPizarro/connectivity-link) (RHCL, Service Mesh, Dev Spaces, RHBK, RHDH, OpenTelemetry, Pipelines, Grafana, Kiali) | disabled |
-| `operator` | Install operators via OLM | disabled |
-| `helloWorld` | Sample httpd application | enabled |
-| `showroom` | Lab guide with terminal | enabled |
-
-### Connectivity Link Operators
-
-Import the operators Helm chart from [connectivity-link](https://gitlab.com/maximilianoPizarro/connectivity-link/-/blob/main/operators/Chart.yaml):
-
-```yaml
-# In values.yaml
-components:
-  connectivityLinkOperators:
-    enabled: true
-    repoUrl: "https://gitlab.com/maximilianoPizarro/connectivity-link.git"
-    revision: "main"
-    path: "operators"
-```
-
-The chart deploys OLM Subscriptions for Service Mesh, Grafana, Kiali, Cluster Observability, plus standalone templates for RHCL, OpenTelemetry, DevSpaces, RHBK, RHDH, and Pipelines operators. Customize `subscriptions` in values to add/remove operators.
+Connectivity-link manifests are **vendored** from [connectivity-link](https://gitlab.com/maximilianoPizarro/connectivity-link): plain YAML directories were rendered with `kubectl kustomize` into `templates/all.yaml` where applicable; the `operators` and `neuralbank-stack` upstream Helm charts were copied as subcharts.
 
 ## Configuration
 
-All settings are in `values.yaml`. Override via Helm values:
+| Area | Purpose |
+|------|---------|
+| `gitops.repoUrl`, `gitops.revision`, `gitops.basePath` | Git source Argo CD uses for every child `Application` |
+| `connectivityLink.apps[]` | Toggle each connectivity-link app, destination namespace, prune, sync-wave |
+| `connectivityLink.operators` | `channel`, `version`, `subscriptions` passed to `connectivity-link-operators` |
+| `connectivityLink.neuralbank` | Values merged into `connectivity-link-neuralbank-stack`; Keycloak URLs are overridden from `deployer.domain` |
+| `litemaas.*` | Optional RHDP injection; when `litemaas.apiUrl` is set, neuralbank `api.baseUrl` can follow it |
+| `components.showroom` | Showroom content repo, nookbag, terminal (default: showroom-from-zero-to-hero) |
 
-```bash
-# Enable operator installation
-helm template . --set components.operator.enabled=true
-
-# Use a different lab guide repository
-helm template . --set components.showroom.content.repoUrl=https://github.com/your-org/your-lab.git
-```
-
-See comments in [values.yaml](values.yaml) and [templates/applications.yaml](templates/applications.yaml) for detailed documentation.
+**Note:** LiteMaaS-related YAML in `connectivity-link-litemaas` still contains cluster-specific URLs from the upstream snapshot. For a new cluster, adjust `cluster-config` / domain handling in that chart or maintain a fork.
 
 ## Testing Locally
 
@@ -71,8 +54,7 @@ helm lint .
 helm template my-release . --set deployer.domain=apps.cluster.example.com
 ```
 
-## Adding Components
+## Adding a Component
 
-1. Create a new chart in `components/your-component/`
-2. Add configuration under `components.yourComponent` in `values.yaml`
-3. Add an Application block in `templates/applications.yaml`
+1. Add a Helm chart under `components/<name>/`.
+2. Append an entry to `connectivityLink.apps` in `values.yaml` (or add a dedicated block in `templates/applications.yaml` if it needs special `valuesObject` handling).

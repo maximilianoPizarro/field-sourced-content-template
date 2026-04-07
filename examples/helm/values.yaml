@@ -5,8 +5,8 @@
 # GitOps Configuration
 # ============================================================
 gitops:
-  # Repository containing the component charts
-  repoUrl: "https://github.com/maximilianoPizarro/field-sourced-content-template.git"
+  # Repository containing the component charts (your fork or this template)
+  repoUrl: "https://github.com/rhpds/field-sourced-content-template.git"
   revision: "main"
   basePath: "examples/helm"
 
@@ -16,30 +16,15 @@ argocd:
   project: default
 
 # ============================================================
-# Components - Enable/disable and configure each component
+# Connectivity Link (vendored from GitLab connectivity-link)
+# One Argo CD Application per entry; paths under components/connectivity-link-*
 # ============================================================
-components:
-
-  # --- Connectivity Link Operators (external GitLab repo) ---
-  # Imports operators from connectivity-link: RHCL, Service Mesh, Dev Spaces,
-  # RHBK, RHDH, OpenTelemetry, Pipelines, Grafana, Kiali
-  # Source: https://gitlab.com/maximilianoPizarro/connectivity-link/-/blob/main/operators/Chart.yaml
-  connectivityLinkOperators:
-    enabled: false
-    repoUrl: "https://gitlab.com/maximilianoPizarro/connectivity-link.git"
-    revision: "main"
-    path: "operators"
-    prune: true
-    selfHeal: true
-    channel: "stable-4.20"
-    version: "4.20.4"
-    # Helm values for subscriptions (templates/subscriptions.yaml)
-    # RHCL, OpenTelemetry, DevSpaces, RHBK, RHDH, Pipelines: via templates/*.yaml
+connectivityLink:
+  operators:
+    channel: stable-4.20
+    version: 4.20.4
+    # servicemeshoperator3: templates/servicemeshoperator3.yaml (omit here to avoid duplicate)
     subscriptions:
-      - name: servicemeshoperator3
-        namespace: openshift-operators
-        channel: stable
-        source: redhat-operators
       - name: cluster-observability-operator
         namespace: openshift-cluster-observability-operator
         channel: stable
@@ -53,10 +38,172 @@ components:
         channel: stable
         source: redhat-operators
 
-  # --- Operator Installation ---
+  # neuralbank-stack — Keycloak URLs derived from deployer.domain when synced
+  neuralbank:
+    global:
+      postgresql:
+        auth:
+          postgresPassword: "supersecretpassword"
+          username: "neuralbank"
+          password: "neuralbank123!"
+          database: "neuralbank"
+    backend:
+      image:
+        repository: quay.io/maximilianopizarro/neuralbank-backend
+        tag: "latest"
+        pullPolicy: Always
+      service:
+        port: 8080
+      replicaCount: 1
+    frontend:
+      image:
+        repository: quay.io/maximilianopizarro/neuralbank-front
+        tag: "pkce"
+        pullPolicy: Always
+      service:
+        port: 8080
+      replicaCount: 1
+    keycloak:
+      clientId: "neuralbank-frontend"
+      clientSecret: ""
+      issuerUrl: ""
+      authorizationEndpoint: ""
+      redirectUri: ""
+      tokenEndpoint: ""
+      postLogoutRedirectUri: ""
+    api:
+      baseUrl: "/api"
+
+  # Argo CD Applications (order via sync-wave on Application metadata)
+  apps:
+    - id: connectivity-link-namespaces
+      enabled: true
+      path: connectivity-link-namespaces
+      destinationNamespace: openshift-gitops
+      syncWave: "1"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: false
+    - id: connectivity-link-openshift-gitops
+      enabled: false
+      path: connectivity-link-openshift-gitops
+      destinationNamespace: openshift-gitops
+      syncWave: "0"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-operators
+      enabled: true
+      path: connectivity-link-operators
+      destinationNamespace: openshift-operators
+      syncWave: "2"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-servicemeshoperator3
+      enabled: false
+      path: connectivity-link-servicemeshoperator3
+      destinationNamespace: openshift-operators
+      syncWave: "3"
+      prune: false
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-rhbk
+      enabled: false
+      path: connectivity-link-rhbk
+      destinationNamespace: rhbk-operator
+      syncWave: "2"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-developer-hub
+      enabled: false
+      path: connectivity-link-developer-hub
+      destinationNamespace: developer-hub
+      syncWave: "3"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-rhcl-operator
+      enabled: false
+      path: connectivity-link-rhcl-operator
+      destinationNamespace: kuadrant-system
+      syncWave: "6"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-observability
+      enabled: false
+      path: connectivity-link-observability
+      destinationNamespace: openshift-cluster-observability-operator
+      syncWave: "5"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-kiali
+      enabled: false
+      path: connectivity-link-kiali
+      destinationNamespace: openshift-cluster-observability-operator
+      syncWave: "6"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-opentelemetry
+      enabled: false
+      path: connectivity-link-opentelemetry
+      destinationNamespace: openshift-opentelemetry
+      syncWave: "6"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-litemaas
+      enabled: false
+      path: connectivity-link-litemaas
+      destinationNamespace: litemaas
+      syncWave: "6"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-openshift-ai
+      enabled: false
+      path: connectivity-link-openshift-ai
+      destinationNamespace: openshift-ai
+      syncWave: "6"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-devspaces
+      enabled: false
+      path: connectivity-link-devspaces
+      destinationNamespace: devspaces
+      syncWave: "7"
+      prune: false
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-neuralbank-stack
+      enabled: false
+      path: connectivity-link-neuralbank-stack
+      destinationNamespace: neuralbank-stack
+      syncWave: "5"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+
+# ============================================================
+# LiteMaaS / MaaS (optional — injected by RHDP when enabled on order)
+# ============================================================
+litemaas:
+  apiUrl: ""
+  apiKey: ""
+  model: ""
+
+# ============================================================
+# Components - Enable/disable and configure each component
+# ============================================================
+components:
+
+  # --- Operator Installation (single OLM subscription, template repo) ---
   operator:
-    # Set to true to install the operator via OLM
-    # Set to false if operator is already installed on cluster
     enabled: false
     name: web-terminal
     namespace: openshift-operators
@@ -72,7 +219,6 @@ components:
     appName: hello-world
     replicas: 1
     image: registry.redhat.io/ubi8/httpd-24:latest
-    # User information for RHDP integration
     userInfo:
       enabled: true
       title: "Web Terminal Demo"
@@ -83,17 +229,14 @@ components:
     enabled: true
     namespace: showroom
     name: showroom
-    # Lab guide Git repository - IA Development From Zero To Hero (MCP Agents on OpenShift AI)
     content:
       repoUrl: "https://github.com/maximilianoPizarro/showroom-from-zero-to-hero.git"
       repoRef: "main"
       antoraPlaybook: "site.yml"
       image: "quay.io/rhpds/showroom-content:v1.3.1"
-    # Nookbag bundle (enables LlamaStack, multiple terminals, Zero Trust UI)
     nookbag:
       enabled: true
       bundleUrl: "https://github.com/rhpds/nookbag/releases/download/nookbag-v0.2.1/nookbag-v0.2.1.zip"
-    # Embedded terminal configuration
     terminal:
       enabled: true
       image: "quay.io/rhpds/openshift-showroom-terminal-ocp:latest"

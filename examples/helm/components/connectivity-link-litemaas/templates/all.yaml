@@ -1,0 +1,825 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app.kubernetes.io/component: litemaas
+    app.kubernetes.io/instance: litemaas
+    app.kubernetes.io/name: litemaas
+    app.kubernetes.io/part-of: litemaas
+    name: litemaas
+  name: litemaas
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  name: argocd-gateway-manager
+  namespace: litemaas
+rules:
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - gateways
+  - httproutes
+  verbs:
+  - create
+  - get
+  - update
+  - patch
+  - delete
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  name: litemaas-app-writer
+  namespace: litemaas
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - services
+  - secrets
+  - configmaps
+  - serviceaccounts
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - statefulsets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - httproutes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - kuadrant.io
+  resources:
+  - authpolicies
+  - kuadrants
+  - ratelimitpolicies
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - extensions.kuadrant.io
+  resources:
+  - oidcpolicies
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  name: argocd-gateway-manager-binding
+  namespace: litemaas
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argocd-gateway-manager
+subjects:
+- kind: ServiceAccount
+  name: openshift-gitops-argocd-application-controller
+  namespace: openshift-gitops
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  name: litemaas-app-binding
+  namespace: litemaas
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: litemaas-app-writer
+subjects:
+- kind: ServiceAccount
+  name: openshift-gitops-argocd-application-controller
+  namespace: openshift-gitops
+---
+apiVersion: v1
+data:
+  CORS_ORIGIN: https://litemaas.apps.cluster-6tx4w.6tx4w.sandbox5380.opentlc.com
+  FRONTEND_HOST: litemaas.apps.cluster-6tx4w.6tx4w.sandbox5380.opentlc.com
+  LITELLM_API_URL: http://litellm:4000
+  OAUTH_CALLBACK_URL: https://litemaas.apps.cluster-6tx4w.6tx4w.sandbox5380.opentlc.com/api/auth/callback
+  OAUTH_ISSUER: https://oauth-openshift.apps.cluster-6tx4w.6tx4w.sandbox5380.opentlc.com
+kind: ConfigMap
+metadata:
+  name: litemaas-cluster-config
+  namespace: litemaas
+---
+apiVersion: v1
+data:
+  init-db.sh: |
+    #!/bin/bash
+    set -e
+
+    # This script runs as the postgres user during container initialization
+    # It creates additional databases beyond the default POSTGRES_DB
+
+    echo "Creating additional databases..."
+
+    # Create litemaas_db if it doesn't exist
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "postgres" <<-EOSQL
+        SELECT 'CREATE DATABASE litemaas_db'
+        WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'litemaas_db')\gexec
+    EOSQL
+
+    # Create litellm_db if it doesn't exist
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "postgres" <<-EOSQL
+        SELECT 'CREATE DATABASE litellm_db'
+        WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'litellm_db')\gexec
+    EOSQL
+
+    echo "Granting privileges on databases..."
+
+    # Grant all privileges to the postgres user on both databases
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "postgres" <<-EOSQL
+        GRANT ALL PRIVILEGES ON DATABASE litemaas_db TO $POSTGRES_USER;
+        GRANT ALL PRIVILEGES ON DATABASE litellm_db TO $POSTGRES_USER;
+    EOSQL
+
+    echo "Database initialization completed successfully!"
+kind: ConfigMap
+metadata:
+  labels:
+    app: postgres
+    component: database
+  name: postgres-init-script
+  namespace: litemaas
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    app: backend
+    component: api
+  name: backend-secret
+  namespace: litemaas
+stringData:
+  admin-api-keys: mock-admin-key-7f3a9b2e
+  database-url: postgresql://litemaas_admin:change-me-pg-password@postgres:5432/litemaas_db?sslmode=disable
+  jwt-secret: mock-jwt-secret-k8XyZ123AbC456
+  litellm-api-key: sk-mock-litellm-xyz789abc
+  oauth-client-id: litemaas-oauth-client
+  oauth-client-secret: litemaassecret
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    app: litellm
+    component: ai-proxy
+  name: litellm-secret
+  namespace: litemaas
+stringData:
+  database-url: postgresql://litemaas_admin:change-me-pg-password@postgres:5432/litellm_db
+  master-key: sk-mock-litellm-xyz789abc
+  ui-password: change-me-ui-password
+  ui-username: admin
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    app: postgres
+    component: database
+  name: postgres-secret
+  namespace: litemaas
+stringData:
+  password: change-me-pg-password
+  username: litemaas_admin
+type: Opaque
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: backend
+    component: api
+  name: backend
+  namespace: litemaas
+spec:
+  ports:
+  - name: http
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: backend
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: frontend
+    component: web
+  name: frontend
+  namespace: litemaas
+spec:
+  ports:
+  - name: http
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: frontend
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: litellm
+    component: ai-proxy
+  name: litellm
+  namespace: litemaas
+spec:
+  ports:
+  - name: http
+    port: 4000
+    protocol: TCP
+    targetPort: 4000
+  selector:
+    app: litellm
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: postgres
+    component: database
+  name: postgres
+  namespace: litemaas
+spec:
+  ports:
+  - name: postgres
+    port: 5432
+    protocol: TCP
+    targetPort: 5432
+  selector:
+    app: postgres
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  labels:
+    app: backend
+    component: api
+  name: backend
+  namespace: litemaas
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+        component: api
+    spec:
+      containers:
+      - env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: database-url
+              name: backend-secret
+        - name: HOST
+          value: 0.0.0.0
+        - name: PORT
+          value: "8080"
+        - name: NODE_ENV
+          value: production
+        - name: LOG_LEVEL
+          value: info
+        - name: NODE_TLS_REJECT_UNAUTHORIZED
+          value: "0"
+        - name: LITELLM_API_URL
+          value: https://litemaas.apps.cluster-6tx4w.6tx4w.sandbox5380.opentlc.com
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: jwt-secret
+              name: backend-secret
+        - name: JWT_EXPIRES_IN
+          value: 24h
+        - name: OAUTH_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              key: oauth-client-id
+              name: backend-secret
+        - name: OAUTH_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: oauth-client-secret
+              name: backend-secret
+        - name: ADMIN_API_KEYS
+          valueFrom:
+            secretKeyRef:
+              key: admin-api-keys
+              name: backend-secret
+        - name: LITELLM_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: litellm-api-key
+              name: backend-secret
+        - name: RATE_LIMIT_MAX
+          value: "1000"
+        - name: RATE_LIMIT_TIME_WINDOW
+          value: 5m
+        - name: DEFAULT_USER_MAX_BUDGET
+          value: "100"
+        - name: DEFAULT_USER_TPM_LIMIT
+          value: "100000"
+        - name: DEFAULT_USER_RPM_LIMIT
+          value: "120"
+        envFrom:
+        - configMapRef:
+            name: litemaas-cluster-config
+        image: quay.io/rh-aiservices-bu/litemaas-backend:latest
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /api/v1/health/live
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        name: backend
+        ports:
+        - containerPort: 8080
+          name: http
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /api/v1/health/ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - |
+          until psql "$DATABASE_URL" -c '\q' 2>/dev/null; do
+            echo "Waiting for database..."
+            sleep 2
+          done
+          echo "Database is ready!"
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: database-url
+              name: backend-secret
+        image: postgres:16-alpine
+        name: wait-for-database
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: frontend
+    component: web
+  name: frontend
+  namespace: litemaas
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+        component: web
+    spec:
+      containers:
+      - env:
+        - name: BACKEND_URL
+          value: http://backend:8080
+        image: quay.io/rh-aiservices-bu/litemaas-frontend:latest
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        name: frontend
+        ports:
+        - containerPort: 8080
+          name: http
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+        resources:
+          limits:
+            cpu: 200m
+            memory: 256Mi
+          requests:
+            cpu: 50m
+            memory: 128Mi
+      initContainers:
+      - args:
+        - |
+          echo "Waiting for backend to be ready..."
+          until nc -z backend 8080; do
+            echo "Backend is not ready yet. Waiting..."
+            sleep 5
+          done
+          echo "Backend is ready! Starting frontend..."
+        command:
+        - sh
+        - -c
+        image: image-registry.openshift-image-registry.svc:5000/openshift/tools:latest
+        name: wait-for-backend
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 25m
+            memory: 64Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: litellm
+    component: ai-proxy
+  name: litellm
+  namespace: litemaas
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: litellm
+  template:
+    metadata:
+      labels:
+        app: litellm
+        component: ai-proxy
+    spec:
+      containers:
+      - env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: database-url
+              name: litellm-secret
+        - name: LITELLM_MASTER_KEY
+          valueFrom:
+            secretKeyRef:
+              key: master-key
+              name: litellm-secret
+        - name: UI_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: ui-username
+              name: litellm-secret
+        - name: UI_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: ui-password
+              name: litellm-secret
+        - name: LITELLM_MODE
+          value: PRODUCTION
+        - name: STORE_MODEL_IN_DB
+          value: "True"
+        image: ghcr.io/berriai/litellm-non_root:main-v1.74.7-stable
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health/liveness
+            port: 4000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+        name: litellm
+        ports:
+        - containerPort: 4000
+          name: http
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health/readiness
+            port: 4000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+          requests:
+            cpu: 200m
+            memory: 512Mi
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - |
+          until psql "$DATABASE_URL" -c '\q' 2>/dev/null; do
+            echo "Waiting for database..."
+            sleep 2
+          done
+          echo "Database is ready!"
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: database-url
+              name: litellm-secret
+        image: postgres:16-alpine
+        name: wait-for-database
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: postgres
+    component: database
+  name: postgres
+  namespace: litemaas
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  serviceName: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+        component: database
+    spec:
+      containers:
+      - env:
+        - name: POSTGRES_DB
+          value: litemaas_db
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: postgres-secret
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: postgres-secret
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        image: postgres:16-alpine
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+          failureThreshold: 3
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        name: postgres
+        ports:
+        - containerPort: 5432
+          name: postgres
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+          failureThreshold: 3
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: postgres-storage
+        - mountPath: /docker-entrypoint-initdb.d
+          name: postgres-init-script
+          readOnly: true
+      volumes:
+      - configMap:
+          defaultMode: 493
+          name: postgres-init-script
+        name: postgres-init-script
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    argocd.argoproj.io/ignore-healthcheck: "true"
+    argocd.argoproj.io/sync-wave: "4"
+  name: litemaas-gateway
+  namespace: litemaas
+spec:
+  gatewayClassName: istio
+  listeners:
+  - allowedRoutes:
+      namespaces:
+        from: All
+    name: http
+    port: 8080
+    protocol: HTTP
+  - allowedRoutes:
+      namespaces:
+        from: All
+    name: https
+    port: 443
+    protocol: HTTPS
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+  name: litemaas-route
+  namespace: litemaas
+spec:
+  hostnames:
+  - litemaas.apps.cluster-6tx4w.6tx4w.sandbox5380.opentlc.com
+  parentRefs:
+  - name: litemaas-gateway
+    namespace: litemaas
+  rules:
+  - backendRefs:
+    - name: backend
+      port: 8080
+    matches:
+    - path:
+        type: PathPrefix
+        value: /api
+  - backendRefs:
+    - name: litellm
+      port: 4000
+    matches:
+    - path:
+        type: PathPrefix
+        value: /v1
+    - path:
+        type: PathPrefix
+        value: /q
+  - backendRefs:
+    - name: frontend
+      port: 8080
+    matches:
+    - path:
+        type: PathPrefix
+        value: /
+---
+apiVersion: kuadrant.io/v1
+kind: RateLimitPolicy
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  name: litemaas-api-ratelimit
+  namespace: litemaas
+spec:
+  limits:
+    api-and-llm:
+      rates:
+      - limit: 120
+        window: 1m
+      when:
+      - predicate: request.path.startsWith("/api") || request.path.startsWith("/v1")
+          || request.path.startsWith("/q")
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: litemaas-route
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  labels:
+    app: litellm
+    component: ai-proxy
+  name: litellm
+  namespace: litemaas
+spec:
+  port:
+    targetPort: http
+  tls:
+    insecureEdgeTerminationPolicy: Redirect
+    termination: edge
+  to:
+    kind: Service
+    name: litellm
+    weight: 100
+  wildcardPolicy: None
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+    haproxy.router.openshift.io/timeout: 300s
+  name: litemaas-via-gateway
+  namespace: litemaas
+spec:
+  host: litemaas.apps.cluster-6tx4w.6tx4w.sandbox5380.opentlc.com
+  port:
+    targetPort: http
+  tls:
+    insecureEdgeTerminationPolicy: Redirect
+    termination: edge
+  to:
+    kind: Service
+    name: litemaas-gateway-istio
+    weight: 100

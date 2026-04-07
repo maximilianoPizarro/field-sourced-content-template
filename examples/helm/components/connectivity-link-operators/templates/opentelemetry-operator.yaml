@@ -1,0 +1,34 @@
+# openshift-opentelemetry-operator namespace is created by subscriptions template when namespace != openshift-operators.
+# Alternatively use openshift-operators (no OperatorGroup needed).
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshift-opentelemetry-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+---
+apiVersion: operators.coreos.com/v1alpha2
+kind: OperatorGroup
+metadata:
+  name: opentelemetry-product
+  namespace: openshift-opentelemetry-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec: {}
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: opentelemetry-product
+  namespace: openshift-opentelemetry-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  channel: stable
+  # Pin to specific version; verify: oc get packagemanifest opentelemetry-product -n openshift-marketplace -o jsonpath='{.status.channels[*].currentCSV}'
+  startingCSV: opentelemetry-operator.v0.144.0-1
+  installPlanApproval: Automatic
+  name: opentelemetry-product
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace

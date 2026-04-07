@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: neuralbank-config
+data:
+  config.js: |
+    // Runtime configuration - Mounted from ConfigMap
+    // Path: /var/www/html/config.js
+    window.__ENV__ = {
+      VITE_KEYCLOAK_ISSUER_URL: '{{ .Values.keycloak.issuerUrl }}',
+      VITE_KEYCLOAK_CLIENT_ID: '{{ .Values.keycloak.clientId }}',
+      VITE_KEYCLOAK_CLIENT_SECRET: '{{ .Values.keycloak.clientSecret }}',
+      VITE_KEYCLOAK_AUTHORIZATION_ENDPOINT: '{{ .Values.keycloak.authorizationEndpoint }}',
+      VITE_KEYCLOAK_REDIRECT_URI: '{{ .Values.keycloak.redirectUri }}',
+      VITE_KEYCLOAK_TOKEN_ENDPOINT: '{{ .Values.keycloak.tokenEndpoint }}',
+      VITE_API_BASE_URL: '{{ .Values.api.baseUrl }}',
+      VITE_KEYCLOAK_POST_LOGOUT_REDIRECT_URI: '{{ .Values.keycloak.postLogoutRedirectUri }}',
+    };
+

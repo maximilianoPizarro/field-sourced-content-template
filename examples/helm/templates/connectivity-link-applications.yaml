@@ -1,0 +1,59 @@
+# Connectivity-link stack — local Helm charts (vendored from connectivity-link)
+# Sync-wave on Application metadata is advisory; manifests use argocd.argoproj.io/sync-wave.
+{{- range .Values.connectivityLink.apps }}
+{{- if and . .enabled }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $.Release.Name }}-{{ .id }}
+  namespace: {{ $.Values.argocd.namespace }}
+  labels:
+    demo.redhat.com/application: "field-content"
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .syncWave | quote }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $.Values.argocd.project }}
+  source:
+    repoURL: {{ $.Values.gitops.repoUrl }}
+    targetRevision: {{ $.Values.gitops.revision }}
+    path: {{ $.Values.gitops.basePath }}/components/{{ .path }}
+    {{- if eq .path "connectivity-link-operators" }}
+    helm:
+      valuesObject:
+        channel: {{ $.Values.connectivityLink.operators.channel | quote }}
+        version: {{ $.Values.connectivityLink.operators.version | quote }}
+        subscriptions: {{ $.Values.connectivityLink.operators.subscriptions | toJson }}
+    {{- else if eq .path "connectivity-link-neuralbank-stack" }}
+    helm:
+      valuesObject:
+        {{- $domain := $.Values.deployer.domain | default "apps.cluster.example.com" }}
+        {{- $nb := deepCopy $.Values.connectivityLink.neuralbank }}
+        {{- $kc := deepCopy $nb.keycloak }}
+        {{- $_ := set $kc "issuerUrl" (printf "https://rhbk.%s/realms/neuralbank" $domain) }}
+        {{- $_ := set $kc "authorizationEndpoint" (printf "https://rhbk.%s/realms/neuralbank/protocol/openid-connect/auth" $domain) }}
+        {{- $_ := set $kc "redirectUri" (printf "https://neuralbank.%s/auth/callback" $domain) }}
+        {{- $_ := set $kc "tokenEndpoint" (printf "https://rhbk.%s/realms/neuralbank/protocol/openid-connect/token" $domain) }}
+        {{- $_ := set $kc "postLogoutRedirectUri" (printf "https://neuralbank.%s" $domain) }}
+        {{- $_ := set $nb "keycloak" $kc }}
+        {{- if $.Values.litemaas.apiUrl }}
+        {{- $_ := set $nb.api "baseUrl" $.Values.litemaas.apiUrl }}
+        {{- end }}
+        {{- toYaml $nb | nindent 8 }}
+    {{- end }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .destinationNamespace }}
+  syncPolicy:
+    automated:
+      prune: {{ .prune }}
+      selfHeal: {{ .selfHeal }}
+    syncOptions:
+      - CreateNamespace=true
+      {{- if .skipDryRunOnMissingResource }}
+      - SkipDryRunOnMissingResource=true
+      {{- end }}
+{{- end }}
+{{- end }}

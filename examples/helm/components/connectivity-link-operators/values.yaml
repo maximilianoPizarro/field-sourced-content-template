@@ -1,0 +1,16 @@
+# Default values — servicemeshoperator3 is also in templates/servicemeshoperator3.yaml (avoid duplicate Subscription)
+channel: stable-4.20
+version: 4.20.4
+subscriptions:
+  - name: cluster-observability-operator
+    namespace: openshift-cluster-observability-operator
+    channel: stable
+    source: redhat-operators
+  - name: grafana-operator
+    namespace: openshift-operators
+    channel: v5
+    source: community-operators
+  - name: kiali-ossm
+    namespace: openshift-operators
+    channel: stable
+    source: redhat-operators

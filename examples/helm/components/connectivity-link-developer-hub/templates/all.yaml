@@ -1,0 +1,630 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  name: developer-hub-gitops-role
+  namespace: developer-hub
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  - secrets
+  - services
+  - pods
+  - configmaps
+  - events
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - statefulsets
+  - replicasets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - policy
+  resources:
+  - poddisruptionbudgets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - watch
+  - patch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - networkpolicies
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - helm.openshift.io
+  resources:
+  - projecthelmchartrepositories
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - rhdh.redhat.com
+  resources:
+  - backstages
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - watch
+  - patch
+  - update
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - watch
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/component: kuadrant-plugin
+    app.kubernetes.io/name: developer-hub
+  name: developer-hub-kuadrant
+rules:
+- apiGroups:
+  - kuadrant.io
+  resources:
+  - authpolicies
+  - ratelimitpolicies
+  - dnspolicies
+  - tlspolicies
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - extensions.kuadrant.io
+  resources:
+  - planpolicies
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - devportal.kuadrant.io
+  resources:
+  - apiproducts
+  - apikeys
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - devportal.kuadrant.io
+  resources:
+  - apikeys/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - gateways
+  - httproutes
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  name: developer-hub-gitops-rolebinding
+  namespace: developer-hub
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: developer-hub-gitops-role
+subjects:
+- kind: ServiceAccount
+  name: openshift-gitops-argocd-application-controller
+  namespace: openshift-gitops
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/component: kuadrant-plugin
+    app.kubernetes.io/name: developer-hub
+  name: developer-hub-kuadrant
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: developer-hub-kuadrant
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: developer-hub
+---
+apiVersion: v1
+data:
+  app-config-rhdh.yaml: "app:\n  title: Developer Lightspeed Dev Preview\n  baseUrl:
+    \"${RHDH_BASE_URL}\"\n  branding:\n    fullLogo: \"${RHDH_FULL_LOGO}\"\n    iconLogo:
+    \"${RHDH_ICON_LOGO}\"\n\nintegrations:\n  gitlab:\n    - host: gitlab.com\n      #
+    Token is required to avoid rate limits when using multiple providers\n      #
+    Set GITLAB_INTEGRATION secret with your GITLAB personal access token\n      token:
+    ${GITLAB_INTEGRATION}\nauth:\n  environment: production\n  session:\n    secret:
+    \"${BACKEND_SECRET}\"\n  providers:\n    oidc:\n      production:\n        metadataUrl:
+    \"${KEYCLOAK_METADATA_URL}\"\n        clientId: \"${KEYCLOAK_CLIENT_ID}\"\n        clientSecret:
+    \"${KEYCLOAK_CLIENT_SECRET}\"\n        callbackUrl: \"${RHDH_CALLBACK_URL}\"\n
+    \       prompt: auto\n        signIn:\n          resolvers:\n            - resolver:
+    preferredUsernameMatchingUserEntityName\n            - resolver: emailMatchingUserEntityProfileEmail\nbackend:\n
+    \ auth:\n    externalAccess:\n      - type: static\n        options:\n          token:
+    ${BACKEND_SECRET}\n          subject: admin-curl-access\n      - type: static\n
+    \       options:\n          token: ${MCP_TOKEN}\n          subject: mcp-clients
+    \             \n    keys:\n      - secret: \"${BACKEND_SECRET}\"\n      - secret:
+    \"${MCP_TOKEN}\"\n  actions:\n    pluginSources:\n      - software-catalog-mcp-tool\n
+    \     - techdocs-mcp-tool\n  baseUrl: \"${RHDH_BASE_URL}\"\n  cors:\n    origin:
+    \"${RHDH_BASE_URL}\"\n  csp:\n    upgrade-insecure-requests: false\n    img-src:\n
+    \     - \"'self'\"\n      - \"data:\"\n      - https://img.shields.io\n      -
+    https://img.freepik.com\n      - https://cdn.dribbble.com\n      - https://gitlab.com\n
+    \     - https://*.gitlab.com\n      - https://*.gitlabusercontent.com\n  reading:\n
+    \   allow:\n      - host: gitlab.com\n      - host: raw.gitlabusercontent.com\n
+    \     - host: nfl-wallet-dev.apps.cluster-6tx4w.6tx4w.sandbox5380.opentlc.com\n
+    \     - host: nfl-wallet-test.apps.cluster-6tx4w.6tx4w.sandbox5380.opentlc.com\n
+    \     - host: nfl-wallet-test-espn.apps.cluster-6tx4w.6tx4w.sandbox5380.opentlc.com\n
+    \     - host: nfl-wallet-prod.apps.cluster-6tx4w.6tx4w.sandbox5380.opentlc.com\nsignInPage:
+    oidc\ncatalog:\n  providers:\n    keycloakOrg:\n      default:\n        baseUrl:
+    \"${KEYCLOAK_BASE_URL}\"\n        loginRealm: \"${KEYCLOAK_REALM}\"\n        realm:
+    \"${KEYCLOAK_REALM}\"\n        clientId: \"${KEYCLOAK_CLIENT_ID}\"\n        clientSecret:
+    \"${KEYCLOAK_CLIENT_SECRET}\"\n        schedule:\n          frequency: { minutes:
+    30 }\n          timeout: { minutes: 5 }\n          initialDelay: { seconds: 15
+    }\n        # User and group synchronization settings\n        # Users are automatically
+    created on first login\n        # Groups and group memberships are synced from
+    Keycloak\n        signIn:\n          resolvers:\n            # Try preferredUsername
+    first (matches Keycloak username)\n            - resolver: preferredUsernameMatchingUserEntityName\n
+    \           # Fallback to email matching\n            - resolver: emailMatchingUserEntityProfileEmail\n
+    \   gitlab:\n      connectivity-link-developer-hub:\n        host: gitlab.com\n
+    \       owner: maximilianopizarro\n        repo: connectivity-link\n        branch:
+    main\n        catalogPath: /developer-hub/catalog-info.yaml\n      connectivity-link-nfl-wallet-catalog:\n
+    \       host: gitlab.com\n        owner: maximilianopizarro\n        repo: connectivity-link\n
+    \       branch: main\n        catalogPath: /developer-hub/catalog/nfl-wallet/catalog-info.yaml\n
+    \       token: ${GITLAB_INTEGRATION}\n        schedule:\n          frequency:
+    { minutes: 30 }\n          timeout: { minutes: 5 }\n          initialDelay: {
+    seconds: 15 }\n      connectivity-link-neuralbank-stack:\n        host: gitlab.com\n
+    \       owner: maximilianopizarro\n        repo: connectivity-link\n        branch:
+    main\n        catalogPath: /neuralbank-stack/catalog-info.yaml\n        token:
+    ${GITLAB_INTEGRATION}\n        schedule:\n          frequency: { minutes: 30 }\n
+    \         timeout: { minutes: 5 }\n          initialDelay: { seconds: 20 }\n      connectivity-link-litemaas:\n
+    \       host: gitlab.com\n        owner: maximilianopizarro\n        repo: connectivity-link\n
+    \       branch: main\n        catalogPath: /litemaas/catalog-info.yaml\n        token:
+    ${GITLAB_INTEGRATION}\n        schedule:\n          frequency: { minutes: 30 }\n
+    \         timeout: { minutes: 5 }\n          initialDelay: { seconds: 22 }\n      connectivity-link-rhbk:\n
+    \       host: gitlab.com\n        owner: maximilianopizarro\n        repo: connectivity-link\n
+    \       branch: main\n        catalogPath: /rhbk/catalog-info.yaml\n        token:
+    ${GITLAB_INTEGRATION}\n        schedule:\n          frequency: { minutes: 30 }\n
+    \         timeout: { minutes: 5 }\n          initialDelay: { seconds: 25 }\n      connectivity-link-rhcl-operator:\n
+    \       host: gitlab.com\n        owner: maximilianopizarro\n        repo: connectivity-link\n
+    \       branch: main\n        catalogPath: /rhcl-operator/catalog-info.yaml\n
+    \       token: ${GITLAB_INTEGRATION}\n        schedule:\n          frequency:
+    { minutes: 30 }\n          timeout: { minutes: 5 }\n          initialDelay: {
+    seconds: 30 }\n      connectivity-link-servicemeshoperator3:\n        host: gitlab.com\n
+    \       owner: maximilianopizarro\n        repo: connectivity-link\n        branch:
+    main\n        catalogPath: /servicemeshoperator3/catalog-info.yaml\n        token:
+    ${GITLAB_INTEGRATION}\n        schedule:\n          frequency: { minutes: 30 }\n
+    \         timeout: { minutes: 5 }\n          initialDelay: { seconds: 35 }\n      connectivity-link-devspaces:\n
+    \       host: gitlab.com\n        owner: maximilianopizarro\n        repo: connectivity-link\n
+    \       branch: main\n        catalogPath: /devspaces/catalog-info.yaml\n        token:
+    ${GITLAB_INTEGRATION}\n        schedule:\n          frequency: { minutes: 30 }\n
+    \         timeout: { minutes: 5 }\n          initialDelay: { seconds: 40 }\n      connectivity-link-operators:\n
+    \       host: gitlab.com\n        owner: maximilianopizarro\n        repo: connectivity-link\n
+    \       branch: main\n        catalogPath: /operators/catalog-info.yaml\n        token:
+    ${GITLAB_INTEGRATION}\n        schedule:\n          frequency: { minutes: 30 }\n
+    \         timeout: { minutes: 5 }\n          initialDelay: { seconds: 45 }\n      connectivity-link-openshift-gitops:\n
+    \       host: gitlab.com\n        owner: maximilianopizarro\n        repo: connectivity-link\n
+    \       branch: main\n        catalogPath: /openshift-gitops/catalog-info.yaml\n
+    \       token: ${GITLAB_INTEGRATION}\n        schedule:\n          frequency:
+    { minutes: 30 }\n          timeout: { minutes: 5 }\n          initialDelay: {
+    seconds: 55 }\n      connectivity-link-namespaces:\n        host: gitlab.com\n
+    \       owner: maximilianopizarro\n        repo: connectivity-link\n        branch:
+    main\n        catalogPath: /namespaces/catalog-info.yaml\n        token: ${GITLAB_INTEGRATION}\n
+    \       schedule:\n          frequency: { minutes: 30 }\n          timeout: {
+    minutes: 5 }\n          initialDelay: { seconds: 60 }\n      connectivity-link-groups:\n
+    \       host: gitlab.com\n        owner: maximilianopizarro\n        repo: connectivity-link\n
+    \       branch: main\n        catalogPath: /groups/catalog-info.yaml\n        token:
+    ${GITLAB_INTEGRATION}\n        schedule:\n          frequency: { minutes: 30 }\n
+    \         timeout: { minutes: 5 }\n          initialDelay: { seconds: 65 }\n  locations:\n
+    \   # gitlab catalog-info.yaml files - Using /blob/ format for Backstage URL reader
+    compatibility\n    - type: url\n      target: https://gitlab.com/maximilianoPizarro/connectivity-link/blob/main/developer-hub/catalog-info.yaml\n
+    \   - type: url\n      target: https://gitlab.com/maximilianoPizarro/connectivity-link/blob/main/neuralbank-stack/catalog-info.yaml\n
+    \   - type: url\n      target: https://gitlab.com/maximilianoPizarro/connectivity-link/blob/main/litemaas/catalog-info.yaml\n
+    \   - type: url\n      target: https://gitlab.com/maximilianoPizarro/connectivity-link/blob/main/rhbk/catalog-info.yaml\n
+    \   - type: url\n      target: https://gitlab.com/maximilianoPizarro/connectivity-link/blob/main/rhcl-operator/catalog-info.yaml\n
+    \   - type: url\n      target: https://gitlab.com/maximilianoPizarro/connectivity-link/blob/main/servicemeshoperator3/catalog-info.yaml\n
+    \   - type: url\n      target: https://gitlab.com/maximilianoPizarro/connectivity-link/blob/main/devspaces/catalog-info.yaml\n
+    \   - type: url\n      target: https://gitlab.com/maximilianoPizarro/connectivity-link/blob/main/operators/catalog-info.yaml\n
+    \   - type: url\n      target: https://gitlab.com/maximilianoPizarro/connectivity-link/blob/main/openshift-gitops/catalog-info.yaml\n
+    \   - type: url\n      target: https://gitlab.com/maximilianoPizarro/connectivity-link/blob/main/namespaces/catalog-info.yaml\n
+    \   - type: url\n      target: https://gitlab.com/maximilianoPizarro/connectivity-link/blob/main/groups/catalog-info.yaml\n
+    \   - type: url\n      target: https://gitlab.com/maximilianoPizarro/connectivity-link/blob/main/groups/domains.yaml\n
+    \   # User entities are now included in groups/catalog-info.yaml\n    # Keeping
+    this location for backward compatibility\n    - type: url\n      target: https://gitlab.com/maximilianoPizarro/connectivity-link/blob/main/groups/users.yaml\n
+    \   - type: url\n      target: https://gitlab.com/maximilianoPizarro/NFL-Wallet/blob/main/catalog-info.yaml\n
+    \   - type: url\n      target: https://gitlab.com/maximilianoPizarro/NFL-Wallet/blob/main/catalog/catalog-info.yaml\n
+    \   # NFL-Wallet catalog (APIs + dev/test/prod components) - connectivity-link\n
+    \   - type: url\n      target: https://gitlab.com/maximilianoPizarro/connectivity-link/blob/main/developer-hub/catalog/nfl-wallet/catalog-info.yaml\n
+    \   # Red Hat Developer Hub Software Templates Collection\n    - type: url\n      target:
+    https://raw.gitlabusercontent.com/redhat-developer/red-hat-developer-hub-software-templates/main/templates.yaml\n
+    \ rules:\n      - allow: [Component, Group, User, Resource, Location, Template,
+    API, APIProduct, System, Domain]\n# ArgoCD Integration\nargocd:\n  appLocatorMethods:\n
+    \   - type: 'config'\n      instances:\n        - name: openshift-gitops\n          url:
+    ${ARGOCD_INSTANCE_2_URL}\n          username: ${ARGOCD_INSTANCE_2_USERNAME}\n
+    \         password: ${ARGOCD_INSTANCE_2_PASSWORD}\n# Kubernetes Integration\n#
+    serviceAccountToken required by Kuadrant plugin; from developer-hub-k8s-sa-token
+    secret (key: token).\nkubernetes:\n  serviceLocatorMethod:\n    type: 'multiTenant'\n
+    \ clusterLocatorMethods:\n    - type: 'config'\n      clusters:\n        - url:
+    'https://kubernetes.default.svc'\n          name: 'local'\n          authProvider:
+    'serviceAccount'\n          serviceAccountToken: ${token}\n          skipTLSVerify:
+    false\n          skipMetricsLookup: false\n  # Custom resources for Tekton plugin\n
+    \ customResources:\n    - group: 'tekton.dev'\n      apiVersion: 'v1beta1'\n      plural:
+    'pipelineruns'\n    - group: 'tekton.dev'\n      apiVersion: 'v1beta1'\n      plural:
+    'taskruns'\n# Tekton/CI Pipeline Configuration\n# Configure Tekton integration
+    for pipeline visualization\ntekton:\n  dashboardUrl: 'https://tekton-dashboard.apps.cluster-6tx4w.6tx4w.sandbox5380.opentlc.com'\n
+    \ namespace: openshift-pipelines\n# CI/CD Integration\nci:\n  - name: tekton\n
+    \   baseUrl: 'https://tekton-dashboard.apps.cluster-6tx4w.6tx4w.sandbox5380.opentlc.com'\n
+    \   # Optional: Configure authentication if needed\n    # auth:\n    #   token:
+    ${TEKTON_TOKEN}\n# Lightspeed plugin disabled (image version conflicts)\n# lightspeed:\n#
+    \  servers:\n#     - id: \"${LLM_SERVER_ID}\"\n#       url: \"${LLM_SERVER_URL}\"\n#
+    \      token: \"${LLM_SERVER_TOKEN}\"\n# MCP (Model Context Protocol) Configuration\n#
+    Note: MCP configuration is separate from Lightspeed servers\nmcp:\n  mcpServers:\n
+    \   backstage-actions:\n      url: \"${RHDH_HOST}/api/mcp-actions/v1\"\n      headers:\n
+    \       Authorization: \"Bearer ${MCP_TOKEN}\"\npermission:\n  enabled: true\n
+    \ rbac:\n    policies-csv-file: /opt/app-root/src/rbac-policy.csv\n    policyFileReload:
+    true\n    admin:\n      users:\n        - name: user:default/maximilianopizarro\n\n#
+    Plugin Feature Flags / Enabled Plugins Configuration\n# Control which plugins
+    are enabled/disabled in the UI\nenabled:\n  kubernetes: true\n  techdocs: true\n
+    \ argocd: true\n  sonarqube: false\n  keycloak: true\n  ocm: true\n  gitlab: true\n
+    \ github: false\n  gitlabOrg: false\n  jenkins: true\n  permission: false\n  kuadrant:
+    true\n"
+kind: ConfigMap
+metadata:
+  annotations:
+    rhdh.redhat.com/backstage-name: developer-hub
+  labels:
+    rhdh.redhat.com/ext-config-sync: "true"
+  name: app-config-rhdh
+  namespace: developer-hub
+---
+apiVersion: v1
+data:
+  dynamic-plugins.yaml: "includes:\n  - dynamic-plugins.default.yaml\nplugins:\n  -
+    package: ./dynamic-plugins/dist/backstage-community-plugin-rbac\n    disabled:
+    false\n  - package:  ./dynamic-plugins/dist/backstage-community-plugin-catalog-backend-module-keycloak-dynamic\n
+    \   disabled: false\n  - package: ./dynamic-plugins/dist/backstage-plugin-catalog-backend-module-gitlab-dynamic\n
+    \   disabled: true\n  # Lightspeed plugin disabled (image version conflicts with
+    llama-stack)\n  - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/red-hat-developer-hub-backstage-plugin-lightspeed:bs_1.42.5__1.0.3!red-hat-developer-hub-backstage-plugin-lightspeed\n
+    \   disabled: true\n    pluginConfig:\n      lightspeed:\n        # OPTIONAL:
+    Custom users prompts displayed to users\n        # If not provided, the plugin
+    uses built-in default prompts\n        prompts:\n          - title: 'Getting Started
+    with Red Hat Developer Hub'\n            message: Can you guide me through the
+    first steps to start using Developer Hub as a developer, like exploring the Software
+    Catalog and adding my service?\n      dynamicPlugins:\n        frontend:\n          red-hat-developer-hub.backstage-plugin-lightspeed:\n
+    \           translationResources:\n              - importName: lightspeedTranslations\n
+    \               module: Alpha\n                ref: lightspeedTranslationRef\n
+    \           appIcons:\n              - name: LightspeedIcon\n                module:
+    LightspeedPlugin\n                importName: LightspeedIcon\n            dynamicRoutes:\n
+    \             - path: /lightspeed\n                importName: LightspeedPage\n
+    \               module: LightspeedPlugin\n                menuItem:\n                  icon:
+    LightspeedIcon\n                  text: Lightspeed\n  # Lightspeed backend disabled
+    (image version conflicts)\n  - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/red-hat-developer-hub-backstage-plugin-lightspeed-backend:bs_1.42.5__1.0.3!red-hat-developer-hub-backstage-plugin-lightspeed-backend\n
+    \   disabled: true\n    pluginConfig:\n      lightspeed:\n        # Connect to
+    lightspeed-core service running as sidecar\n        # lightspeed-core handles
+    communication with LLM servers\n        servers:\n          - id: ${LLM_SERVER_ID}\n
+    \           url: \"http://localhost:8082\"\n            token: \"\"\n\n        #
+    Port for lightspeed-core service (running as sidecar)\n        servicePort: 8082
+    \           \n  - package: ./dynamic-plugins/dist/backstage-plugin-scaffolder-backend-module-gitlab-dynamic\n
+    \   disabled: false\n  # Kubernetes Backend Plugin\n  # Note: The frontend plugin
+    is included by default in Red Hat Developer Hub\n  # and does not need to be installed
+    separately as an OCI image\n  - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-plugin-kubernetes-backend:bs_1.42.5__0.20.1!backstage-plugin-kubernetes-backend\n
+    \   disabled: false\n  # MCP server backend plugin (Latest version)\n  - package:
+    oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-plugin-mcp-actions-backend:next__0.1.2!backstage-plugin-mcp-actions-backend\n
+    \   disabled: false\n  # MCP tools plugins (Latest versions)\n  - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/red-hat-developer-hub-backstage-plugin-software-catalog-mcp-tool:next__0.4.0!red-hat-developer-hub-backstage-plugin-software-catalog-mcp-tool\n
+    \   disabled: false\n  # Quickstart Plugin (Frontend)\n  - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/red-hat-developer-hub-backstage-plugin-quickstart:next__1.6.2!red-hat-developer-hub-backstage-plugin-quickstart\n
+    \   disabled: false\n  # TechDocs MCP Tool - Temporarily disabled due to missing
+    dependency @backstage/plugin-techdocs-node\n  # - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/redhat-developer-hub-backstage-plugin-techdocs-mcp-tool:next__0.1.1!redhat-developer-hub-backstage-plugin-techdocs-mcp-tool\n
+    \ #   disabled: false\n  # Tekton Plugin (Frontend) - Latest version\n  - package:
+    oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-community-plugin-tekton:next__3.29.0!backstage-community-plugin-tekton\n
+    \   pluginConfig:\n      dynamicPlugins:\n        frontend:\n          backstage-community.plugin-tekton:\n
+    \           mountPoints:\n              - mountPoint: entity.page.ci/cards\n                importName:
+    TektonCI\n                config:\n                  layout:\n                    gridColumn:
+    \"1 / -1\"\n                    gridRowStart: 1\n                  if:\n                    allOf:\n
+    \                     - isTektonCIAvailable\n    disabled: false\n  # Kuadrant
+    Plugin - API Products, API Keys, PlanPolicy, RateLimitPolicy, AuthPolicy\n  -
+    package: \"@kuadrant/kuadrant-backstage-plugin-backend-dynamic@v0.1.0\"\n    disabled:
+    false\n    integrity: sha512-+iz5a/38ZB/phehlHMcbM79S/bMZwslcxi+lnG5Tb2InlWtumloFK7OzZk11s0/CjJPytF3CipOz4QpFHQ09qw==\n
+    \ - package: \"@kuadrant/kuadrant-backstage-plugin-frontend@v0.1.0\"\n    disabled:
+    false\n    integrity: sha512-3RLpjskJX4UqUQrc3gqg2TJL60cRKT+4mpnHH5OTi8leUxHgbyx2RnOmdRXivgXB1DwHK/oY7BsnPPft4Up2NQ==\n
+    \   pluginConfig:\n      dynamicPlugins:\n        frontend:\n          internal.plugin-kuadrant:\n
+    \           appIcons:\n              - name: kuadrantIcon\n                importName:
+    KuadrantIcon\n            dynamicRoutes:\n              - path: /kuadrant\n                importName:
+    KuadrantPage\n                menuItem:\n                  icon: kuadrantIcon\n
+    \                 text: Kuadrant\n              - path: /kuadrant/api-products/:namespace/:name\n
+    \               importName: ApiProductDetailPage\n              - path: /kuadrant/api-keys/:namespace/:name\n
+    \               importName: ApiKeyDetailPage\n            mountPoints:\n              -
+    mountPoint: entity.page.api/cards\n                importName: EntityKuadrantApiKeyManagementTab\n
+    \               config:\n                  layout:\n                    gridColumn:
+    \"1 / -1\"\n                  if:\n                    allOf:\n                      -
+    isKind: api\n              - mountPoint: entity.page.api/cards\n                importName:
+    EntityKuadrantApiProductInfoContent\n                config:\n                  layout:\n
+    \                   gridColumn: \"1 / -1\"\n                  if:\n                    allOf:\n
+    \                     - isKind: api"
+kind: ConfigMap
+metadata:
+  annotations:
+    rhdh.redhat.com/backstage-name: developer-hub
+  labels:
+    rhdh.redhat.com/ext-config-sync: "true"
+  name: dynamic-plugins-rhdh
+  namespace: developer-hub
+---
+apiVersion: v1
+data:
+  rbac-policy.csv: "# ==========================================================\n#
+    1. BASE PERMISSIONS FOR ALL AUTHENTICATED USERS\n# ==========================================================\n#
+    The 'role:default/authenticated' role is automatically assigned to any logged-in
+    user.\n# These permissions apply to ALL users\n\n# Lightspeed permissions for
+    ALL users\np, role:default/authenticated, lightspeed.chat.read, read, allow\np,
+    role:default/authenticated, lightspeed.chat.create, create, allow\np, role:default/authenticated,
+    lightspeed.chat.delete, delete, allow\n\n# Kuadrant api-consumer permissions for
+    ALL authenticated users (rbac-backend does not support role inheritance)\np, role:default/authenticated,
+    kuadrant.apiproduct.read.all, read, allow\np, role:default/authenticated, kuadrant.apiproduct.list,
+    read, allow\np, role:default/authenticated, kuadrant.apikey.create, create, allow,
+    apiproduct:*/*\np, role:default/authenticated, kuadrant.apikey.read.own, read,
+    allow\np, role:default/authenticated, kuadrant.apikey.read.all, read, allow\np,
+    role:default/authenticated, kuadrant.apikey.update.own, update, allow\np, role:default/authenticated,
+    kuadrant.apikey.delete.own, delete, allow\np, role:default/authenticated, kuadrant.apikey.list,
+    read, allow\n# HTTPRoutes: kuadrant.httproute.list (API publishing dropdown -
+    see permissions.ts)\np, role:default/authenticated, kuadrant.httproute.list, read,
+    allow\n# AuthPolicy/RateLimitPolicy: list for reference (API Owners/Admins)\np,
+    role:default/authenticated, kuadrant.authpolicy.list, read, allow\np, role:default/authenticated,
+    kuadrant.ratelimitpolicy.list, read, allow\n\n# Catalog permissions for ALL users\np,
+    role:default/authenticated, catalog-entity, read, allow\np, role:default/authenticated,
+    catalog.location, read, allow\n\n# Scaffolder permissions for ALL users\np, role:default/authenticated,
+    scaffolder-template, read, allow\np, role:default/authenticated, scaffolder.task,
+    read, allow\np, role:default/authenticated, scaffolder.task, create, allow\np,
+    role:default/authenticated, scaffolder.action.execute, use, allow\n\n# Adoption
+    Insights permissions for ALL users\np, role:default/authenticated, adoption-insights.events.read,
+    read, allow\n\n# ==========================================================\n#
+    2. PLATFORM ENGINEER ROLE (Full Admin Permissions)\n# ==========================================================\n#
+    Define a comprehensive 'admin' role\np, role:default/platformengineer, lightspeed.chat.read,
+    read, allow\np, role:default/platformengineer, lightspeed.chat.create, create,
+    allow\np, role:default/platformengineer, lightspeed.chat.delete, delete, allow\n\np,
+    role:default/platformengineer, catalog-entity, read, allow\np, role:default/platformengineer,
+    catalog-entity, create, allow\np, role:default/platformengineer, catalog-entity,
+    update, allow\np, role:default/platformengineer, catalog-entity, delete, allow\n\np,
+    role:default/platformengineer, catalog.location, read, allow\np, role:default/platformengineer,
+    catalog.location, create, allow\np, role:default/platformengineer, catalog.location,
+    delete, allow\n\np, role:default/platformengineer, catalog.entity.create, create,
+    allow\np, role:default/platformengineer, scaffolder-template, read, allow\np,
+    role:default/platformengineer, scaffolder.task, read, allow\np, role:default/platformengineer,
+    scaffolder.task, create, allow\np, role:default/platformengineer, scaffolder.task,
+    delete, allow\np, role:default/platformengineer, scaffolder.action.execute, use,
+    allow\n\np, role:default/platformengineer, permission.policy, read, allow\np,
+    role:default/platformengineer, catalog.entity.read, read, allow\n\n# Kuadrant
+    api-admin permissions for Platform Engineers (rbac-backend does not support role
+    inheritance)\np, role:default/platformengineer, kuadrant.planpolicy.read, read,
+    allow\np, role:default/platformengineer, kuadrant.planpolicy.list, read, allow\np,
+    role:default/platformengineer, kuadrant.apiproduct.create, create, allow\np, role:default/platformengineer,
+    kuadrant.apiproduct.read.all, read, allow\np, role:default/platformengineer, kuadrant.apiproduct.update.all,
+    update, allow\np, role:default/platformengineer, kuadrant.apiproduct.delete.all,
+    delete, allow\np, role:default/platformengineer, kuadrant.apiproduct.list, read,
+    allow\np, role:default/platformengineer, kuadrant.apikey.create, create, allow,
+    apiproduct:*/*\np, role:default/platformengineer, kuadrant.apikey.read.own, read,
+    allow\np, role:default/platformengineer, kuadrant.apikey.read.all, read, allow\np,
+    role:default/platformengineer, kuadrant.apikey.update.all, update, allow\np, role:default/platformengineer,
+    kuadrant.apikey.delete.all, delete, allow\np, role:default/platformengineer, kuadrant.apikey.list,
+    read, allow\np, role:default/platformengineer, kuadrant.apikey.approve, update,
+    allow\n# HTTPRoutes: kuadrant.httproute.list (see permissions.ts)\np, role:default/platformengineer,
+    kuadrant.httproute.list, read, allow\n\n# Adoption Insights permissions for Platform
+    Engineers\np, role:default/platformengineer, adoption-insights.events.read, read,
+    allow\n\n# ==========================================================\n# 3. USER
+    ROLE ASSIGNMENTS\n# ==========================================================\n#
+    Assign users to roles based on their groups\n# Following the pattern: g, user:default/<username>,
+    role:default/<rolename>\n\n# Platform Engineers (Full Admin Permissions)\n# Users
+    in infrastructure, platformengineers, and rhdh groups get admin role\ng, user:default/maximilianopizarro,
+    role:default/platformengineer\n# maximilianopizarro: full Kuadrant permissions
+    (api-admin + api-owner for API keys, requests, approval)\ng, user:default/maximilianopizarro,
+    role:default/api-admin\ng, user:default/maximilianopizarro, role:default/api-owner\ng,
+    user:default/user5-infra, role:default/platformengineer\ng, user:default/user6-infra,
+    role:default/platformengineer\ng, user:default/user7-platform, role:default/platformengineer\ng,
+    user:default/user8-platform, role:default/platformengineer\ng, user:default/user9-rhdh,
+    role:default/platformengineer\ng, user:default/user10-rhdh, role:default/platformengineer\n\n#
+    Developers (Basic Users - inherit from authenticated role)\n# user1-dev and user2-dev
+    inherit permissions from role:default/authenticated\n# They already have full
+    Lightspeed permissions through authenticated role\ng, user:default/user1-dev,
+    role:default/authenticated\ng, user:default/user2-dev, role:default/authenticated\n\n#
+    Dev Team 1 (Basic Users - inherit from authenticated role)\n# user3-devteam1 and
+    user4-devteam1 inherit permissions from role:default/authenticated\n# They already
+    have full Lightspeed permissions through authenticated role\ng, user:default/user3-devteam1,
+    role:default/authenticated\ng, user:default/user4-devteam1, role:default/authenticated\n\n#
+    Group assignments (Keycloak groups)\n# Assign rhdh group to platformengineer role
+    (has all permissions including Adoption Insights)\ng, group:default/rhdh, role:default/platformengineer\n\n#
+    ==========================================================\n# 4. KUADRANT PLUGIN
+    ROLES\n# ==========================================================\n# api-consumer:
+    browses APIs, requests access\np, role:default/api-consumer, kuadrant.apiproduct.read.all,
+    read, allow\np, role:default/api-consumer, kuadrant.apiproduct.list, read, allow\np,
+    role:default/api-consumer, kuadrant.apikey.create, create, allow, apiproduct:*/*\np,
+    role:default/api-consumer, kuadrant.apikey.read.own, read, allow\np, role:default/api-consumer,
+    kuadrant.apikey.update.own, update, allow\np, role:default/api-consumer, kuadrant.apikey.delete.own,
+    delete, allow\np, role:default/api-consumer, kuadrant.apikey.list, read, allow\np,
+    role:default/api-consumer, catalog.entity.read, read, allow\n\n# api-owner: publishes
+    APIs they own, approves requests for their APIs\np, role:default/api-owner, kuadrant.planpolicy.read,
+    read, allow\np, role:default/api-owner, kuadrant.planpolicy.list, read, allow\np,
+    role:default/api-owner, kuadrant.apiproduct.create, create, allow\np, role:default/api-owner,
+    kuadrant.apiproduct.read.all, read, allow\np, role:default/api-owner, kuadrant.apiproduct.update.own,
+    update, allow\np, role:default/api-owner, kuadrant.apiproduct.delete.own, delete,
+    allow\np, role:default/api-owner, kuadrant.apiproduct.list, read, allow\np, role:default/api-owner,
+    kuadrant.apikey.create, create, allow, apiproduct:*/*\np, role:default/api-owner,
+    kuadrant.apikey.read.own, read, allow\np, role:default/api-owner, kuadrant.apikey.update.own,
+    update, allow\np, role:default/api-owner, kuadrant.apikey.delete.own, delete,
+    allow\np, role:default/api-owner, kuadrant.apikey.list, read, allow\np, role:default/api-owner,
+    kuadrant.apikey.approve, update, allow\np, role:default/api-owner, kuadrant.httproute.list,
+    read, allow\np, role:default/api-owner, catalog.entity.read, read, allow\n\n#
+    api-admin: platform engineers who manage all API products\np, role:default/api-admin,
+    kuadrant.planpolicy.read, read, allow\np, role:default/api-admin, kuadrant.planpolicy.list,
+    read, allow\np, role:default/api-admin, kuadrant.apiproduct.create, create, allow\np,
+    role:default/api-admin, kuadrant.apiproduct.read.all, read, allow\np, role:default/api-admin,
+    kuadrant.apiproduct.update.all, update, allow\np, role:default/api-admin, kuadrant.apiproduct.delete.all,
+    delete, allow\np, role:default/api-admin, kuadrant.apiproduct.list, read, allow\np,
+    role:default/api-admin, kuadrant.apikey.create, create, allow, apiproduct:*/*\np,
+    role:default/api-admin, kuadrant.apikey.read.own, read, allow\np, role:default/api-admin,
+    kuadrant.apikey.read.all, read, allow\np, role:default/api-admin, kuadrant.apikey.update.all,
+    update, allow\np, role:default/api-admin, kuadrant.apikey.delete.all, delete,
+    allow\np, role:default/api-admin, kuadrant.apikey.list, read, allow\np, role:default/api-admin,
+    kuadrant.apikey.approve, update, allow\np, role:default/api-admin, kuadrant.httproute.list,
+    read, allow\np, role:default/api-admin, catalog.entity.read, read, allow\n\n#
+    ==========================================================\n# 5. LEGACY ROLES
+    (Optional - for backward compatibility)\n# ==========================================================\n#
+    If you still want the 'rhdhpai-users' role for other users, keep its definition:\np,
+    role:default/rhdhpai-users, lightspeed.chat.read, read, allow\np, role:default/rhdhpai-users,
+    lightspeed.chat.create, create, allow\np, role:default/rhdhpai-users, lightspeed.chat.delete,
+    delete, allow    \np, role:default/rhdhpai-users, catalog-entity, read, allow\np,
+    role:default/rhdhpai-users, catalog-entity, update, allow\np, role:default/rhdhpai-users,
+    catalog-entity, delete, allow\np, role:default/rhdhpai-users, catalog.location.read,
+    read, allow\np, role:default/rhdhpai-users, catalog.location.create, create, allow\np,
+    role:default/rhdhpai-users, catalog.location.delete, delete, allow\np, role:default/rhdhpai-users,
+    catalog.entity.create, create, allow\np, role:default/rhdhpai-users, scaffolder-template,
+    read, allow\np, role:default/rhdhpai-users, scaffolder.task.read, read, allow\np,
+    role:default/rhdhpai-users, scaffolder.task.create, create, allow\n\n# Adoption
+    Insights permissions for rhdhpai-users\np, role:default/rhdhpai-users, adoption-insights.events.read,
+    read, allow\n\n# If you still need 'template-executers' for other users, keep
+    its definition:\np, role:default/template-executers, scaffolder.action.execute,
+    use, allow\n\ng, user:default/maximilianopizarro, role:default/rhdhpai-users\ng,
+    user:default/maximilianopizarro, role:default/template-executers"
+kind: ConfigMap
+metadata:
+  annotations:
+    rhdh.redhat.com/backstage-name: developer-hub
+  labels:
+    rhdh.redhat.com/ext-config-sync: "true"
+  name: rhdh-rbac-policy
+  namespace: developer-hub
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  annotations:
+    kubernetes.io/service-account.name: default
+  name: developer-hub-k8s-sa-token
+  namespace: developer-hub
+type: kubernetes.io/service-account-token
+---
+apiVersion: rhdh.redhat.com/v1alpha3
+kind: Backstage
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  name: developer-hub
+  namespace: developer-hub
+spec:
+  application:
+    appConfig:
+      configMaps:
+      - name: app-config-rhdh
+      mountPath: /opt/app-root/src
+    dynamicPluginsConfigMapName: dynamic-plugins-rhdh
+    extraEnvs:
+      secrets:
+      - name: secrets-rhdh
+      - key: token
+        name: developer-hub-k8s-sa-token
+    extraFiles:
+      configMaps:
+      - name: rhdh-rbac-policy
+      mountPath: /opt/app-root/src
+    replicas: 1
+    route:
+      enabled: true
+  database:
+    enableLocalDb: true
+  deployment:
+    patch:
+      spec:
+        template:
+          spec:
+            automountServiceAccountToken: true

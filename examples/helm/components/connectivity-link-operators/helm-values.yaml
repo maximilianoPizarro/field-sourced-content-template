@@ -1,0 +1,23 @@
+channel: stable-4.20
+version: 4.20.4
+subscriptions:
+  # rhcl-operator: installed via templates/rhcl-operator.yaml in kuadrant-system
+  - name: servicemeshoperator3
+    namespace: openshift-operators
+    channel: stable
+    source: redhat-operators
+  - name: cluster-observability-operator
+    namespace: openshift-cluster-observability-operator
+    channel: stable
+    source: redhat-operators
+  # Grafana Operator: deploy Grafana instances and dashboards (e.g. for observability stack).
+  - name: grafana-operator
+    namespace: openshift-operators
+    channel: v5
+    source: community-operators
+  # Kiali for OpenShift Service Mesh (observability console). Package name in redhat-operators is kiali-ossm.
+  - name: kiali-ossm
+    namespace: openshift-operators
+    channel: stable
+    source: redhat-operators
+  # opentelemetry-operator: installed via templates/opentelemetry-operator.yaml in openshift-opentelemetry-operator

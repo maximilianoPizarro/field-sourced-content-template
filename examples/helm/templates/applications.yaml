@@ -1,41 +1,6 @@
 # App of Apps Pattern
 # This template generates ArgoCD Applications for each enabled component
-
-# --- Connectivity Link Operators (from GitLab) ---
-# Imports operators from https://gitlab.com/maximilianoPizarro/connectivity-link
-# Includes: RHCL, Service Mesh, Dev Spaces, RHBK, RHDH, OpenTelemetry, Pipelines, Grafana, Kiali
-{{- if .Values.components.connectivityLinkOperators.enabled }}
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: {{ .Release.Name }}-connectivity-link-operators
-  namespace: {{ .Values.argocd.namespace }}
-  labels:
-    demo.redhat.com/application: "field-content"
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: {{ .Values.argocd.project }}
-  source:
-    repoURL: {{ .Values.components.connectivityLinkOperators.repoUrl | quote }}
-    targetRevision: {{ .Values.components.connectivityLinkOperators.revision | quote }}
-    path: {{ .Values.components.connectivityLinkOperators.path | quote }}
-    helm:
-      valuesObject:
-        channel: {{ .Values.components.connectivityLinkOperators.channel | quote }}
-        version: {{ .Values.components.connectivityLinkOperators.version | quote }}
-        subscriptions: {{ .Values.components.connectivityLinkOperators.subscriptions | toJson }}
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: openshift-operators
-  syncPolicy:
-    automated:
-      prune: {{ .Values.components.connectivityLinkOperators.prune }}
-      selfHeal: {{ .Values.components.connectivityLinkOperators.selfHeal }}
-    syncOptions:
-      - CreateNamespace=true
-{{- end }}
+# Connectivity-link components: see connectivity-link-applications.yaml
 
 {{- if .Values.components.operator.enabled }}
 ---

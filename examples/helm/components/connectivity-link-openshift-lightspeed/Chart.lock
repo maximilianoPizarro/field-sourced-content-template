@@ -1,9 +1,0 @@
-dependencies:
-- name: n8n
-  repository: https://charts.openshift.io
-  version: 1.16.0
-- name: openshift-mcp-server
-  repository: https://maximilianopizarro.github.io/openshift-mcp-server
-  version: 0.1.0-alpha
-digest: sha256:c729ad2b4c3699b732315c61053dc2af55342481a6e70f0e8fb4eb3de510f3ab
-generated: "2026-04-07T12:11:38.9509551-03:00"

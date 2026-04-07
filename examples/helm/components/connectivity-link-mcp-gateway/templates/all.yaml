@@ -689,8 +689,11 @@ spec:
     - field-content-ols.openshift-lightspeed.svc.cluster.local
   rules:
     - backendRefs:
-        - name: field-content-ols
+        - group: ""
+          kind: Service
+          name: field-content-ols
           port: 8080
+          weight: 1
 ---
 ##
 ## 10. HTTPRoute — kubernetes-mcp-server backend
@@ -711,8 +714,11 @@ spec:
     - field-content-ols-k8s-mcp.openshift-lightspeed.svc.cluster.local
   rules:
     - backendRefs:
-        - name: field-content-ols-k8s-mcp
+        - group: ""
+          kind: Service
+          name: field-content-ols-k8s-mcp
           port: 8085
+          weight: 1
 ---
 ##
 ## 11. MCPServerRegistration — openshift-mcp-server

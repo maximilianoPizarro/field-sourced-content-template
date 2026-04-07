@@ -1,0 +1,5 @@
+apiVersion: v2
+name: connectivity-link-openshift-lightspeed
+description: OpenShift Lightspeed with MCP servers and n8n workflow automation
+version: 0.1.0
+type: application

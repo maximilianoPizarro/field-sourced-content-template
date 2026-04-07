@@ -1,0 +1,560 @@
+##
+## 1. LLM Credentials Secret
+##
+apiVersion: v1
+kind: Secret
+metadata:
+  name: llm-credentials
+  namespace: openshift-lightspeed
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+type: Opaque
+stringData:
+  apitoken: "sk-9guuWZPNUC0zY5KS3kbFLA"
+---
+##
+## 2. ServiceAccount for MCP servers
+##
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openshift-mcp-server
+  namespace: openshift-lightspeed
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+---
+##
+## 3. ClusterRoleBinding — MCP server → cluster-admin
+##
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: openshift-mcp-server-cluster-admin
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: openshift-mcp-server
+    namespace: openshift-lightspeed
+---
+##
+## 4. OLSConfig — Lightspeed → MaaS LiteLLM + MCP servers
+##
+apiVersion: ols.openshift.io/v1alpha1
+kind: OLSConfig
+metadata:
+  name: cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  featureGates:
+    - MCPServer
+  llm:
+    providers:
+      - name: litellm
+        type: openai
+        url: "https://litellm-prod.apps.maas.redhatworkshops.io/v1"
+        credentialsSecretRef:
+          name: llm-credentials
+        models:
+          - name: llama-scout-17b
+  ols:
+    defaultProvider: litellm
+    defaultModel: llama-scout-17b
+    logLevel: INFO
+    querySystemPrompt: |
+      CRITICAL RULE: You have tool functions available. When the user asks about
+      ANY cluster resource or operation, you MUST call the appropriate tool.
+      DO NOT suggest CLI commands from the documentation below.
+
+      For READING resources: use pods_list, resources_list, resources_get,
+      pods_log, pods_top, nodes_top, projects_list.
+      For CREATING/UPDATING resources: use resources_create_or_update with
+      a valid YAML definition of the Kubernetes resource.
+      For DELETING resources: use resources_delete.
+      For SCALING: use resources_scale.
+
+      ALWAYS prefer these tools over documentation. Never say the request
+      is incomplete when you have tools that can answer it.
+    deployment:
+      api:
+        replicas: 1
+      console:
+        replicas: 1
+      dataCollector: {}
+      database:
+        replicas: 1
+      llamaStack: {}
+      mcpServer: {}
+    mcpServers:
+      - name: openshift-mcp-server
+        url: "http://openshift-mcp-server.openshift-lightspeed.svc.cluster.local:8080/mcp"
+        timeout: 30
+      - name: kubernetes-mcp-server
+        url: "http://kubernetes-mcp-server.openshift-lightspeed.svc.cluster.local:8085/mcp"
+        timeout: 30
+    conversationCache:
+      type: postgres
+      postgres:
+        maxConnections: 2000
+        sharedBuffers: 256MB
+    introspectionEnabled: true
+    userDataCollection: {}
+---
+##
+## 5. openshift-mcp-server — Deployment
+##
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openshift-mcp-server
+  namespace: openshift-lightspeed
+  labels:
+    app: openshift-mcp-server
+    app.kubernetes.io/component: mcp-server
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openshift-mcp-server
+  template:
+    metadata:
+      labels:
+        app: openshift-mcp-server
+        app.kubernetes.io/component: mcp-server
+    spec:
+      serviceAccountName: openshift-mcp-server
+      containers:
+        - name: openshift-mcp-server
+          image: "quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/openshift-mcp-server:latest"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+---
+##
+## 6. openshift-mcp-server — Service
+##
+apiVersion: v1
+kind: Service
+metadata:
+  name: openshift-mcp-server
+  namespace: openshift-lightspeed
+  labels:
+    app: openshift-mcp-server
+    app.kubernetes.io/component: mcp-server
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  type: ClusterIP
+  selector:
+    app: openshift-mcp-server
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+---
+##
+## 7. kubernetes-mcp-server — ConfigMap
+##
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubernetes-mcp-server
+  namespace: openshift-lightspeed
+  labels:
+    app.kubernetes.io/component: k8s-mcp
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+data:
+  config.toml: |
+    log_level = 3
+    port = "8085"
+    read_only = false
+    disable_destructive = false
+    toolsets = ["core"]
+
+    denied_resources = [
+      {group = "rbac.authorization.k8s.io", version = "v1"}
+    ]
+  repositories.yaml: |
+    apiVersion: ""
+    generated: "0001-01-01T00:00:00Z"
+    repositories:
+      - caFile: ""
+        certFile: ""
+        insecure_skip_tls_verify: false
+        keyFile: ""
+        name: openshift-helm-charts
+        password: ""
+        url: https://charts.openshift.io/
+        username: ""
+---
+##
+## 8. kubernetes-mcp-server — Deployment
+##
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubernetes-mcp-server
+  namespace: openshift-lightspeed
+  labels:
+    app: kubernetes-mcp-server
+    app.kubernetes.io/component: k8s-mcp
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubernetes-mcp-server
+  template:
+    metadata:
+      labels:
+        app: kubernetes-mcp-server
+        app.kubernetes.io/component: k8s-mcp
+    spec:
+      serviceAccountName: openshift-mcp-server
+      volumes:
+        - name: config
+          configMap:
+            name: kubernetes-mcp-server
+        - name: helm-cache
+          emptyDir: {}
+        - name: helm-data
+          emptyDir: {}
+      containers:
+        - name: kubernetes-mcp-server
+          image: "quay.io/redhat-user-workloads/crt-nshift-lightspeed-tenant/openshift-mcp-server:latest"
+          imagePullPolicy: IfNotPresent
+          command: ["/openshift-mcp-server"]
+          args:
+            - "--config"
+            - "/etc/k8s-mcp/config.toml"
+          env:
+            - name: HELM_CACHE_HOME
+              value: /tmp/helm/cache
+            - name: HELM_CONFIG_HOME
+              value: /tmp/helm/config
+            - name: HELM_DATA_HOME
+              value: /tmp/helm/data
+          volumeMounts:
+            - name: config
+              mountPath: /etc/k8s-mcp/config.toml
+              subPath: config.toml
+              readOnly: true
+            - name: config
+              mountPath: /tmp/helm/config/repositories.yaml
+              subPath: repositories.yaml
+              readOnly: true
+            - name: helm-cache
+              mountPath: /tmp/helm/cache
+            - name: helm-data
+              mountPath: /tmp/helm/data
+          ports:
+            - containerPort: 8085
+              protocol: TCP
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+---
+##
+## 9. kubernetes-mcp-server — Service
+##
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubernetes-mcp-server
+  namespace: openshift-lightspeed
+  labels:
+    app.kubernetes.io/component: k8s-mcp
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  type: ClusterIP
+  selector:
+    app: kubernetes-mcp-server
+  ports:
+    - port: 8085
+      targetPort: 8085
+      protocol: TCP
+      name: http
+---
+##
+## 10. n8n — Deployment
+##
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: n8n
+  namespace: openshift-lightspeed
+  labels:
+    app: n8n
+    app.kubernetes.io/component: workflow-automation
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: n8n
+  template:
+    metadata:
+      labels:
+        app: n8n
+        app.kubernetes.io/component: workflow-automation
+    spec:
+      securityContext: {}
+      containers:
+        - name: n8n
+          image: "docker.n8n.io/n8nio/n8n:1.91.3"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: N8N_LISTEN_ADDRESS
+              value: "0.0.0.0"
+            - name: N8N_PORT
+              value: "5678"
+            - name: N8N_PROTOCOL
+              value: "https"
+            - name: N8N_HOST
+              value: "n8n.{{ .Values.clusterDomain }}"
+            - name: WEBHOOK_URL
+              value: "https://n8n.{{ .Values.clusterDomain }}/"
+            - name: NODE_FUNCTION_ALLOW_BUILTIN
+              value: "*"
+            - name: NODE_FUNCTION_ALLOW_EXTERNAL
+              value: "*"
+            - name: N8N_SMTP_HOST
+              value: "n8n-mailpit"
+            - name: N8N_SMTP_PORT
+              value: "1025"
+            - name: N8N_SMTP_SSL
+              value: "false"
+          ports:
+            - containerPort: 5678
+              protocol: TCP
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+---
+##
+## 11. n8n — Service
+##
+apiVersion: v1
+kind: Service
+metadata:
+  name: n8n
+  namespace: openshift-lightspeed
+  labels:
+    app: n8n
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  type: ClusterIP
+  selector:
+    app: n8n
+  ports:
+    - port: 5678
+      targetPort: 5678
+      protocol: TCP
+      name: http
+---
+##
+## 12. n8n — Route
+##
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: n8n
+  namespace: openshift-lightspeed
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  host: n8n.{{ .Values.clusterDomain }}
+  to:
+    kind: Service
+    name: n8n
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+##
+## 13. n8n-mailpit — Deployment
+##
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: n8n-mailpit
+  namespace: openshift-lightspeed
+  labels:
+    app: n8n-mailpit
+    app.kubernetes.io/component: mailpit
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: n8n-mailpit
+  template:
+    metadata:
+      labels:
+        app: n8n-mailpit
+        app.kubernetes.io/component: mailpit
+    spec:
+      securityContext: {}
+      containers:
+        - name: mailpit
+          image: "axllent/mailpit:v1.21"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 1025
+              protocol: TCP
+              name: smtp
+            - containerPort: 8025
+              protocol: TCP
+              name: http
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+---
+##
+## 14. n8n-mailpit — Service (SMTP + Web UI)
+##
+apiVersion: v1
+kind: Service
+metadata:
+  name: n8n-mailpit
+  namespace: openshift-lightspeed
+  labels:
+    app: n8n-mailpit
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  type: ClusterIP
+  selector:
+    app: n8n-mailpit
+  ports:
+    - port: 1025
+      targetPort: 1025
+      protocol: TCP
+      name: smtp
+    - port: 8025
+      targetPort: 8025
+      protocol: TCP
+      name: http
+---
+##
+## 15. n8n-mailpit — Route (Web UI)
+##
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: n8n-mailpit
+  namespace: openshift-lightspeed
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  host: mailpit.{{ .Values.clusterDomain }}
+  to:
+    kind: Service
+    name: n8n-mailpit
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

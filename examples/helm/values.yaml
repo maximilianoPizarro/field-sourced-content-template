@@ -188,6 +188,14 @@ connectivityLink:
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
+    - id: connectivity-link-openshift-lightspeed
+      enabled: true
+      path: connectivity-link-openshift-lightspeed
+      destinationNamespace: openshift-lightspeed
+      syncWave: "8"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
 
 # ============================================================
 # LiteMaaS / MaaS (optional — injected by RHDP when enabled on order)

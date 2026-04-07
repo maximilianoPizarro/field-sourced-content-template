@@ -566,7 +566,10 @@ spec:
       containers:
         - name: controller
           image: ghcr.io/kuadrant/mcp-controller:latest
+          command:
+            - ./mcp_controller
           args:
+            - --controller
             - --leader-elect=false
             - --log-level=0
           ports:

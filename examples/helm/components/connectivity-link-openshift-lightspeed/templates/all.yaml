@@ -379,11 +379,16 @@ spec:
         - key: node.kubernetes.io/disk-pressure
           operator: Exists
           effect: NoSchedule
+      volumes:
+        - name: n8n-data
+          emptyDir: {}
       containers:
         - name: n8n
           image: "docker.n8n.io/n8nio/n8n:1.91.3"
           imagePullPolicy: IfNotPresent
           env:
+            - name: N8N_USER_FOLDER
+              value: "/tmp/n8n"
             - name: N8N_LISTEN_ADDRESS
               value: "0.0.0.0"
             - name: N8N_PORT
@@ -404,6 +409,9 @@ spec:
               value: "1025"
             - name: N8N_SMTP_SSL
               value: "false"
+          volumeMounts:
+            - name: n8n-data
+              mountPath: /tmp/n8n
           ports:
             - containerPort: 5678
               protocol: TCP

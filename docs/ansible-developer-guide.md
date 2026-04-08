@@ -1,3 +1,9 @@
+---
+layout: default
+title: Ansible Developer Guide
+nav_exclude: true
+---
+
 # Ansible Developer Guide for Field Content
 
 This guide explains how to use Ansible to automate your field content deployment. If you're comfortable with Ansible and want to use it for your demo/lab automation, this is the approach for you.

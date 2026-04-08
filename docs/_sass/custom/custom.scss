@@ -1,0 +1,40 @@
+$link-color: #EE0000;
+$btn-primary-color: #EE0000;
+$sidebar-color: #151515;
+$content-width: 900px;
+
+.site-logo img {
+  max-height: 40px;
+}
+
+.site-footer {
+  border-top: 2px solid #EE0000;
+  padding: 1rem 0;
+  text-align: center;
+  color: #6a737d;
+}
+
+.site-footer a {
+  color: #EE0000;
+}
+
+.main-content .note {
+  background-color: #f0f7ff;
+  border-left: 4px solid #0066CC;
+  padding: 12px 16px;
+  margin: 16px 0;
+  border-radius: 4px;
+}
+
+.main-content .warning {
+  background-color: #fff8e6;
+  border-left: 4px solid #F0AB00;
+  padding: 12px 16px;
+  margin: 16px 0;
+  border-radius: 4px;
+}
+
+code.language-bash {
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+}

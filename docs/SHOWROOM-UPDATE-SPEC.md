@@ -1,3 +1,9 @@
+---
+layout: default
+title: Showroom Update Spec
+nav_exclude: true
+---
+
 # Showroom Manifests Update Specification
 
 Update guide for syncing Showroom components with upstream sources.

@@ -227,7 +227,7 @@ connectivityLink:
 # ============================================================
 lightspeed:
   llmApiKey: "sk-no-key"
-  llmEndpoint: "https://qwen3-8b-my-first-model.apps.cluster-l9nhj.dynamic.redhatworkshops.io/v1"
+  llmEndpoint: "https://qwen3-8b-my-first-model.apps.ocp.qvvqq.sandbox503.opentlc.com/v1"
   model: "qwen3-8b"
 
 # ============================================================

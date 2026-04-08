@@ -1,4 +1,5 @@
 <style>
+  /* Language toggle */
   #lang-bar {
     position: fixed;
     top: 8px;
@@ -34,10 +35,6 @@
     background: #555;
     color: #fff;
   }
-  #google_translate_element { display: none !important; }
-  .goog-te-banner-frame { display: none !important; }
-  body { top: 0 !important; }
-  .skiptranslate { display: none !important; }
 
   /* Lightbox for screenshots */
   .screenshot-wrapper {
@@ -53,11 +50,7 @@
     transform: scale(1.02);
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   }
-  .screenshot-wrapper img {
-    display: block;
-    max-width: 100%;
-    height: auto;
-  }
+  .screenshot-wrapper img { display: block; max-width: 100%; height: auto; }
   .screenshot-caption {
     text-align: center;
     font-size: 0.8rem;
@@ -96,70 +89,108 @@
 </style>
 
 <div id="lang-bar">
-  <span style="color:#aaa;font-size:0.75rem;margin-right:4px;">🌐</span>
+  <span style="color:#aaa;font-size:0.75rem;margin-right:4px;">&#127760;</span>
   <button class="lang-btn active" data-lang="es" onclick="switchLang('es')">ES</button>
   <button class="lang-btn" data-lang="en" onclick="switchLang('en')">EN</button>
 </div>
 
-<div id="google_translate_element"></div>
 <div id="lightbox-overlay"><button id="lightbox-close">&times;</button><img id="lightbox-img" src="" alt=""></div>
 
 <script>
+var TRANSLATIONS = {
+  "Bienvenido al Workshop": "Welcome to the Workshop",
+  "Qué vas a aprender": "What you will learn",
+  "El caso de negocio: Neuralbank": "The business case: Neuralbank",
+  "Acceso al entorno": "Environment access",
+  "Interfaces del entorno": "Environment interfaces",
+  "Comprender la propuesta de valor de Red Hat Developer Hub": "Understand the value proposition of Red Hat Developer Hub",
+  "Explorar la arquitectura: Developer Hub, ArgoCD, Tekton, DevSpaces, Gitea, Keycloak": "Explore the architecture: Developer Hub, ArgoCD, Tekton, DevSpaces, Gitea, Keycloak",
+  "Crear servicios backend y frontend usando": "Create backend and frontend services using",
+  "Explorar pipelines automatizados, topology view y detalles de la aplicación": "Explore automated pipelines, topology view and application details",
+  "Desplegar y configurar API Gateways con seguridad (OIDCPolicy, RateLimitPolicy)": "Deploy and configure API Gateways with security (OIDCPolicy, RateLimitPolicy)",
+  "Actualizar código fuente usando": "Update source code using",
+  "con CI/CD automatizado": "with automated CI/CD",
+  "Neuralbank es una entidad financiera que necesita modernizar su stack tecnológico. Como desarrollador, vas a construir tres componentes:": "Neuralbank is a financial institution that needs to modernize its technology stack. As a developer, you will build three components:",
+  "Un servidor MCP (Model Context Protocol) para atención al cliente": "An MCP (Model Context Protocol) server for customer service",
+  "API REST para gestión de créditos": "REST API for credit management",
+  "Interfaz web para visualización de créditos": "Web interface for credit visualization",
+  "Tu usuario es": "Your username is",
+  "La contraseña es": "The password is",
+  "Tu namespace de trabajo es": "Your working namespace is",
+  "Todos los servicios que crees con las Software Templates se desplegarán ahí.": "All services you create with Software Templates will be deployed there.",
+  "se rellena automáticamente según tu inicio de sesión en OpenShift.": "is automatically filled based on your OpenShift login.",
+  "disponible en el panel derecho del showroom": "available in the right panel of the showroom",
+  "para ejecutar comandos": "to run commands",
+  "Hacé click en cualquier imagen para agrandarla.": "Click on any image to enlarge it.",
+  "En este workshop aprenderás a utilizar": "In this workshop you will learn to use",
+  "como portal de desarrollo self-service para construir, desplegar y gestionar aplicaciones en OpenShift.": "as a self-service developer portal to build, deploy and manage applications on OpenShift.",
+  "Presentado en": "Presented at",
+  "la comunidad donde usuarios, partners, clientes y contribuidores se reúnen para colaborar y avanzar en el ecosistema OpenShift.": "the community where users, partners, customers and contributors come together to collaborate and advance the OpenShift ecosystem."
+};
+
+var originalTexts = new Map();
+
 function switchLang(lang) {
   localStorage.setItem('SITE_LANG', lang);
   document.querySelectorAll('#lang-bar .lang-btn').forEach(function(b) {
     b.classList.toggle('active', b.getAttribute('data-lang') === lang);
   });
   if (lang === 'en') {
-    loadGoogleTranslate();
+    translateToEnglish();
   } else {
-    // Restore original
-    var sel = document.querySelector('.goog-te-combo');
-    if (sel) { sel.value = ''; sel.dispatchEvent(new Event('change')); }
-    setTimeout(function() { location.reload(); }, 200);
+    restoreOriginal();
   }
 }
 
-function loadGoogleTranslate() {
-  if (window._gtLoaded) {
-    var sel = document.querySelector('.goog-te-combo');
-    if (sel) { sel.value = 'en'; sel.dispatchEvent(new Event('change')); }
-    return;
+function translateToEnglish() {
+  var walker = document.createTreeWalker(
+    document.querySelector('.main-content') || document.body,
+    NodeFilter.SHOW_TEXT, null, false
+  );
+  var node;
+  while (node = walker.nextNode()) {
+    var text = node.textContent;
+    if (!text.trim()) continue;
+    for (var es in TRANSLATIONS) {
+      if (text.indexOf(es) !== -1) {
+        if (!originalTexts.has(node)) originalTexts.set(node, text);
+        node.textContent = text.replace(es, TRANSLATIONS[es]);
+        text = node.textContent;
+      }
+    }
   }
-  window.googleTranslateElementInit = function() {
-    new google.translate.TranslateElement({
-      pageLanguage: 'es',
-      includedLanguages: 'en',
-      autoDisplay: false
-    }, 'google_translate_element');
-    setTimeout(function() {
-      var sel = document.querySelector('.goog-te-combo');
-      if (sel) { sel.value = 'en'; sel.dispatchEvent(new Event('change')); }
-    }, 1000);
-  };
-  var s = document.createElement('script');
-  s.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
-  document.head.appendChild(s);
-  window._gtLoaded = true;
 }
 
-// Copy code button
+function restoreOriginal() {
+  originalTexts.forEach(function(original, node) {
+    node.textContent = original;
+  });
+  originalTexts.clear();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-  // Restore language preference
   var savedLang = localStorage.getItem('SITE_LANG');
   if (savedLang === 'en') {
     document.querySelectorAll('#lang-bar .lang-btn').forEach(function(b) {
       b.classList.toggle('active', b.getAttribute('data-lang') === 'en');
     });
-    setTimeout(loadGoogleTranslate, 500);
+    setTimeout(translateToEnglish, 300);
   }
 
-  // Remove "This site uses Just the Docs" text
-  document.querySelectorAll('.site-footer p').forEach(function(p) {
-    if (p.textContent.indexOf('Just the Docs') !== -1) {
-      p.remove();
-    }
-  });
+  // Aggressively remove "Just the Docs" footer text
+  var footerEl = document.querySelector('.site-footer');
+  if (footerEl) {
+    footerEl.querySelectorAll('p, span, a, div').forEach(function(el) {
+      if (el.textContent.indexOf('Just the Docs') !== -1 && !el.classList.contains('site-footer-custom-content')) {
+        el.style.display = 'none';
+        if (el.parentElement && el.parentElement.tagName === 'P') el.parentElement.style.display = 'none';
+      }
+    });
+    var allPs = footerEl.querySelectorAll('p');
+    allPs.forEach(function(p) {
+      if (p.textContent.indexOf('Just the Docs') !== -1) p.style.display = 'none';
+    });
+  }
 
   // Lightbox for screenshots
   var overlay = document.getElementById('lightbox-overlay');

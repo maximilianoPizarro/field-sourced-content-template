@@ -24,3 +24,7 @@ enable_copy_code_button: true
 
 plugins:
   - jekyll-remote-theme
+
+exclude:
+  - Gemfile
+  - Gemfile.lock

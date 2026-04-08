@@ -93,8 +93,8 @@ pre.mermaid {
 
 // ── Logo ───────────────────────────────────────────────
 .site-logo {
-  height: 40px;
-  width: 180px;
+  height: 40px !important;
+  width: 180px !important;
   background-size: contain !important;
   background-repeat: no-repeat !important;
   background-position: left center !important;

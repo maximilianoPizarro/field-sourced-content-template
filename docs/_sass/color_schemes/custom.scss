@@ -34,36 +34,14 @@ $code-background-color: #f4f4f4;
 }
 
 // ── Footer ─────────────────────────────────────────────
-.site-footer {
-  border-top: 2px solid #CC0000;
-  padding-top: 1rem;
-  background: #fafafa;
-}
-
-.site-footer .site-footer-custom-content {
-  font-size: 0.85rem !important;
-}
-
-// Kill the default "This site uses Just the Docs" paragraph(s)
-.site-footer p,
-.site-footer > p,
-.site-footer p.text-small,
-.site-footer .text-small.text-grey-dk-000,
-p.text-small.text-grey-dk-000 {
+// Sidebar footer (Just the Docs branding) — hide completely
+.side-bar .site-footer {
   display: none !important;
-  visibility: hidden !important;
-  height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  overflow: hidden !important;
 }
 
-// But keep the custom footer content visible
-.site-footer .site-footer-custom-content,
-.site-footer .site-footer-custom-content * {
-  display: inline !important;
-  visibility: visible !important;
-  height: auto !important;
+// Main content footer
+footer .text-small {
+  font-size: 0.85rem !important;
 }
 
 // ── Aux links (top-right header links) ─────────────────
@@ -115,8 +93,11 @@ pre.mermaid {
 
 // ── Logo ───────────────────────────────────────────────
 .site-logo {
-  max-height: 32px;
-  filter: brightness(10);
+  max-height: 36px;
+  width: 160px;
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  background-position: left center !important;
 }
 
 // ── Tables ─────────────────────────────────────────────

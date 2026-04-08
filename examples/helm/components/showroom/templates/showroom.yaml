@@ -88,8 +88,8 @@ metadata:
 data:
   user_data.yml: |
     cluster_domain: {{ .Values.deployer.domain }}
-    user_name: __USER_NAME__
-    user_password: __USER_PASSWORD__
+    user_name: '%USER_NAME%'
+    user_password: '%USER_PASSWORD%'
     demo_namespace: {{ .Values.demo.namespace }}
     demo_app: {{ .Values.demo.appName }}
 ---

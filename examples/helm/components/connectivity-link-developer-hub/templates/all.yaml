@@ -459,7 +459,9 @@ data:
     role:default/authenticated, kuadrant.authpolicy.list, read, allow\np, role:default/authenticated,
     kuadrant.ratelimitpolicy.list, read, allow\n\n# Catalog permissions for ALL users\np,
     role:default/authenticated, catalog-entity, read, allow\np, role:default/authenticated,
-    catalog.location, read, allow\n\n# Scaffolder permissions for ALL users\np, role:default/authenticated,
+    catalog.location, read, allow\np, role:default/authenticated, catalog.location.create,
+    create, allow\np, role:default/authenticated, catalog.entity.create, create, allow\n\n#
+    Scaffolder permissions for ALL users\np, role:default/authenticated,
     scaffolder-template, read, allow\np, role:default/authenticated, scaffolder.task.read,
     read, allow\np, role:default/authenticated, scaffolder.task.create, create, allow\np,
     role:default/authenticated, scaffolder.action.execute, use, allow\n\n# Adoption

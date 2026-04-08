@@ -119,16 +119,6 @@ spec:
         llmApiKey: {{ $llmKey | quote }}
         llmEndpoint: {{ $llmEndpoint | quote }}
         llmModel: {{ $llmModel | quote }}
-        n8n:
-          route:
-            host: n8n.{{ $domain }}
-        openshift-mcp-server:
-          litellm:
-            model:
-              apiKey: {{ $llmKey | quote }}
-              name: {{ $llmModel | quote }}
-              modelId: {{ $llmModel | quote }}
-              apiBase: {{ $llmEndpoint | quote }}
     {{- else if eq .path "connectivity-link-rhbk" }}
     helm:
       valuesObject:

@@ -8,8 +8,6 @@ kind: PersistentVolumeClaim
 metadata:
   name: workshop-registration-data
   namespace: showroom
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
 spec:
   accessModes:
     - ReadWriteOnce
@@ -22,8 +20,6 @@ kind: ConfigMap
 metadata:
   name: workshop-registration-app
   namespace: showroom
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
 data:
   app.py: |
     #!/usr/bin/env python3
@@ -536,8 +532,6 @@ metadata:
   labels:
     app: workshop-registration
     demo.redhat.com/application: "workshop-registration"
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
 spec:
   replicas: 1
   selector:
@@ -612,8 +606,6 @@ kind: Service
 metadata:
   name: workshop-registration
   namespace: showroom
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
 spec:
   type: ClusterIP
   ports:
@@ -628,8 +620,6 @@ kind: Route
 metadata:
   name: workshop-registration
   namespace: showroom
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
 spec:
   host: workshop-registration.{{ $domain }}
   to:

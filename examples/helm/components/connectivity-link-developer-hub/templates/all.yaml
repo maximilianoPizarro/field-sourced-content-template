@@ -332,6 +332,8 @@ data:
             Authorization: "Basic Z2l0ZWFfYWRtaW46b3BlbnNoaWZ0"
         '/k8s-api':
           target: "https://kubernetes.default.svc"
+          changeOrigin: true
+          secure: false
           allowedMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
           headers:
             Authorization: "Bearer ${token}"

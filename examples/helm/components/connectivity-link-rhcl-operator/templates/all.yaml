@@ -101,6 +101,24 @@ subjects:
   name: openshift-gitops-argocd-application-controller
   namespace: openshift-gitops
 ---
+apiVersion: kuadrant.io/v1beta1
+kind: Kuadrant
+metadata:
+  name: kuadrant
+  namespace: kuadrant-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  observability:
+    enable: true
+  mtls:
+    enable: true
+    authorino: true
+    limitador: true
+  components:
+    developerPortal:
+      enabled: true
+---
 apiVersion: extensions.kuadrant.io/v1alpha1
 kind: OIDCPolicy
 metadata:

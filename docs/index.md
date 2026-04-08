@@ -42,7 +42,30 @@ Tu namespace de trabajo es **`YOUR_USER-neuralbank`**. Todos los servicios que c
 > **Note:** El atributo `YOUR_USER` se rellena automáticamente según tu inicio de sesión en OpenShift.
 
 - **Developer Hub**: `https://backstage-developer-hub-developer-hub.YOUR_CLUSTER_DOMAIN`
-- **Gitea**: `https://gitea.YOUR_CLUSTER_DOMAIN`
+- **Gitea**: `https://gitea-gitea.YOUR_CLUSTER_DOMAIN`
 - **ArgoCD**: `https://openshift-gitops-server-openshift-gitops.YOUR_CLUSTER_DOMAIN`
 - **DevSpaces**: `https://devspaces.YOUR_CLUSTER_DOMAIN`
 - **Terminal Web**: disponible en el panel derecho del showroom (tab "Terminal") para ejecutar comandos `oc`, `curl`, etc.
+
+### Interfaces del entorno
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin:16px 0;">
+  <div class="screenshot-wrapper">
+    <img src="{{ site.baseurl }}/assets/screenshots/05-hub-login.png" alt="Developer Hub Login">
+    <div class="screenshot-caption">Developer Hub — Login OIDC</div>
+  </div>
+  <div class="screenshot-wrapper">
+    <img src="{{ site.baseurl }}/assets/screenshots/02-gitea-dashboard.png" alt="Gitea Dashboard">
+    <div class="screenshot-caption">Gitea — Dashboard</div>
+  </div>
+  <div class="screenshot-wrapper">
+    <img src="{{ site.baseurl }}/assets/screenshots/03-argocd-apps.png" alt="ArgoCD Login">
+    <div class="screenshot-caption">Argo CD — Login</div>
+  </div>
+  <div class="screenshot-wrapper">
+    <img src="{{ site.baseurl }}/assets/screenshots/04-devspaces-login.png" alt="DevSpaces Login">
+    <div class="screenshot-caption">Dev Spaces — Login OpenShift</div>
+  </div>
+</div>
+
+> Hacé click en cualquier imagen para agrandarla.

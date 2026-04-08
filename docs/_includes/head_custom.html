@@ -38,6 +38,61 @@
   .goog-te-banner-frame { display: none !important; }
   body { top: 0 !important; }
   .skiptranslate { display: none !important; }
+
+  /* Lightbox for screenshots */
+  .screenshot-wrapper {
+    cursor: pointer;
+    display: inline-block;
+    transition: transform 0.2s;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 8px 0;
+  }
+  .screenshot-wrapper:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  .screenshot-wrapper img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+  .screenshot-caption {
+    text-align: center;
+    font-size: 0.8rem;
+    color: #666;
+    padding: 4px 8px;
+    background: #f9f9f9;
+  }
+  #lightbox-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 99999;
+    justify-content: center;
+    align-items: center;
+    cursor: zoom-out;
+  }
+  #lightbox-overlay.active { display: flex; }
+  #lightbox-overlay img {
+    max-width: 92vw;
+    max-height: 90vh;
+    border-radius: 8px;
+    box-shadow: 0 0 40px rgba(0,0,0,0.5);
+  }
+  #lightbox-close {
+    position: fixed;
+    top: 16px; right: 24px;
+    color: #fff;
+    font-size: 2rem;
+    cursor: pointer;
+    z-index: 100000;
+    background: none;
+    border: none;
+    line-height: 1;
+  }
 </style>
 
 <div id="lang-bar">
@@ -47,6 +102,7 @@
 </div>
 
 <div id="google_translate_element"></div>
+<div id="lightbox-overlay"><button id="lightbox-close">&times;</button><img id="lightbox-img" src="" alt=""></div>
 
 <script>
 function switchLang(lang) {
@@ -104,6 +160,21 @@ document.addEventListener('DOMContentLoaded', function() {
       p.remove();
     }
   });
+
+  // Lightbox for screenshots
+  var overlay = document.getElementById('lightbox-overlay');
+  var lbImg = document.getElementById('lightbox-img');
+  var lbClose = document.getElementById('lightbox-close');
+  document.querySelectorAll('.screenshot-wrapper img').forEach(function(img) {
+    img.addEventListener('click', function() {
+      lbImg.src = img.src;
+      overlay.classList.add('active');
+    });
+  });
+  if (overlay) {
+    overlay.addEventListener('click', function() { overlay.classList.remove('active'); });
+    lbClose.addEventListener('click', function(e) { e.stopPropagation(); overlay.classList.remove('active'); });
+  }
 
   // Copy buttons on code blocks
   document.querySelectorAll('div.highlighter-rouge, figure.highlight').forEach(function(block) {

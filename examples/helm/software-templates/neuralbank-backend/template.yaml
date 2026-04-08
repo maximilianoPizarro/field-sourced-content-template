@@ -70,15 +70,36 @@ spec:
         catalogInfoPath: /main/catalog-info.yaml
     - id: create-argocd-app
       name: Create ArgoCD Application
-      action: argocd:create-resources
+      action: kubernetes:apply
       input:
-        appName: ${{ parameters.name }}
-        argoInstance: openshift-gitops
-        namespace: "${{ parameters.owner }}-neuralbank"
-        repoUrl: "https://gitea-gitea.${{ parameters.clusterDomain }}/ws-${{ parameters.owner }}/${{ parameters.name }}.git"
-        path: manifests
-        projectName: default
-        labelValue: ${{ parameters.name }}
+        namespaced: true
+        clusterRef: local
+        manifest: |
+          apiVersion: argoproj.io/v1alpha1
+          kind: Application
+          metadata:
+            name: ${{ parameters.name }}
+            namespace: openshift-gitops
+            labels:
+              backstage.io/kubernetes-id: ${{ parameters.name }}
+            finalizers:
+              - resources-finalizer.argocd.argoproj.io
+          spec:
+            project: default
+            source:
+              repoURL: https://gitea-gitea.${{ parameters.clusterDomain }}/ws-${{ parameters.owner }}/${{ parameters.name }}.git
+              targetRevision: main
+              path: manifests
+            destination:
+              server: https://kubernetes.default.svc
+              namespace: ${{ parameters.owner }}-neuralbank
+            syncPolicy:
+              automated:
+                prune: true
+                selfHeal: true
+              syncOptions:
+                - CreateNamespace=true
+                - ServerSideApply=true
     - id: create-webhook
       name: Create Gitea Webhook
       action: roadiehq:utils:http:request

@@ -1,4 +1,4 @@
 clusterDomain: ""
-adminUser: gitea-admin
-adminPassword: "Welcome123!"
+adminUser: gitea_admin
+adminPassword: "openshift"
 adminEmail: "admin@gitea.local"

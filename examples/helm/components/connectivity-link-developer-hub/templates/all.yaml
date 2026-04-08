@@ -231,8 +231,8 @@ data:
       gitea:
         - host: gitea-gitea.{{ .Values.clusterDomain }}
           apiBaseUrl: https://gitea-gitea.{{ .Values.clusterDomain }}/api/v1
-          username: gitea-admin
-          password: "Welcome123!"
+          username: gitea_admin
+          password: "openshift"
     auth:
       environment: production
       session:

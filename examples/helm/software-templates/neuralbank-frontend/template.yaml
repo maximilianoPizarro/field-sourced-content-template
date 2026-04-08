@@ -66,7 +66,7 @@ spec:
       action: catalog:register
       input:
         repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
-        catalogInfoPath: /catalog-info.yaml
+        catalogInfoPath: /main/catalog-info.yaml
     - id: create-argocd-app
       name: Create ArgoCD Application
       action: http:backstage:request

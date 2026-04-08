@@ -317,7 +317,7 @@ data:
               name: 'local'
               authProvider: 'serviceAccount'
               serviceAccountToken: ${token}
-              skipTLSVerify: false
+              skipTLSVerify: true
               skipMetricsLookup: false
       customResources:
         - group: 'tekton.dev'
@@ -623,3 +623,8 @@ spec:
         template:
           spec:
             automountServiceAccountToken: true
+            containers:
+              - name: backstage-backend
+                env:
+                  - name: NODE_TLS_REJECT_UNAUTHORIZED
+                    value: "0"

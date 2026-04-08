@@ -67,16 +67,27 @@ spec:
                 cat /tmp/org_resp >&2 || true
                 exit 1
               fi
-              echo "Creating 30 users..."
+              echo "Creating 30 users and orgs..."
               for i in $(seq 1 30); do
-                U_JSON=$(printf '{"username":"user%d","password":"Welcome123!","email":"user%d@developer-hub.local","must_change_password":false,"send_notify":false}' "$i" "$i")
+                U="user${i}"
+                ORG="ws-${U}"
+                U_JSON=$(printf '{"username":"%s","password":"Welcome123!","email":"%s@developer-hub.local","must_change_password":false,"send_notify":false}' "$U" "$U")
                 C=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$BASE/api/v1/admin/users" \
                   -u "${ADMIN_USER}:${ADMIN_PASS}" \
                   -H "Content-Type: application/json" \
                   -d "$U_JSON" || true)
-                echo "user$i: $C"
-                curl -sS -o /dev/null -w "" -X PUT "$BASE/api/v1/orgs/developer-hub/members/user$i" \
-                  -u "${ADMIN_USER}:${ADMIN_PASS}" || true
+                O_JSON=$(printf '{"username":"%s","visibility":"public","description":"Workshop repos for %s"}' "$ORG" "$U")
+                O=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$BASE/api/v1/orgs" \
+                  -u "${ADMIN_USER}:${ADMIN_PASS}" \
+                  -H "Content-Type: application/json" \
+                  -d "$O_JSON" || true)
+                TID=$(curl -sS -u "${ADMIN_USER}:${ADMIN_PASS}" "$BASE/api/v1/orgs/${ORG}/teams" 2>/dev/null \
+                  | sed -n 's/.*"id":\([0-9]*\).*"name":"Owners".*/\1/p')
+                if [ -n "$TID" ]; then
+                  curl -sS -o /dev/null -X PUT "$BASE/api/v1/teams/${TID}/members/${U}" \
+                    -u "${ADMIN_USER}:${ADMIN_PASS}" || true
+                fi
+                echo "${U}: user=${C} org=${O}"
               done
-              echo "All users created."
+              echo "All users and orgs created."
   backoffLimit: 3

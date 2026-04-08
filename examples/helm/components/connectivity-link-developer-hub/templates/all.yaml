@@ -449,8 +449,8 @@ data:
     kuadrant.ratelimitpolicy.list, read, allow\n\n# Catalog permissions for ALL users\np,
     role:default/authenticated, catalog-entity, read, allow\np, role:default/authenticated,
     catalog.location, read, allow\n\n# Scaffolder permissions for ALL users\np, role:default/authenticated,
-    scaffolder-template, read, allow\np, role:default/authenticated, scaffolder.task,
-    read, allow\np, role:default/authenticated, scaffolder.task, create, allow\np,
+    scaffolder-template, read, allow\np, role:default/authenticated, scaffolder.task.read,
+    read, allow\np, role:default/authenticated, scaffolder.task.create, create, allow\np,
     role:default/authenticated, scaffolder.action.execute, use, allow\n\n# Adoption
     Insights permissions for ALL users\np, role:default/authenticated, adoption-insights.events.read,
     read, allow\n\n# ==========================================================\n#
@@ -465,9 +465,9 @@ data:
     catalog.location, create, allow\np, role:default/platformengineer, catalog.location,
     delete, allow\n\np, role:default/platformengineer, catalog.entity.create, create,
     allow\np, role:default/platformengineer, scaffolder-template, read, allow\np,
-    role:default/platformengineer, scaffolder.task, read, allow\np, role:default/platformengineer,
-    scaffolder.task, create, allow\np, role:default/platformengineer, scaffolder.task,
-    delete, allow\np, role:default/platformengineer, scaffolder.action.execute, use,
+    role:default/platformengineer, scaffolder.task.read, read, allow\np, role:default/platformengineer,
+    scaffolder.task.create, create, allow\np, role:default/platformengineer, scaffolder.task.cancel,
+    use, allow\np, role:default/platformengineer, scaffolder.action.execute, use,
     allow\n\np, role:default/platformengineer, permission.policy, read, allow\np,
     role:default/platformengineer, catalog.entity.read, read, allow\n\n# Kuadrant
     api-admin permissions for Platform Engineers (rbac-backend does not support role

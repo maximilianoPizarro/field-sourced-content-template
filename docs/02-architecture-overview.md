@@ -6,57 +6,123 @@ nav_order: 3
 
 Esta página describe la arquitectura lógica del escenario Neuralbank: cómo encajan Red Hat Developer Hub, GitOps, CI/CD, identidad y exposición segura de APIs frente a un clúster OpenShift.
 
-## Vista de componentes (descripción textual)
+## Vista de componentes
 
-Imagina el siguiente flujo de capas:
+```mermaid
+graph LR
+    DEV["👤 Desarrollador"]
+    HUB["🔴 Red Hat<br/>Developer Hub"]
+    GITEA["📦 Gitea"]
+    KC["🔐 Keycloak"]
+    ARGO["🔄 Argo CD"]
+    TEKTON["⚙️ Tekton<br/>Pipelines"]
+    OCP["☸️ OpenShift<br/>Workloads"]
+    GW["🌐 Gateway API<br/>Istio · Kuadrant"]
+    DS["💻 Dev Spaces"]
 
-```text
-[Desarrollador]
-      |
-      v
-Red Hat Developer Hub (Backstage) -- Software Catalog, Templates, plugins
-      |
-      +--> Gitea (Git: código, manifiestos, definiciones de pipeline)
-      |
-      +--> Keycloak (identidad / SSO para Hub y servicios)
-      |
-      v
-Argo CD (OpenShift GitOps) -- sincroniza el estado deseado desde Git al clúster
-      |
-      v
-OpenShift (Kubernetes)
-      |
-      +--> Tekton (Pipelines / PipelineRuns: build, imagen, despliegue)
-      +--> Cargas de trabajo (Deployments, Services, Routes)
-      +--> Gateway API + Istio / Kuadrant (Gateway, HTTPRoute, políticas)
-      +--> Red Hat OpenShift Dev Spaces (IDE en cluster, devfile)
+    DEV --> HUB
+    HUB --> GITEA
+    HUB --> KC
+    HUB --> ARGO
+    GITEA --> ARGO
+    GITEA --> TEKTON
+    ARGO --> OCP
+    TEKTON --> OCP
+    OCP --> GW
+    DEV --> DS
+    DS --> GITEA
+
+    style DEV fill:#151515,color:#fff,stroke:#EE0000
+    style HUB fill:#EE0000,color:#fff,stroke:#151515
+    style GITEA fill:#609926,color:#fff,stroke:#151515
+    style KC fill:#4078c0,color:#fff,stroke:#151515
+    style ARGO fill:#ef7b4d,color:#fff,stroke:#151515
+    style TEKTON fill:#fd495c,color:#fff,stroke:#151515
+    style OCP fill:#EE0000,color:#fff,stroke:#151515
+    style GW fill:#0066CC,color:#fff,stroke:#151515
+    style DS fill:#6a1b9a,color:#fff,stroke:#151515
 ```
-
-Cada bloque tiene un rol claro: el Hub orquesta la experiencia; Git es la fuente de verdad; Argo CD aplica el modelo declarativo; Tekton automatiza la cadena de suministro de software; la capa de gateway y políticas expone y protege el tráfico; Dev Spaces acerca el desarrollo al entorno real del clúster.
 
 ## Flujo principal: de la plantilla al despliegue
 
-El recorrido típico que seguirás en el workshop es:
+```mermaid
+sequenceDiagram
+    actor Dev as Desarrollador
+    participant Hub as Developer Hub
+    participant Git as Gitea
+    participant Argo as Argo CD
+    participant Tek as Tekton
+    participant OCP as OpenShift
 
-1. El desarrollador abre **Developer Hub** y lanza una **Software Template** (por ejemplo Neuralbank Backend).
-2. La plantilla **genera o publica** un repositorio en **Gitea** con código, manifiestos, `devfile` y definición de pipeline.
-3. **Argo CD** detecta la aplicación (Application) asociada y **sincroniza** manifiestos hacia el namespace de OpenShift.
-4. **Tekton** ejecuta un **PipelineRun** (clonado, build Maven, build de imagen, despliegue) según los recursos creados en el repo.
-5. OpenShift **programa los pods**, expone **Services** y, según el caso, recursos de **Gateway API** y rutas HTTP.
-6. El componente queda **registrado en el catálogo** de Developer Hub para descubrimiento, documentación y relaciones (por ejemplo APIs).
+    Dev->>Hub: 1. Ejecuta Software Template
+    Hub->>Git: 2. Crea repo con código + manifiestos
+    Hub->>Hub: 3. Registra componente en catálogo
+    Git-->>Argo: 4. Detecta nueva Application
+    Argo->>OCP: 5. Sincroniza manifiestos
+    Git-->>Tek: 6. Dispara PipelineRun
+    Tek->>Tek: 7. git-clone → maven → build image
+    Tek->>OCP: 8. Deploy a namespace
+    OCP-->>Dev: 9. Servicio accesible vía Route
+```
 
 Este patrón une **golden path** (plantilla) con **GitOps** (Argo CD) y **CI/CD** (Tekton), manteniendo trazabilidad desde el primer clic en el Hub hasta el pod en ejecución.
 
+## Namespace por usuario
+
+Cada usuario recibe su propio namespace basado en su username:
+
+```mermaid
+graph TB
+    subgraph "user1-neuralbank"
+        B1["neuralbank-backend"]
+        F1["neuralbank-frontend"]
+        M1["customer-service-mcp"]
+        G1["Gateway + HTTPRoute"]
+        P1["OIDCPolicy + RateLimitPolicy"]
+        B1 --- F1
+        M1 --> B1
+        G1 --> M1
+        P1 --> G1
+    end
+
+    subgraph "user2-neuralbank"
+        B2["neuralbank-backend"]
+        F2["neuralbank-frontend"]
+        M2["customer-service-mcp"]
+    end
+
+    style B1 fill:#EE0000,color:#fff
+    style F1 fill:#0066CC,color:#fff
+    style M1 fill:#6a1b9a,color:#fff
+    style G1 fill:#151515,color:#fff
+    style P1 fill:#151515,color:#fff
+    style B2 fill:#EE0000,color:#fff
+    style F2 fill:#0066CC,color:#fff
+    style M2 fill:#6a1b9a,color:#fff
+```
+
 ## Patrón Connectivity Link (Gateway + rutas + políticas)
 
-Para exponer servicios hacia el exterior o entre equipos con controles uniformes, el escenario utiliza un patrón alineado con **Gateway API** e integración con **Istio** y **Kuadrant** para políticas:
+```mermaid
+graph LR
+    CLIENT["🌍 Cliente"] --> GW["Gateway<br/>Listener :8080"]
+    GW --> HR["HTTPRoute<br/>Reglas de enrutamiento"]
+    HR --> SVC["Service<br/>MCP / Backend"]
+    GW --> OIDC["OIDCPolicy<br/>Keycloak auth"]
+    GW --> RL["RateLimitPolicy<br/>Límites de tasa"]
 
-- **Gateway**: define el punto de entrada del tráfico (host, listeners, TLS según configuración).
+    style CLIENT fill:#151515,color:#fff
+    style GW fill:#0066CC,color:#fff
+    style HR fill:#0066CC,color:#fff
+    style SVC fill:#EE0000,color:#fff
+    style OIDC fill:#4078c0,color:#fff
+    style RL fill:#ef7b4d,color:#fff
+```
+
+- **Gateway**: punto de entrada del tráfico (host, listeners, TLS).
 - **HTTPRoute**: enlaza hostnames y reglas de enrutamiento con los Services backend.
-- **OIDCPolicy**: exige autenticación OIDC coherente con tu IdP (p. ej. Keycloak), protegiendo el tráfico de la API expuesta.
-- **RateLimitPolicy**: aplica límites de tasa para proteger backends y cumplir políticas de uso justo o defensa ante abuso.
-
-En conjunto, estas piezas forman un **connectivity link** declarativo: el mismo enfoque GitOps que el resto del sistema, revisable en Git y aplicado por operadores en el clúster.
+- **OIDCPolicy**: autenticación OIDC con Keycloak.
+- **RateLimitPolicy**: límites de tasa para proteger backends.
 
 ## Rol de cada componente
 
@@ -64,7 +130,7 @@ En conjunto, estas piezas forman un **connectivity link** declarativo: el mismo 
 | --- | --- |
 | Developer Hub | Portal del desarrollador: catálogo, plantillas, documentación y plugins hacia GitOps, pipelines y entornos. |
 | Gitea | Repositorio Git interno: código fuente, manifiestos y triggers para pipelines. |
-| Argo CD | Sincronización continua desde Git al estado del clúster; salud y drift visibles en el dashboard de Argo CD. |
+| Argo CD | Sincronización continua desde Git al estado del clúster; salud y drift visibles en el dashboard. |
 | Tekton | Ejecución de pipelines como recursos de Kubernetes; encadena tareas de CI/CD. |
 | Keycloak | Identidad y SSO; alimenta políticas OIDC y acceso al Hub. |
 | Dev Spaces | Entornos de desarrollo basados en `devfile`, conectados al mismo repo que GitOps y Tekton. |
@@ -72,6 +138,6 @@ En conjunto, estas piezas forman un **connectivity link** declarativo: el mismo 
 
 ## Lectura para el workshop
 
-Durante los módulos posteriores volverás a este mapa mental: cada vez que crees una plantilla, mira el repo en Gitea; cada vez que sincronice Argo CD, revisa el namespace en OpenShift; cuando el pipeline termine, valida imagen y despliegue; cuando expongas el MCP o APIs, relaciona Gateway, HTTPRoute y políticas con lo que ves en consola y en el catálogo.
+Durante los módulos posteriores volverás a este mapa mental: cada vez que crees una plantilla, mira el repo en Gitea; cada vez que sincronice Argo CD, revisa el namespace `<user_name>-neuralbank` en OpenShift; cuando el pipeline termine, valida imagen y despliegue; cuando expongas el MCP o APIs, relaciona Gateway, HTTPRoute y políticas con lo que ves en consola y en el catálogo.
 
 Con esta arquitectura, **Developer Hub** actúa como fachada humana sobre un sistema declarativo y automatizado que lleva el software desde el repositorio hasta producción de forma repetible.

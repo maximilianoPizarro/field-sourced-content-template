@@ -1,3 +1,101 @@
-// Red Hat / OpenShift Commons theme
+// Red Hat / OpenShift Commons color scheme
+
+// Primary colors
 $link-color: #EE0000;
 $btn-primary-color: #EE0000;
+$body-heading-color: #151515;
+$sidebar-color: #1a1a1a;
+
+// Wider content area
+$content-width: 1100px;
+$nav-width: 264px;
+
+// Code block styling
+$code-background-color: #1e1e1e;
+$feedback-color: darken($link-color, 3%);
+
+// Override the "Built with Just the Docs" footer
+.site-footer {
+  border-top: 2px solid #EE0000;
+  padding-top: 1rem;
+
+  .site-footer-custom-content {
+    font-size: 0.85rem !important;
+  }
+}
+
+// Hide the default "Built with..." text
+.site-footer > p:last-child {
+  display: none !important;
+}
+
+// Navigation active item
+.nav-list .nav-list-item .nav-list-link.active {
+  border-left-color: #EE0000;
+}
+
+// Code copy button
+.copy-code-button {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  background: #3c3c3c;
+  color: #ccc;
+  border: 1px solid #555;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 2;
+
+  &:hover {
+    background: #EE0000;
+    color: #fff;
+    border-color: #EE0000;
+  }
+}
+
+div.highlighter-rouge,
+figure.highlight {
+  position: relative;
+
+  &:hover .copy-code-button {
+    opacity: 1;
+  }
+}
+
+// Mermaid diagram styling
+.language-mermaid {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+pre.mermaid {
+  background: transparent !important;
+  text-align: center;
+}
+
+// Red Hat header logo
+.site-logo {
+  max-height: 36px;
+}
+
+// Table styling
+th {
+  background-color: #151515;
+  color: #fff;
+}
+
+// Blockquote styling (notes/warnings)
+blockquote {
+  border-left: 4px solid #0066CC;
+  background: #f0f5ff;
+  padding: 0.75rem 1rem;
+
+  strong:first-child {
+    color: #0066CC;
+  }
+}

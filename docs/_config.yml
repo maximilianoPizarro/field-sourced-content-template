@@ -1,15 +1,24 @@
 title: "Red Hat Developer Hub: De Cero a Producción"
-description: "Workshop de Developer Hub para Neuralbank"
+description: "Workshop de Developer Hub para Neuralbank — OpenShift Commons"
 baseurl: "/field-sourced-content-template"
 url: "https://maximilianopizarro.github.io"
 remote_theme: just-the-docs/just-the-docs@v0.10.0
 color_scheme: custom
 logo: "https://commons.openshift.org/images/RH_OpenShift_Commons_Logo.svg"
+
 aux_links:
   "OpenShift Commons":
     - "https://commons.openshift.org"
   "GitHub":
     - "https://github.com/maximilianoPizarro/field-sourced-content-template"
-footer_content: 'Created by <a href="https://github.com/maximilianoPizarro">maximilianoPizarro</a> — Presented at <a href="https://commons.openshift.org">OpenShift Commons</a> — Powered by Red Hat Developer Hub'
+aux_links_new_tab: true
+
+footer_content: '<a href="https://commons.openshift.org"><img src="https://commons.openshift.org/images/RH_OpenShift_Commons_Logo.svg" alt="OpenShift Commons" style="height:24px;vertical-align:middle;margin-right:8px;filter:brightness(10);"></a> Created by <a href="https://github.com/maximilianoPizarro">maximilianoPizarro</a> — Powered by <a href="https://commons.openshift.org">OpenShift Commons</a> &amp; <a href="https://developers.redhat.com/rhdh">Red Hat Developer Hub</a>'
+
+mermaid:
+  version: "10.9.0"
+
+enable_copy_code_button: true
+
 plugins:
   - jekyll-remote-theme

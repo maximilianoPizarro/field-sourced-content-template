@@ -1,0 +1,21 @@
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('div.highlighter-rouge, figure.highlight').forEach(function(block) {
+    if (block.querySelector('.copy-code-button')) return;
+    var btn = document.createElement('button');
+    btn.className = 'copy-code-button';
+    btn.textContent = 'Copy';
+    btn.addEventListener('click', function() {
+      var code = block.querySelector('code');
+      if (!code) return;
+      var text = code.innerText;
+      navigator.clipboard.writeText(text).then(function() {
+        btn.textContent = 'Copied!';
+        setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+      });
+    });
+    block.style.position = 'relative';
+    block.appendChild(btn);
+  });
+});
+</script>

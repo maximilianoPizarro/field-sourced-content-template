@@ -23,6 +23,18 @@ Aquí verás la definición del **Pipeline** y los **PipelineRuns** recientes ge
 
 ## Revisar las tareas del pipeline
 
+```mermaid
+graph LR
+    GC["git-clone<br/>📥 Clonar repo"] --> MB["maven-build<br/>🔨 Compilar"]
+    MB --> BI["build-image<br/>🐳 Buildah"]
+    BI --> DP["deploy<br/>🚀 Rollout"]
+
+    style GC fill:#0066CC,color:#fff
+    style MB fill:#EE0000,color:#fff
+    style BI fill:#6a1b9a,color:#fff
+    style DP fill:#609926,color:#fff
+```
+
 Abre el **PipelineRun** y examina la lista de **Tasks** en orden. Un flujo típico del taller incluye:
 
 | Tarea | Qué observar |

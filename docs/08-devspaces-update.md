@@ -6,6 +6,19 @@ nav_order: 9
 
 Este módulo muestra el ciclo **editar en IDE web → commit en Gitea → pipeline Tekton → nuevo despliegue**, usando **Red Hat OpenShift Dev Spaces** y el componente **neuralbank-backend** que creaste con plantillas.
 
+```mermaid
+graph LR
+    DS["💻 Dev Spaces<br/>Editar código"] -->|"git push"| GIT["📦 Gitea"]
+    GIT -->|"webhook"| TEK["⚙️ Tekton<br/>Pipeline"]
+    TEK -->|"build + deploy"| OCP["☸️ OpenShift<br/>Nueva versión"]
+    OCP -->|"verificar"| DS
+
+    style DS fill:#6a1b9a,color:#fff
+    style GIT fill:#609926,color:#fff
+    style TEK fill:#fd495c,color:#fff
+    style OCP fill:#EE0000,color:#fff
+```
+
 ## Abrir el componente en Developer Hub
 
 1. Inicia sesión en **Developer Hub**.

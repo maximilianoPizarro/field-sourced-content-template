@@ -59,6 +59,26 @@ Para el caso Neuralbank trabajarás con tres plantillas pensadas para encajar en
 
 Cada una implementa un **golden path** distinto pero coherente con el mismo dominio de negocio.
 
+## Flujo de scaffolding
+
+```mermaid
+graph LR
+    DEV["👤 Desarrollador"] -->|"Rellena formulario"| TPL["📋 Software Template"]
+    TPL -->|"fetch:template"| SKEL["📁 Skeleton<br/>código + manifests"]
+    SKEL -->|"publish:gitea"| REPO["📦 Repo en Gitea"]
+    REPO -->|"catalog:register"| CAT["📒 Catálogo<br/>Developer Hub"]
+    REPO -->|"triggers"| PIPE["⚙️ Tekton Pipeline"]
+    REPO -->|"sync"| ARGO["🔄 Argo CD"]
+
+    style DEV fill:#151515,color:#fff,stroke:#EE0000
+    style TPL fill:#EE0000,color:#fff
+    style SKEL fill:#609926,color:#fff
+    style REPO fill:#609926,color:#fff
+    style CAT fill:#0066CC,color:#fff
+    style PIPE fill:#fd495c,color:#fff
+    style ARGO fill:#ef7b4d,color:#fff
+```
+
 ## ¿Qué genera cada plantilla?
 
 En líneas generales, al ejecutar una plantilla Neuralbank obtendrás:

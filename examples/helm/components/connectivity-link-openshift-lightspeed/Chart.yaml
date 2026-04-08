@@ -1,13 +1,5 @@
 apiVersion: v2
 name: connectivity-link-openshift-lightspeed
-description: OpenShift Lightspeed with MCP servers and n8n workflow automation
+description: OpenShift Lightspeed OLSConfig and LLM credentials
 version: 0.1.0
 type: application
-
-dependencies:
-  - name: n8n
-    version: "1.16.0"
-    repository: "https://charts.openshift.io"
-  - name: openshift-mcp-server
-    version: "0.1.0-alpha"
-    repository: "https://maximilianopizarro.github.io/openshift-mcp-server"

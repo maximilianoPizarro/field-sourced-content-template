@@ -160,6 +160,36 @@ The cluster domain is injected by RHDP via `deployer.domain`. For manual deploym
 git add -A && git commit -m "update cluster domain" && git push
 ```
 
+### Manual Credentials (not stored in Git)
+
+After deploying to a new cluster, the following secrets must be updated **manually** via `oc` commands. These credentials are intentionally excluded from Git to avoid exposing sensitive data.
+
+#### LiteLLM Virtual Key
+
+The LiteLLM Virtual Key authenticates clients (OLS, LiteMaaS backend) against the LiteLLM proxy. Obtain it from the LiteLLM admin UI or API, then update:
+
+```bash
+# 1. OLS → LiteLLM (OpenShift Lightspeed uses this to call the LLM)
+oc create secret generic llm-credentials \
+  --from-literal=apitoken='<LITELLM_VIRTUAL_KEY>' \
+  -n openshift-lightspeed \
+  --dry-run=client -o yaml | oc apply -f -
+
+# 2. LiteMaaS backend → LiteLLM
+oc patch secret backend-secret -n litemaas \
+  --type merge -p '{"stringData":{"litellm-api-key":"<LITELLM_VIRTUAL_KEY>"}}'
+
+# 3. Restart affected pods to pick up the new key
+oc rollout restart deployment/lightspeed-app-server -n openshift-lightspeed
+```
+
+| Secret | Namespace | Key | Used by |
+|--------|-----------|-----|---------|
+| `llm-credentials` | `openshift-lightspeed` | `apitoken` | OLS (Lightspeed) → LiteLLM |
+| `backend-secret` | `litemaas` | `litellm-api-key` | LiteMaaS backend → LiteLLM |
+
+> **Note**: The `litellm-secret` in `litemaas` (master-key, ui-password) and `postgres-secret` (db password) ship with default values in Git. Change them in production clusters via the same `oc patch secret` approach.
+
 ## How It Works
 
 ```

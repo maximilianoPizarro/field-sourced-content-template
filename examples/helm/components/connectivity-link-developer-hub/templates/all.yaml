@@ -256,8 +256,6 @@ data:
             options:
               token: ${BACKEND_SECRET}
               subject: admin-curl-access
-        keys:
-          - secret: "${BACKEND_SECRET}"
       baseUrl: "${RHDH_BASE_URL}"
       cors:
         origin: "${RHDH_BASE_URL}"

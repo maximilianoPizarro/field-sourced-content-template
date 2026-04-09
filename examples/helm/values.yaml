@@ -220,6 +220,14 @@ connectivityLink:
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
+    - id: connectivity-link-oauth-users
+      enabled: true
+      path: connectivity-link-oauth-users
+      destinationNamespace: openshift-config
+      syncWave: "2"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
     - id: workshop-registration
       enabled: true
       path: connectivity-link-workshop-registration

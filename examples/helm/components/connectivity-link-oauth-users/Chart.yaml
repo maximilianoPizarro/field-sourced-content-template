@@ -1,0 +1,6 @@
+apiVersion: v2
+name: connectivity-link-oauth-users
+description: HTPasswd identity provider for workshop users (user1..userN) on OpenShift cluster OAuth
+type: application
+version: 1.0.0
+appVersion: "1.0"

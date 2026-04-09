@@ -136,6 +136,10 @@ spec:
     helm:
       valuesObject:
         clusterDomain: {{ $domain }}
+    {{- else if eq .path "connectivity-link-oauth-users" }}
+    helm:
+      valuesObject:
+        userCount: {{ $.Values.userCount | default 200 }}
     {{- else if eq .path "connectivity-link-applicationsets" }}
     helm:
       valuesObject:

@@ -136,31 +136,32 @@ spec:
   - port: 5432
     targetPort: 5432
 ---
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
+apiVersion: route.openshift.io/v1
+kind: Route
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
-    kuadrant.io/namespace: kuadrant-system
-  name: nfl-wallet-gateway
+  name: nfl-wallet-route
   namespace: nfl-wallet-prod
+  labels:
+    backstage.io/kubernetes-id: nfl-wallet
 spec:
-  gatewayClassName: istio
-  listeners:
-  - name: http
-    hostname: nfl-wallet.{{ .Values.clusterDomain }}
-    port: 80
-    protocol: HTTP
-    allowedRoutes:
-      namespaces:
-        from: Same
+  host: nfl-wallet.{{ .Values.clusterDomain }}
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+  to:
+    kind: Service
+    name: nfl-wallet-api
+    weight: 100
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
-  name: nfl-wallet-route
+  name: nfl-wallet-api-route
   namespace: nfl-wallet-prod
   labels:
     backstage.io/kubernetes-id: nfl-wallet
@@ -204,7 +205,7 @@ spec:
   targetRef:
     group: gateway.networking.k8s.io
     kind: HTTPRoute
-    name: nfl-wallet-route
+    name: nfl-wallet-api-route
   defaults:
     rules:
       authentication:
@@ -242,7 +243,7 @@ spec:
   targetRef:
     group: gateway.networking.k8s.io
     kind: HTTPRoute
-    name: nfl-wallet-route
+    name: nfl-wallet-api-route
   limits:
     api-global:
       rates:
@@ -278,23 +279,3 @@ metadata:
 type: Opaque
 stringData:
   api_key: nfl-wallet-readonly-key-2024
----
-apiVersion: route.openshift.io/v1
-kind: Route
-metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
-  name: nfl-wallet-route
-  namespace: nfl-wallet-prod
-  labels:
-    backstage.io/kubernetes-id: nfl-wallet
-spec:
-  host: nfl-wallet.{{ .Values.clusterDomain }}
-  port:
-    targetPort: 8080
-  tls:
-    termination: edge
-  to:
-    kind: Service
-    name: nfl-wallet-api
-    weight: 100

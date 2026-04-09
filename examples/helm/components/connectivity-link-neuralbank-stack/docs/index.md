@@ -1,101 +1,90 @@
-# neuralbank-stack Helm Chart
+# Neuralbank Stack
 
-A Helm chart to deploy the NeuralBank stack: PostgreSQL (configured via globals), backend, frontend and an NGINX proxy/gateway.
+Plataforma financiera de demostración pre-desplegada en el clúster OpenShift. Incluye backend Quarkus, frontend SPA y base de datos PostgreSQL, protegidos con **Connectivity Link** (OIDCPolicy + RateLimitPolicy).
 
-## Contents
-- backend: API service (configurable image, port, replicas)
-- frontend: static/web app (configurable image, port, replicas)
-- proxy: nginx gateway (LoadBalancer/NodePort)
-- global.postgresql: external or chart-provided PostgreSQL credentials
+## Acceso rápido
 
-## Requirements
-- Kubernetes cluster (v1.20+ recommended)
-- Helm 3+
-- A PostgreSQL instance or a PostgreSQL chart that sets:
-  - global.postgresql.auth.postgresPassword
-  - global.postgresql.auth.username
-  - global.postgresql.auth.password
-  - global.postgresql.auth.database
+| Recurso | URL |
+|---------|-----|
+| **Frontend** | [neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io](https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io) |
+| **Swagger UI** | [neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/q/swagger-ui](https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/q/swagger-ui) |
+| **API Base** | `https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers` |
+| **Grafana** | [grafana-observability.apps.cluster-l9nhj.dynamic.redhatworkshops.io](https://grafana-observability.apps.cluster-l9nhj.dynamic.redhatworkshops.io) |
 
-If you prefer an external DB, set those globals to point to your DB credentials.
+## Credenciales
 
-## Values (high level)
-Key values from values.yaml:
+### Keycloak (acceso al frontend y API)
 
-- global.postgresql.auth
-  - postgresPassword, username, password, database
-- backend
-  - image.repository
-  - image.tag
-  - image.pullPolicy
-  - service.port (default 8080)
-  - replicaCount
-- frontend
-  - image.repository
-  - image.tag
-  - image.pullPolicy
-  - service.port (default 80)
-  - replicaCount
-- proxy
-  - image.repository
-  - image.tag
-  - service.type (LoadBalancer | NodePort)
-  - service.port (default 80)
+| Campo | Valor |
+|-------|-------|
+| **Realm** | `neuralbank` |
+| **Client ID** | `neuralbank-frontend` |
+| **URL del realm** | `https://rhbk.apps.cluster-l9nhj.dynamic.redhatworkshops.io/realms/neuralbank` |
+| **Usuarios** | `user1` … `user200` |
+| **Contraseña** | `Welcome123!` |
 
-See values.yaml for the full defaults and comments.
+### Base de datos PostgreSQL
 
-## Installation
+| Campo | Valor |
+|-------|-------|
+| **Host** | `neuralbank-db.neuralbank-stack.svc.cluster.local` |
+| **Puerto** | `5432` |
+| **Base de datos** | `postgres` |
+| **Usuario** | `postgres` |
+| **Contraseña** | `supersecretpassword` |
 
-1. From the chart directory:
+### Grafana
+
+| Campo | Valor |
+|-------|-------|
+| **Usuario** | `admin` |
+| **Contraseña** | `openshift` |
+
+## Componentes
+
+| Componente | Imagen | Puerto |
+|------------|--------|--------|
+| **neuralbank-backend** | `quay.io/maximilianopizarro/neuralbank-backend:latest` | 8080 |
+| **neuralbank-frontend** | `quay.io/maximilianopizarro/neuralbank-front:pkce` | 8080 |
+| **neuralbank-db** | `registry.redhat.io/rhel9/postgresql-15:latest` | 5432 |
+
+## Namespace
+
+Todos los componentes se despliegan en el namespace **`neuralbank-stack`**.
+
+## Uso rápido con curl
+
 ```bash
-helm install neuralbank . \
-  --namespace neuralbank \
-  --create-namespace \
-  -f values.yaml
+# Obtener token de Keycloak
+TOKEN=$(curl -s -X POST \
+  "https://rhbk.apps.cluster-l9nhj.dynamic.redhatworkshops.io/realms/neuralbank/protocol/openid-connect/token" \
+  -d "grant_type=password" \
+  -d "client_id=neuralbank-frontend" \
+  -d "username=user1" \
+  -d "password=Welcome123!" | python3 -c "import json,sys; print(json.load(sys.stdin)['access_token'])")
+
+# Listar clientes
+curl -s -H "Authorization: Bearer $TOKEN" \
+  https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers | python3 -m json.tool
+
+# Obtener cliente por ID
+curl -s -H "Authorization: Bearer $TOKEN" \
+  https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers/1 | python3 -m json.tool
+
+# Resumen del cliente
+curl -s -H "Authorization: Bearer $TOKEN" \
+  https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers/1/summary | python3 -m json.tool
 ```
 
-2. To use a custom values file:
-```bash
-helm install neuralbank . -f my-values.yaml --namespace neuralbank --create-namespace
-```
+## Connectivity Link
 
-If using an existing PostgreSQL, ensure you set the globals in your values file:
-```yaml
-global:
-  postgresql:
-    auth:
-      postgresPassword: "supersecretpassword"
-      username: "neuralbank"
-      password: "neuralbank123!"
-      database: "neuralbank"
-```
+Neuralbank utiliza el stack completo de Red Hat Connectivity Link:
 
-## Upgrading
-```bash
-helm upgrade neuralbank . -f values.yaml --namespace neuralbank
-```
+| Recurso | Nombre | Función |
+|---------|--------|---------|
+| **Gateway** (Istio) | `neuralbank-gateway` | Punto de entrada HTTP/HTTPS |
+| **HTTPRoute** | `neuralbank-api-route` | Enruta `/api` y `/q` al backend |
+| **OIDCPolicy** | `neuralbank-oidc` | Autenticación OIDC con Keycloak |
+| **RateLimitPolicy** | `neuralbank-customers-ratelimit` | 10 req/min por usuario en `/api/customers` |
 
-## Uninstall
-```bash
-helm uninstall neuralbank --namespace neuralbank
-kubectl delete namespace neuralbank
-```
-
-## Accessing services
-- Backend container port: 8080 (service listens on values.backend.service.port)
-- Frontend container port: 80
-- Proxy: default LoadBalancer on port 80 (or NodePort when configured)
-
-Run:
-```bash
-kubectl get svc -n neuralbank
-kubectl get pods -n neuralbank
-```
-
-## Notes
-- Images default to quay.io/... with tag "latest". Set explicit tags in values.yaml for reproducible deployments.
-- No persistent volumes are defined by default in values.yaml. Add persistence settings if required.
-- For local testing without a LoadBalancer, switch proxy.service.type to NodePort.
-
-## Maintainers
-- Repository owner: Maximiliano Pizarro
+Ver secciones de [Arquitectura](architecture.md) y [Autenticación OIDC](oidc-auth.md) para más detalles.

@@ -18,13 +18,13 @@ kind: Component
 metadata:
   name: neuralbank-stack
   namespace: default
-  description: "Neuralbank Stack — aplicación full-stack pre-desplegada (backend + frontend + database)"
+  description: "Neuralbank Stack — aplicación full-stack pre-desplegada (backend + frontend + database) con OIDC y Rate Limiting"
   annotations:
     backstage.io/kubernetes-id: neuralbank-stack
     backstage.io/kubernetes-namespace: neuralbank-stack
     argocd/app-name: field-content-connectivity-link-neuralbank-stack
     argocd/app-namespace: openshift-gitops
-    backstage.io/view-url: https://neuralbank-frontend-svc-neuralbank-stack.{{ clusterDomain }}
+    backstage.io/view-url: https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io
     backstage.io/techdocs-ref: dir:.
   tags:
     - neuralbank
@@ -32,13 +32,21 @@ metadata:
     - helm
     - postgresql
     - quarkus
+    - oidc
+    - keycloak
   links:
-    - url: https://neuralbank-frontend-svc-neuralbank-stack.{{ clusterDomain }}
+    - url: https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io
       title: Frontend
       icon: web
-    - url: https://neuralbank-backend-svc-neuralbank-stack.{{ clusterDomain }}/api/customers
-      title: Backend API
+    - url: https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/q/swagger-ui
+      title: Swagger UI
       icon: api
+    - url: https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers
+      title: API Endpoint
+      icon: api
+    - url: https://grafana-observability.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+      title: Grafana Dashboards
+      icon: dashboard
 spec:
   type: service
   lifecycle: production
@@ -141,37 +149,217 @@ spec:
   owner: platform-engineering
   system: neuralbank-system
   definition: |
-    openapi: "3.0.0"
+    openapi: "3.0.3"
     info:
-      title: Neuralbank API
-      description: API REST para gestión de créditos y clientes de Neuralbank
+      title: Neuralbank Customer Service API
+      description: |
+        API REST de gestión de clientes para Neuralbank.
+        Protegida por Kuadrant OIDCPolicy con autenticación OIDC (Keycloak).
+        Incluye RateLimitPolicy de 10 req/min por usuario.
+
+        **Autenticación:** Bearer token JWT (Keycloak realm neuralbank)
+        **Usuarios:** user1…user200 / Welcome123!
       version: "1.0.0"
+      contact:
+        name: Platform Engineering
+        email: platform@neuralbank.dev
     servers:
-      - url: /api
+      - url: https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+        description: Producción (neuralbank-stack)
+    security:
+      - bearerAuth: []
+    tags:
+      - name: Customer Service
+        description: Operaciones CRUD de clientes
+      - name: Credit Scoring
+        description: Gestión de score crediticio
+      - name: Customer Status
+        description: Activación, desactivación y bloqueo
     paths:
-      /api/customers:
+      /api/v1/customers:
         get:
-          summary: Listar clientes
-          description: Retorna la lista completa de clientes registrados
-          responses:
-            '200':
-              description: Lista de clientes
-      /api/credits:
-        get:
-          summary: Listar créditos
-          description: Retorna todos los créditos activos
-          responses:
-            '200':
-              description: Lista de créditos
-      /api/credits/{id}/update:
-        put:
-          summary: Actualizar estado de crédito
+          summary: Listar clientes con filtros
+          tags: [Customer Service]
           parameters:
-            - name: id
+            - name: search
+              in: query
+              schema:
+                type: string
+            - name: tipoCliente
+              in: query
+              schema:
+                type: string
+                enum: [PERSONAL, EMPRESARIAL, CORPORATIVO]
+            - name: activo
+              in: query
+              schema:
+                type: boolean
+            - name: ciudad
+              in: query
+              schema:
+                type: string
+            - name: page
+              in: query
+              schema:
+                type: integer
+                default: 0
+            - name: size
+              in: query
+              schema:
+                type: integer
+                default: 20
+          responses:
+            '200':
+              description: Lista paginada de clientes
+            '302':
+              description: Redirect a Keycloak (sin token)
+        post:
+          summary: Crear nuevo cliente
+          tags: [Customer Service]
+          requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/CreateCustomerRequest'
+          responses:
+            '201':
+              description: Cliente creado exitosamente
+            '400':
+              description: Datos inválidos
+            '409':
+              description: Cliente duplicado
+      /api/v1/customers/{customerId}:
+        get:
+          summary: Obtener cliente por ID
+          tags: [Customer Service]
+          parameters:
+            - name: customerId
               in: path
               required: true
               schema:
                 type: integer
+                format: int64
           responses:
             '200':
-              description: Crédito actualizado
+              description: Cliente encontrado
+            '404':
+              description: Cliente no encontrado
+        put:
+          summary: Actualizar cliente
+          tags: [Customer Service]
+          parameters:
+            - name: customerId
+              in: path
+              required: true
+              schema:
+                type: integer
+                format: int64
+          responses:
+            '200':
+              description: Cliente actualizado
+            '404':
+              description: Cliente no encontrado
+        delete:
+          summary: Eliminar cliente (soft delete)
+          tags: [Customer Service]
+          parameters:
+            - name: customerId
+              in: path
+              required: true
+              schema:
+                type: integer
+                format: int64
+          responses:
+            '204':
+              description: Cliente eliminado
+      /api/v1/customers/{customerId}/credit-score:
+        get:
+          summary: Obtener score crediticio
+          tags: [Credit Scoring]
+          parameters:
+            - name: customerId
+              in: path
+              required: true
+              schema:
+                type: integer
+                format: int64
+          responses:
+            '200':
+              description: Score obtenido
+      /api/v1/customers/{customerId}/summary:
+        get:
+          summary: Resumen completo del cliente
+          tags: [Customer Service]
+          parameters:
+            - name: customerId
+              in: path
+              required: true
+              schema:
+                type: integer
+                format: int64
+          responses:
+            '200':
+              description: Resumen obtenido
+      /api/v1/customers/{customerId}/activate:
+        post:
+          summary: Activar cliente
+          tags: [Customer Status]
+          parameters:
+            - name: customerId
+              in: path
+              required: true
+              schema:
+                type: integer
+                format: int64
+          responses:
+            '204':
+              description: Cliente activado
+      /api/v1/customers/{customerId}/block:
+        post:
+          summary: Bloquear cliente
+          tags: [Customer Status]
+          parameters:
+            - name: customerId
+              in: path
+              required: true
+              schema:
+                type: integer
+                format: int64
+          responses:
+            '204':
+              description: Cliente bloqueado
+    components:
+      securitySchemes:
+        bearerAuth:
+          type: http
+          scheme: bearer
+          bearerFormat: JWT
+          description: |
+            JWT token de Keycloak (realm neuralbank).
+            Obtener via: POST /realms/neuralbank/protocol/openid-connect/token
+      schemas:
+        CreateCustomerRequest:
+          type: object
+          required: [identificacion, tipoIdentificacion, nombre, apellido]
+          properties:
+            identificacion:
+              type: string
+            tipoIdentificacion:
+              type: string
+              enum: [DNI, PASSPORT, SSN, RFC, CURP, CPF, CUIT, RUT, RUN, NINO, CIF, EIN, TAX_ID]
+            nombre:
+              type: string
+            apellido:
+              type: string
+            email:
+              type: string
+            telefono:
+              type: string
+            direccion:
+              type: string
+            ciudad:
+              type: string
+            tipoCliente:
+              type: string
+              enum: [PERSONAL, EMPRESARIAL, CORPORATIVO]

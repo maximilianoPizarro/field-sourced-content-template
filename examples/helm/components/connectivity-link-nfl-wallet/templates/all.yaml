@@ -156,105 +156,11 @@ spec:
     name: nfl-wallet-api
     weight: 100
 ---
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
-  name: nfl-wallet-api-route
-  namespace: nfl-wallet-prod
-  labels:
-    backstage.io/kubernetes-id: nfl-wallet
-spec:
-  parentRefs:
-  - name: nfl-wallet-gateway
-    namespace: nfl-wallet-prod
-  rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /api
-    backendRefs:
-    - name: nfl-wallet-api
-      port: 8080
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /q/swagger-ui
-    backendRefs:
-    - name: nfl-wallet-api
-      port: 8080
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /q/openapi
-    backendRefs:
-    - name: nfl-wallet-api
-      port: 8080
----
-apiVersion: kuadrant.io/v1
-kind: AuthPolicy
-metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "3"
-  name: nfl-wallet-apikey
-  namespace: nfl-wallet-prod
-  labels:
-    backstage.io/kubernetes-id: nfl-wallet
-spec:
-  targetRef:
-    group: gateway.networking.k8s.io
-    kind: HTTPRoute
-    name: nfl-wallet-api-route
-  defaults:
-    rules:
-      authentication:
-        api-key-auth:
-          apiKey:
-            selector:
-              matchLabels:
-                app: nfl-wallet
-                kuadrant.io/apikey: "true"
-          credentials:
-            customHeader:
-              name: X-API-Key
-          metrics: false
-          priority: 0
-      response:
-        success: {}
-        unauthenticated:
-          code: 401
-          body:
-            value: '{"error":"Invalid or missing API key. Include header X-API-Key with a valid key."}'
-          headers:
-            content-type:
-              value: "application/json"
----
-apiVersion: kuadrant.io/v1
-kind: RateLimitPolicy
-metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "3"
-  name: nfl-wallet-ratelimit
-  namespace: nfl-wallet-prod
-  labels:
-    backstage.io/kubernetes-id: nfl-wallet
-spec:
-  targetRef:
-    group: gateway.networking.k8s.io
-    kind: HTTPRoute
-    name: nfl-wallet-api-route
-  limits:
-    api-global:
-      rates:
-      - limit: 120
-        window: 1m
----
 apiVersion: v1
 kind: Secret
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-wave: "2"
   name: nfl-wallet-apikey-admin
   namespace: nfl-wallet-prod
   labels:
@@ -269,7 +175,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-wave: "2"
   name: nfl-wallet-apikey-readonly
   namespace: nfl-wallet-prod
   labels:

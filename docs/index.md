@@ -23,6 +23,9 @@ En este workshop aprenderás a utilizar **Red Hat Developer Hub** como portal de
 - Crear servicios backend y frontend usando **Software Templates** con naming convention multi-usuario
 - Explorar pipelines automatizados (pestaña **CI** en Developer Hub), topology view y detalles de la aplicación
 - Desplegar y configurar API Gateways con seguridad (OIDCPolicy, RateLimitPolicy)
+- **Explorar Connectivity Link** con dos modelos de autenticación:
+  - **OIDCPolicy** (Neuralbank) — autenticación interactiva con Keycloak
+  - **AuthPolicy con API Key** (NFL Wallet) — autenticación M2M programática
 - Actualizar código fuente usando **Red Hat OpenShift Dev Spaces** con CI/CD automatizado
 - Utilizar **Red Hat Developer Lightspeed** como asistente de IA integrado en el portal
 - Recibir **notificaciones** en tiempo real y por email sobre el estado de tus componentes

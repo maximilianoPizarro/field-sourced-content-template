@@ -45,7 +45,7 @@ spec:
       continueOnError: true
       input:
         method: DELETE
-        path: "/api/proxy/gitea/repos/ws-${{ parameters.owner }}/${{ parameters.name }}"
+        path: "/proxy/gitea/repos/ws-${{ parameters.owner }}/${{ parameters.name }}"
         headers:
           Content-Type: application/json
 
@@ -55,7 +55,7 @@ spec:
       continueOnError: true
       input:
         method: GET
-        path: "/api/catalog/entities/by-name/component/default/${{ parameters.owner }}-${{ parameters.name }}"
+        path: "/catalog/entities/by-name/component/default/${{ parameters.owner }}-${{ parameters.name }}"
 
     - id: delete-entity
       name: Unregister from Catalog
@@ -63,7 +63,7 @@ spec:
       continueOnError: true
       input:
         method: DELETE
-        path: "/api/catalog/entities/by-uid/${{ steps['fetch-entity'].output.body.metadata.uid }}"
+        path: "/catalog/entities/by-uid/${{ steps['fetch-entity'].output.body.metadata.uid }}"
 
     - id: notify
       name: Send Email Notification

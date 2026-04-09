@@ -153,7 +153,7 @@ spec:
     termination: edge
   to:
     kind: Service
-    name: nfl-wallet-api
+    name: nfl-wallet-gateway-istio
     weight: 100
 ---
 apiVersion: gateway.networking.k8s.io/v1
@@ -234,6 +234,7 @@ spec:
       authentication:
         api-key-auth:
           apiKey:
+            allNamespaces: true
             selector:
               matchLabels:
                 app: nfl-wallet

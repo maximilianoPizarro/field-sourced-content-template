@@ -1,7 +1,7 @@
 ---
 layout: default
 title: "Lightspeed y Notificaciones"
-nav_order: 12
+nav_order: 14
 ---
 
 Este módulo presenta dos capacidades integradas en Developer Hub que mejoran la experiencia del desarrollador: **Red Hat Developer Lightspeed** como asistente de IA y el sistema de **Notificaciones** para visibilidad sobre el ciclo de vida de componentes.

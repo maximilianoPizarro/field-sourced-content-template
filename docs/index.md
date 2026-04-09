@@ -26,6 +26,7 @@ En este workshop aprenderás a utilizar **Red Hat Developer Hub** como portal de
 - **Explorar Connectivity Link** con dos modelos de autenticación:
   - **OIDCPolicy** (Neuralbank) — autenticación interactiva con Keycloak
   - **AuthPolicy con API Key** (NFL Wallet) — autenticación M2M programática
+- **Hands-on:** explorar las aplicaciones pre-desplegadas (Neuralbank overview + NFL Wallet API Key test desde la terminal)
 - Actualizar código fuente usando **Red Hat OpenShift Dev Spaces** con CI/CD automatizado
 - Utilizar **Red Hat Developer Lightspeed** como asistente de IA integrado en el portal
 - Recibir **notificaciones** en tiempo real y por email sobre el estado de tus componentes

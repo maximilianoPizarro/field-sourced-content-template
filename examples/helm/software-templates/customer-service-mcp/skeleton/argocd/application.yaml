@@ -1,10 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: ${{values.name}}
+  name: ${{values.uniqueName}}
   namespace: openshift-gitops
   labels:
-    backstage.io/kubernetes-id: ${{values.name}}
+    backstage.io/kubernetes-id: ${{values.uniqueName}}
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:

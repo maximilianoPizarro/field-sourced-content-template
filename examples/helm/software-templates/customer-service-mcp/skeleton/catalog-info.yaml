@@ -1,12 +1,13 @@
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
-  name: ${{values.name}}
+  name: ${{values.uniqueName}}
   description: ${{values.description}}
   annotations:
-    backstage.io/kubernetes-id: ${{values.name}}
+    backstage.io/kubernetes-id: ${{values.uniqueName}}
     backstage.io/kubernetes-namespace: ${{values.namespace}}
-    argocd/app-name: ${{values.name}}
+    janus-idp.io/tekton: ${{values.uniqueName}}
+    argocd/app-name: ${{values.uniqueName}}
     argocd/app-namespace: openshift-gitops
     tektonci/build-namespace: ${{values.namespace}}
     che.eclipse.org/che-server: https://devspaces.${{values.clusterDomain}}
@@ -25,22 +26,22 @@ spec:
   type: service
   lifecycle: experimental
   owner: user:${{values.owner}}
-  system: neuralbank
+  system: ${{values.owner}}-neuralbank
   providesApis:
-    - ${{values.name}}-api
+    - ${{values.uniqueName}}-api
   dependsOn:
-    - component:default/neuralbank-backend
+    - component:default/${{values.owner}}-neuralbank-backend
 ---
 apiVersion: backstage.io/v1alpha1
 kind: API
 metadata:
-  name: ${{values.name}}-api
+  name: ${{values.uniqueName}}-api
   description: "MCP Server API for customer service AI agent"
 spec:
   type: openapi
   lifecycle: experimental
   owner: user:${{values.owner}}
-  system: neuralbank
+  system: ${{values.owner}}-neuralbank
   definition: |
     openapi: 3.0.0
     info:

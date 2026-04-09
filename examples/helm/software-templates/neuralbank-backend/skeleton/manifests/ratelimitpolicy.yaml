@@ -5,7 +5,7 @@ metadata:
   namespace: ${{values.namespace}}
   labels:
     app.kubernetes.io/name: ${{values.name}}
-    backstage.io/kubernetes-id: ${{values.name}}
+    backstage.io/kubernetes-id: ${{values.uniqueName}}
 spec:
   limits:
     api-per-user:

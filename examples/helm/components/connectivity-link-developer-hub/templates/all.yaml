@@ -459,6 +459,20 @@ data:
         - group: 'argoproj.io'
           apiVersion: 'v1alpha1'
           plural: 'rollouts'
+    notifications:
+      processors:
+        email:
+          transportConfig:
+            transport: smtp
+            hostname: n8n-mailpit.openshift-lightspeed.svc
+            port: 1025
+            secure: false
+          sender: "devhub@neuralbank.io"
+          replyTo: "noreply@neuralbank.io"
+          broadcastConfig:
+            receiver: none
+          cache:
+            ttl: { minutes: 30 }
     permission:
       enabled: true
       rbac:
@@ -572,6 +586,8 @@ data:
       - package: ./dynamic-plugins/dist/backstage-plugin-notifications
         disabled: false
       - package: ./dynamic-plugins/dist/backstage-plugin-notifications-backend-dynamic
+        disabled: false
+      - package: ./dynamic-plugins/dist/backstage-plugin-notifications-backend-module-email-dynamic
         disabled: false
       - package: ./dynamic-plugins/dist/backstage-plugin-signals
         disabled: false

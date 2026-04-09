@@ -50,6 +50,7 @@ spec:
         url: ./skeleton
         values:
           name: ${{ parameters.name }}
+          uniqueName: "${{ parameters.owner }}-${{ parameters.name }}"
           owner: ${{ parameters.owner }}
           description: ${{ parameters.description }}
           namespace: "${{ parameters.owner }}-neuralbank"
@@ -81,10 +82,10 @@ spec:
           apiVersion: argoproj.io/v1alpha1
           kind: Application
           metadata:
-            name: ${{ parameters.name }}
+            name: "${{ parameters.owner }}-${{ parameters.name }}"
             namespace: openshift-gitops
             labels:
-              backstage.io/kubernetes-id: ${{ parameters.name }}
+              backstage.io/kubernetes-id: "${{ parameters.owner }}-${{ parameters.name }}"
             finalizers:
               - resources-finalizer.argocd.argoproj.io
           spec:
@@ -119,6 +120,24 @@ spec:
           events:
             - push
           active: true
+    - id: notify
+      name: Send Notification
+      action: http:backstage:request
+      input:
+        method: POST
+        path: /api/notifications
+        headers:
+          Content-Type: application/json
+        body:
+          recipients:
+            type: entity
+            entityRef: "user:default/${{ parameters.owner }}"
+          payload:
+            title: "Customer Service MCP deployed successfully"
+            description: "Your component **${{ parameters.owner }}-${{ parameters.name }}** has been created and deployed to namespace `${{ parameters.owner }}-neuralbank`. The CI/CD pipeline is building your application. Repository: ws-${{ parameters.owner }}/${{ parameters.name }}"
+            link: "/catalog/default/component/${{ parameters.owner }}-${{ parameters.name }}"
+            severity: normal
+            topic: scaffolder
   output:
     links:
       - title: Repository

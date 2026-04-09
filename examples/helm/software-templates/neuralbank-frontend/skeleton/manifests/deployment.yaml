@@ -6,7 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/name: ${{values.name}}
     app.kubernetes.io/part-of: neuralbank
-    backstage.io/kubernetes-id: ${{values.name}}
+    backstage.io/kubernetes-id: ${{values.uniqueName}}
 spec:
   replicas: 1
   selector:
@@ -16,7 +16,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: ${{values.name}}
-        backstage.io/kubernetes-id: ${{values.name}}
+        backstage.io/kubernetes-id: ${{values.uniqueName}}
     spec:
       containers:
         - name: ${{values.name}}

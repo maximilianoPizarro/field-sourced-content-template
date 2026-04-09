@@ -4,7 +4,7 @@ metadata:
   name: ${{values.name}}-binding
   namespace: ${{values.namespace}}
   labels:
-    backstage.io/kubernetes-id: ${{values.name}}
+    backstage.io/kubernetes-id: ${{values.uniqueName}}
 spec:
   params:
     - name: git-url

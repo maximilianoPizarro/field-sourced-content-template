@@ -203,16 +203,16 @@ spec:
         requeueAfterSeconds: 60
   template:
     metadata:
-      name: {{ $user }}-{{ "{{ .repository }}" }}
+      name: '{{ $user }}-{{ "{{ .repository }}" }}'
       namespace: openshift-gitops
       labels:
-        backstage.io/kubernetes-id: {{ $user }}-{{ "{{ .repository }}" }}
+        backstage.io/kubernetes-id: '{{ $user }}-{{ "{{ .repository }}" }}'
       finalizers:
         - resources-finalizer.argocd.argoproj.io
     spec:
       project: default
       source:
-        repoURL: {{ "{{ .url }}" }}
+        repoURL: '{{ "{{ .url }}" }}'
         targetRevision: main
         path: manifests
       destination:

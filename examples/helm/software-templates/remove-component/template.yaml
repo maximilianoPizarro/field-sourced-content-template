@@ -1,0 +1,134 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: remove-component
+  title: "Remove Component (Cleanup)"
+  description: >
+    Removes a previously created component from the platform:
+    unregisters from Backstage catalog, deletes the ArgoCD Application
+    (which cascades namespace resources), and deletes the Gitea repository.
+  tags:
+    - cleanup
+    - admin
+    - remove
+spec:
+  owner: platform-engineering
+  type: service
+  parameters:
+    - title: Component to Remove
+      required:
+        - name
+        - owner
+      properties:
+        name:
+          title: Component Name
+          type: string
+          description: "Name of the component to remove (e.g. neuralbank-backend)"
+          pattern: "^[a-z0-9-]+$"
+          ui:autofocus: true
+          enum:
+            - neuralbank-backend
+            - neuralbank-frontend
+            - customer-service-mcp
+        owner:
+          title: Owner (username)
+          type: string
+          description: "Owner of the component (e.g. user1)"
+          pattern: "^user[0-9]+$"
+        clusterDomain:
+          title: Cluster Domain
+          type: string
+          default: "apps.cluster-l9nhj.dynamic.redhatworkshops.io"
+          ui:widget: hidden
+  steps:
+    - id: unregister-catalog
+      name: Unregister from Catalog
+      action: http:backstage:request
+      input:
+        method: DELETE
+        path: "/api/catalog/locations/by-query?kind=Location&namespace=default&name=generated-${{ parameters.name }}"
+      continueOnError: true
+
+    - id: delete-entity
+      name: Delete Catalog Entity
+      action: http:backstage:request
+      input:
+        method: DELETE
+        path: "/api/catalog/entities/by-name/component/default/${{ parameters.name }}"
+      continueOnError: true
+
+    - id: delete-system-entity
+      name: Delete System Entity (if exists)
+      action: http:backstage:request
+      input:
+        method: DELETE
+        path: "/api/catalog/entities/by-name/system/default/neuralbank"
+      continueOnError: true
+
+    - id: delete-api-entity
+      name: Delete API Entity (if exists)
+      action: http:backstage:request
+      input:
+        method: DELETE
+        path: "/api/catalog/entities/by-name/api/default/${{ parameters.name }}-api"
+      continueOnError: true
+
+    - id: delete-argocd-app
+      name: Delete ArgoCD Application
+      action: http:backstage:request
+      input:
+        method: DELETE
+        path: "/api/proxy/k8s-api/apis/argoproj.io/v1alpha1/namespaces/openshift-gitops/applications/${{ parameters.name }}?propagationPolicy=Foreground"
+        headers:
+          Content-Type: application/json
+      continueOnError: true
+
+    - id: delete-namespace
+      name: Delete User Namespace
+      action: http:backstage:request
+      input:
+        method: DELETE
+        path: "/api/proxy/k8s-api/api/v1/namespaces/${{ parameters.owner }}-neuralbank"
+        headers:
+          Content-Type: application/json
+      continueOnError: true
+
+    - id: delete-clusterrolebinding-trigger
+      name: Delete Trigger ClusterRoleBinding
+      action: http:backstage:request
+      input:
+        method: DELETE
+        path: "/api/proxy/k8s-api/apis/rbac.authorization.k8s.io/v1/clusterrolebindings/${{ parameters.name }}-trigger-clusterbinding"
+        headers:
+          Content-Type: application/json
+      continueOnError: true
+
+    - id: delete-clusterrolebinding-scc
+      name: Delete Pipeline SCC ClusterRoleBinding
+      action: http:backstage:request
+      input:
+        method: DELETE
+        path: "/api/proxy/k8s-api/apis/rbac.authorization.k8s.io/v1/clusterrolebindings/${{ parameters.owner }}-neuralbank-pipeline-scc-privileged"
+        headers:
+          Content-Type: application/json
+      continueOnError: true
+
+    - id: delete-gitea-repo
+      name: Delete Gitea Repository
+      action: http:backstage:request
+      input:
+        method: DELETE
+        path: "/api/proxy/gitea/repos/ws-${{ parameters.owner }}/${{ parameters.name }}"
+        headers:
+          Content-Type: application/json
+      continueOnError: true
+
+  output:
+    text:
+      - title: Cleanup Complete
+        content: |
+          Component **${{ parameters.name }}** owned by **${{ parameters.owner }}** has been removed from:
+          - Backstage Catalog
+          - ArgoCD (Application deleted)
+          - OpenShift (namespace ${{ parameters.owner }}-neuralbank)
+          - Gitea (repository ws-${{ parameters.owner }}/${{ parameters.name }})

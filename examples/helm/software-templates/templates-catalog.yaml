@@ -8,3 +8,4 @@ spec:
     - ./customer-service-mcp/template.yaml
     - ./neuralbank-backend/template.yaml
     - ./neuralbank-frontend/template.yaml
+    - ./remove-component/template.yaml

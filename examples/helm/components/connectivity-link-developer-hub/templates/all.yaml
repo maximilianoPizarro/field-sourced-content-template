@@ -431,18 +431,15 @@ data:
       rules:
         - allow: [Component, Group, User, Resource, Location, Template, API, APIProduct, System, Domain]
     proxy:
-      reviveConsumedRequestBodies: true
       endpoints:
         '/gitea':
           target: "http://gitea-http.gitea.svc.cluster.local:3000/api/v1"
-          credentials: dangerously-allow-unauthenticated
           changeOrigin: true
           allowedMethods: ['GET', 'POST', 'PUT', 'DELETE']
           headers:
             Authorization: "Basic Z2l0ZWFfYWRtaW46b3BlbnNoaWZ0"
         '/k8s-api':
           target: "https://kubernetes.default.svc"
-          credentials: dangerously-allow-unauthenticated
           changeOrigin: true
           secure: false
           allowedMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']

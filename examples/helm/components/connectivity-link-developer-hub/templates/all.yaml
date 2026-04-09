@@ -253,6 +253,22 @@ rules:
   - list
   - watch
 - apiGroups:
+  - autoscaling
+  resources:
+  - horizontalpodautoscalers
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - metrics.k8s.io
+  resources:
+  - pods
+  - nodes
+  verbs:
+  - get
+  - list
+- apiGroups:
   - route.openshift.io
   resources:
   - routes
@@ -415,14 +431,17 @@ data:
       rules:
         - allow: [Component, Group, User, Resource, Location, Template, API, APIProduct, System, Domain]
     proxy:
+      reviveConsumedRequestBodies: true
       endpoints:
         '/gitea':
           target: "https://gitea-gitea.{{ .Values.clusterDomain }}/api/v1"
+          credentials: dangerously-allow-unauthenticated
           allowedMethods: ['GET', 'POST', 'PUT', 'DELETE']
           headers:
             Authorization: "Basic Z2l0ZWFfYWRtaW46b3BlbnNoaWZ0"
         '/k8s-api':
           target: "https://kubernetes.default.svc"
+          credentials: dangerously-allow-unauthenticated
           changeOrigin: true
           secure: false
           allowedMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
@@ -543,7 +562,7 @@ data:
         disabled: false
       - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-plugin-scaffolder-backend-module-gitea:bs_1.45.3__0.2.15!backstage-plugin-scaffolder-backend-module-gitea
         disabled: false
-      - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-community-plugin-tekton:next__3.29.0!backstage-community-plugin-tekton
+      - package: ./dynamic-plugins/dist/backstage-community-plugin-tekton
         pluginConfig:
           dynamicPlugins:
             frontend:
@@ -720,7 +739,11 @@ data:
     scaffolder.task.create, create, allow\np, role:default/platformengineer, scaffolder.task.cancel,
     use, allow\np, role:default/platformengineer, scaffolder.action.execute, use,
     allow\n\np, role:default/platformengineer, permission.policy, read, allow\np,
-    role:default/platformengineer, catalog.entity.read, read, allow\n\n# Kuadrant
+    role:default/platformengineer, catalog.entity.read, read, allow\n\n# Kubernetes
+    and Topology permissions for Platform Engineers\np, role:default/platformengineer,
+    kubernetes.clusters.read, read, allow\np, role:default/platformengineer, kubernetes.resources.read,
+    read, allow\n\n# ArgoCD permissions for Platform Engineers\np, role:default/platformengineer,
+    argocd.view.read, read, allow\n\n# Kuadrant
     api-admin permissions for Platform Engineers (rbac-backend does not support role
     inheritance)\np, role:default/platformengineer, kuadrant.planpolicy.read, read,
     allow\np, role:default/platformengineer, kuadrant.planpolicy.list, read, allow\np,
@@ -797,7 +820,11 @@ data:
     role:default/rhdhpai-users, catalog.location.delete, delete, allow\np, role:default/rhdhpai-users,
     catalog.entity.create, create, allow\np, role:default/rhdhpai-users, scaffolder-template,
     read, allow\np, role:default/rhdhpai-users, scaffolder.task.read, read, allow\np,
-    role:default/rhdhpai-users, scaffolder.task.create, create, allow\n\n# Adoption
+    role:default/rhdhpai-users, scaffolder.task.create, create, allow\n\n# Kubernetes
+    and Topology permissions for rhdhpai-users\np, role:default/rhdhpai-users, kubernetes.clusters.read,
+    read, allow\np, role:default/rhdhpai-users, kubernetes.resources.read, read, allow\n\n#
+    ArgoCD permissions for rhdhpai-users\np, role:default/rhdhpai-users, argocd.view.read,
+    read, allow\n\n# Adoption
     Insights permissions for rhdhpai-users\np, role:default/rhdhpai-users, adoption-insights.events.read,
     read, allow\n\n# If you still need 'template-executers' for other users, keep
     its definition:\np, role:default/template-executers, scaffolder.action.execute,

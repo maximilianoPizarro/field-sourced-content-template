@@ -213,56 +213,185 @@ https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/q/swagger-ui
 4. Click en **Authorize** y luego **Close**.
 5. Prueba los endpoints directamente desde Swagger UI.
 
-## Paso 8: Comparar con Neuralbank en Developer Hub
+## Paso 8: PlanPolicy — Planes de consumo (free/basic/pro)
+
+Cada API tiene un **PlanPolicy** que define planes de rate limiting por tier. Inspecciona el PlanPolicy de NFL Wallet:
+
+```bash
+oc get planpolicy -n nfl-wallet-prod -o yaml
+```
+
+Los 3 planes disponibles:
+
+| Plan | Límite diario | Límite por minuto | Caso de uso |
+|------|--------------|-------------------|-------------|
+| **free** | 100 req/día | 10 req/min | Evaluación y pruebas |
+| **basic** | 1,000 req/día | 60 req/min | Aplicaciones en desarrollo |
+| **pro** | 10,000 req/día | 300 req/min | Producción y alta demanda |
+
+El plan se asigna según la annotation `secret.kuadrant.io/plan-id` en el Secret de la API Key:
+
+```yaml
+metadata:
+  labels:
+    app: nfl-wallet
+    kuadrant.io/apikey: "true"
+  annotations:
+    secret.kuadrant.io/plan-id: "basic"  # free | basic | pro
+```
+
+Puedes ver los planes disponibles en la pestaña **API** de la entidad en Developer Hub:
+
+![API Product con tiers](screenshots/15-nfl-wallet-api-tab.png)
+
+## Paso 9: APIProduct en Developer Hub
+
+El **APIProduct** es el recurso que conecta la API con el Dev Portal de Kuadrant, permitiendo a los developers descubrir y solicitar acceso.
+
+1. En Developer Hub, navega al menú **Kuadrant** en la barra lateral.
+2. Verás todos los API Products publicados:
+
+![Kuadrant API Products](screenshots/12-kuadrant-apiproducts.png)
+
+3. Haz click en cualquier API Product para ver:
+   - Nombre, descripción y tags
+   - HTTPRoute y namespace asociados
+   - Planes disponibles (tiers)
+   - Botón **Request API Access** para generar una API Key
+
+### Annotations que vinculan API Entity con APIProduct
+
+Para que el plugin Kuadrant pueda vincular un API Product con la entidad API en el catálogo, la entidad necesita estas annotations:
+
+```yaml
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: nfl-wallet-api
+  annotations:
+    kuadrant.io/namespace: nfl-wallet-prod
+    kuadrant.io/apiproduct: nfl-wallet-api
+    kuadrant.io/httproute: nfl-wallet-api-route
+```
+
+Sin estas annotations, el plugin muestra "No APIProduct linked to this API entity".
+
+## Paso 10: Automatización en el Scaffolder
+
+Cuando un usuario crea una nueva aplicación desde el Software Template, el scaffolder genera automáticamente todos los recursos de Kuadrant. Cada template incluye estos manifiestos:
+
+| Manifiesto | Recurso | Descripción |
+|------------|---------|-------------|
+| `gateway.yaml` | Gateway | Gateway Istio con annotation `kuadrant.io/namespace` |
+| `httproute.yaml` | HTTPRoute | Rutas HTTP para los endpoints de la API |
+| `authpolicy.yaml` | AuthPolicy | Autenticación por API Key (`X-API-Key` header) |
+| `ratelimitpolicy.yaml` | RateLimitPolicy | Rate limiting global (120 req/min) |
+| `apiproduct.yaml` | APIProduct | Published, aprobación automática, tags y docs |
+| `planpolicy.yaml` | PlanPolicy | 3 planes: free, basic, pro |
+
+El `catalog-info.yaml` del skeleton incluye las annotations de Kuadrant:
+
+```yaml
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: ${{values.uniqueName}}-api
+  annotations:
+    kuadrant.io/namespace: ${{values.namespace}}
+    kuadrant.io/apiproduct: ${{values.uniqueName}}-api
+    kuadrant.io/httproute: ${{values.name}}-route
+```
+
+Y el OpenAPI spec incluye el security scheme para Swagger UI:
+
+```yaml
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+security:
+  - ApiKeyAuth: []
+```
+
+### Flujo completo automatizado
+
+```
+Usuario en Developer Hub
+  -> Selecciona Software Template (backend o MCP)
+    -> fetch:template genera el skeleton con:
+        manifests/gateway.yaml         (Istio Gateway)
+        manifests/httproute.yaml       (HTTPRoute)
+        manifests/authpolicy.yaml      (API Key auth)
+        manifests/ratelimitpolicy.yaml (Rate limiting)
+        manifests/apiproduct.yaml      (Dev Portal listing)
+        manifests/planpolicy.yaml      (free/basic/pro tiers)
+        catalog-info.yaml              (con kuadrant.io annotations)
+    -> publish:gitea -> pushea a Gitea
+    -> catalog:register -> registra en catalogo con annotations
+    -> ArgoCD sincroniza -> despliega todos los manifiestos
+    -> Kuadrant plugin detecta el APIProduct
+    -> El usuario puede solicitar API Keys desde Developer Hub
+```
+
+## Paso 11: Comparar con Neuralbank en Developer Hub
 
 En **Developer Hub**, compara las dos APIs:
 
 | Vista | Neuralbank | NFL Wallet |
 |-------|-----------|------------|
 | **API entity** | `neuralbank-api` | `nfl-wallet-api` |
-| **Auth type** | OIDC (Keycloak) | API Key (X-API-Key) |
-| **APIProduct** | No tiene | `nfl-wallet-api` (Published) |
+| **Auth type** | OIDC + API Key | API Key (X-API-Key) |
+| **APIProduct** | `neuralbank-api` (Published) | `nfl-wallet-api` (Published) |
+| **PlanPolicy** | free/basic/pro | free/basic/pro |
 | **Swagger** | Requiere login OIDC | Requiere API Key en header |
-| **Grafana** | Dashboards compartidos | Dashboards compartidos |
 
-La clave es que **Connectivity Link** soporta múltiples modelos de autenticación:
+![nfl-wallet-api en Developer Hub](screenshots/14-nfl-wallet-api-detail.png)
+
+**Connectivity Link** soporta múltiples modelos de autenticación:
 - **OIDCPolicy** para flujos interactivos (usuarios web)
 - **AuthPolicy con API Key** para integraciones programáticas (M2M)
 
 Ambos se integran con el mismo stack: Istio Gateway + HTTPRoute + Kuadrant policies.
 
-## Diagrama del flujo API Key
+## Diagrama del flujo API Key con PlanPolicy
 
 ```
-Cliente/Script           Istio Gateway              Kuadrant/Authorino         nfl-wallet-api
-  │                           │                            │                        │
-  │  GET /api/v1/customers       │                            │                        │
-  │  X-API-Key: demo-key      │                            │                        │
-  │──────────────────────────▶│                            │                        │
-  │                           │  Validate API Key          │                        │
-  │                           │───────────────────────────▶│                        │
-  │                           │                            │  Match Secret labels   │
-  │                           │                            │  app=nfl-wallet        │
-  │                           │                            │  kuadrant.io/apikey    │
-  │                           │  ✓ Key valid               │                        │
-  │                           │◀───────────────────────────│                        │
-  │                           │                            │                        │
-  │                           │  Check Rate Limit          │                        │
-  │                           │  (Limitador: 120/min)      │                        │
-  │                           │  ✓ Within limit            │                        │
-  │                           │                            │                        │
-  │                           │  Forward request           │                        │
-  │                           │───────────────────────────────────────────────────▶│
-  │                           │                            │                        │
-  │  200 OK (data)            │                            │                        │
-  │◀──────────────────────────│◀───────────────────────────────────────────────────│
+Cliente/Script           Istio Gateway              Kuadrant/Authorino         Backend API
+  |                           |                            |                        |
+  |  GET /api/v1/customers    |                            |                        |
+  |  X-API-Key: demo-key      |                            |                        |
+  |-------------------------->|                            |                        |
+  |                           |  Validate API Key          |                        |
+  |                           |--------------------------->|                        |
+  |                           |                            |  Match Secret labels   |
+  |                           |                            |  app=nfl-wallet        |
+  |                           |                            |  kuadrant.io/apikey    |
+  |                           |  Key valid                 |                        |
+  |                           |<---------------------------|                        |
+  |                           |                            |                        |
+  |                           |  Check PlanPolicy tier     |                        |
+  |                           |  (plan-id annotation)      |                        |
+  |                           |  Check Rate Limit          |                        |
+  |                           |  (free: 10/min, basic:     |                        |
+  |                           |   60/min, pro: 300/min)    |                        |
+  |                           |  Within limit              |                        |
+  |                           |                            |                        |
+  |                           |  Forward request           |                        |
+  |                           |--------------------------------------------------->|
+  |                           |                            |                        |
+  |  200 OK (data)            |                            |                        |
+  |<--------------------------|<---------------------------------------------------|
 ```
 
 ## Resumen
 
-Has explorado el modelo de **API Key Auth** de Connectivity Link en NFL Wallet y lo has comparado con el modelo **OIDC** de Neuralbank. Has aprendido:
-- Cómo `AuthPolicy` con `apiKey` usa Secrets de Kubernetes para autenticación
-- Cómo las API Keys se gestionan con labels de Kuadrant/Authorino
-- La diferencia entre autenticación interactiva (OIDC) y programática (API Key)
-- Cómo crear y gestionar API Keys dinámicamente
-- El rol del **APIProduct** en Developer Hub para publicar APIs consumibles
+Has explorado el modelo de **API Key Auth** de Connectivity Link y lo has comparado con el modelo **OIDC** de Neuralbank. Has aprendido:
+- Como `AuthPolicy` con `apiKey` usa Secrets de Kubernetes para autenticacion
+- Como las API Keys se gestionan con labels de Kuadrant/Authorino
+- Como **PlanPolicy** define planes de consumo (free/basic/pro) con rate limits diferenciados
+- Como **APIProduct** publica la API en el Dev Portal para que los developers soliciten acceso
+- Como las **annotations `kuadrant.io/*`** vinculan la entidad API del catalogo con el APIProduct
+- Como el **Scaffolder automatiza** la creacion de todos los recursos de Kuadrant (AuthPolicy, APIProduct, PlanPolicy)
+- La diferencia entre autenticacion interactiva (OIDC) y programatica (API Key)

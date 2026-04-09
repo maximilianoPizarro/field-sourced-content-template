@@ -17,6 +17,13 @@ metadata:
     argocd/app-name: ${{values.name}}
     argocd/app-namespace: openshift-gitops
     tektonci/build-namespace: ${{values.namespace}}
+    che.eclipse.org/che-server: https://devspaces.${{values.clusterDomain}}
+    devspaces.io/factory: "https://devspaces.${{values.clusterDomain}}/#https://gitea-gitea.${{values.clusterDomain}}/ws-${{values.owner}}/${{values.name}}"
+  links:
+    - url: "https://devspaces.${{values.clusterDomain}}/#https://gitea-gitea.${{values.clusterDomain}}/ws-${{values.owner}}/${{values.name}}"
+      title: Open in DevSpaces
+      icon: catalog
+      type: ide
   tags:
     - java
     - quarkus

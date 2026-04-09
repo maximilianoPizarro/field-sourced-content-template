@@ -522,7 +522,7 @@ data:
         disabled: false
       - package: ./dynamic-plugins/dist/backstage-community-plugin-topology
         disabled: false
-      - package: ./dynamic-plugins/dist/backstage-plugin-kubernetes
+      - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-plugin-kubernetes:next__0.12.13!backstage-plugin-kubernetes
         disabled: false
         pluginConfig:
           dynamicPlugins:

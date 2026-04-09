@@ -33,7 +33,7 @@ frontend:
 keycloak:
   issuerUrl: 'https://rhbk.apps.cluster-l9nhj.dynamic.redhatworkshops.io/realms/neuralbank'
   clientId: 'neuralbank-frontend'
-  clientSecret: 'FYtNXAyn6eRmWxHIig7oLhK3zxQ1nLaF'
+  clientSecret: ''
   authorizationEndpoint: 'https://rhbk.apps.cluster-l9nhj.dynamic.redhatworkshops.io/realms/neuralbank/protocol/openid-connect/auth'
   redirectUri: 'https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/auth/callback'
   tokenEndpoint: 'https://rhbk.apps.cluster-l9nhj.dynamic.redhatworkshops.io/realms/neuralbank/protocol/openid-connect/token'

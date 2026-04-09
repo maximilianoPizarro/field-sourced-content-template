@@ -1088,45 +1088,27 @@ metadata:
 data:
   generate.sh: |
     #!/bin/sh
-    DOMAIN="{{ .Values.clusterDomain | default "apps.cluster-l9nhj.dynamic.redhatworkshops.io" }}"
-
-    INTERNAL="
-    http://neuralbank-gateway-istio.neuralbank-stack.svc:80/q/health
-    http://neuralbank-gateway-istio.neuralbank-stack.svc:80/api/v1/customers
-    http://neuralbank-gateway-istio.neuralbank-stack.svc:80/api/v1/accounts
-    http://nfl-wallet-gateway-istio.nfl-wallet-prod.svc:80/q/health
-    http://nfl-wallet-gateway-istio.nfl-wallet-prod.svc:80/api/v1/wallets
-    http://nfl-wallet-gateway-istio.nfl-wallet-test.svc:80/q/health
-    http://nfl-wallet-gateway-istio.nfl-wallet-test.svc:80/api/v1/wallets
-    http://litemaas-gateway-istio.litemaas.svc:80/api/health
-    http://litemaas-gateway-istio.litemaas.svc:80/v1/models
-    "
-
-    EXTERNAL="
-    https://neuralbank-gateway-istio-neuralbank-stack.${DOMAIN}/q/health
-    https://neuralbank-gateway-istio-neuralbank-stack.${DOMAIN}/api/v1/customers
-    https://nfl-wallet-gateway-istio-nfl-wallet-prod.${DOMAIN}/q/health
-    https://nfl-wallet-gateway-istio-nfl-wallet-prod.${DOMAIN}/api/v1/wallets
-    https://nfl-wallet-gateway-istio-nfl-wallet-test.${DOMAIN}/q/health
-    https://litemaas-gateway-istio-litemaas.${DOMAIN}/api/health
-    https://litemaas-gateway-istio-litemaas.${DOMAIN}/v1/models
+    TARGETS="
+    http://neuralbank-gateway-istio.neuralbank-stack.svc:8080/q/health
+    http://neuralbank-gateway-istio.neuralbank-stack.svc:8080/api/v1/customers
+    http://neuralbank-backend-svc.neuralbank-stack.svc:8080/q/health
+    http://nfl-wallet-gateway-istio.nfl-wallet-prod.svc:8080/q/health
+    http://nfl-wallet-gateway-istio.nfl-wallet-prod.svc:8080/api/v1/customers
+    http://nfl-wallet-api.nfl-wallet-prod.svc:8080/q/health
+    http://litemaas-gateway-istio.litemaas.svc:8080/api/health
+    http://backend.litemaas.svc:8080/api/health
     "
 
     echo "=== Mesh Traffic Generator ==="
-    echo "Interval: ${INTERVAL:-3}s | Internal: $(echo $INTERNAL | wc -w) | External: $(echo $EXTERNAL | wc -w)"
-
-    fire_batch() {
-      for url in $INTERNAL $EXTERNAL; do
-        curl -sk -o /dev/null -w "$(date +%H:%M:%S) %{http_code} $url\n" \
-          --connect-timeout 3 --max-time 5 "$url" 2>/dev/null &
-      done
-      wait
-    }
+    echo "Targets: $(echo $TARGETS | wc -w) | Interval: ${INTERVAL:-5}s"
 
     while true; do
-      fire_batch
-      echo "$(date +%H:%M:%S) --- batch done ---"
-      sleep $(( ${INTERVAL:-3} + RANDOM % 3 ))
+      for url in $TARGETS; do
+        curl -sk -o /dev/null -w "%{http_code} $url\n" \
+          --connect-timeout 2 --max-time 4 "$url" &
+      done
+      wait
+      sleep $(( ${INTERVAL:-5} + RANDOM % 3 ))
     done
 ---
 apiVersion: apps/v1
@@ -1140,7 +1122,7 @@ metadata:
   name: mesh-traffic-generator
   namespace: openshift-cluster-observability-operator
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: mesh-traffic-generator
@@ -1151,18 +1133,18 @@ spec:
     spec:
       containers:
       - name: traffic-gen
-        image: registry.access.redhat.com/ubi9/ubi-minimal:latest
-        command: ["/bin/sh", "-c", "microdnf install -y curl && exec /scripts/generate.sh"]
+        image: registry.access.redhat.com/ubi9/ubi:latest
+        command: ["/bin/sh", "/scripts/generate.sh"]
         env:
         - name: INTERVAL
-          value: "3"
+          value: "5"
         resources:
           requests:
-            cpu: 20m
-            memory: 64Mi
+            cpu: 10m
+            memory: 32Mi
           limits:
-            cpu: 100m
-            memory: 128Mi
+            cpu: 50m
+            memory: 64Mi
         volumeMounts:
         - name: scripts
           mountPath: /scripts

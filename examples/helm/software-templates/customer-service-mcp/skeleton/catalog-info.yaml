@@ -49,9 +49,22 @@ spec:
       version: 1.0.0
       description: >
         Model Context Protocol server for AI-powered customer service.
-        Protected by Kuadrant OIDCPolicy (Keycloak OIDC) and
-        RateLimitPolicy (60 req/min per user).
+        Protected by Kuadrant AuthPolicy (API Key via X-API-Key header)
+        and RateLimitPolicy (120 req/min).
+        Generate your API Key from the Dev Portal.
+    components:
+      securitySchemes:
+        ApiKeyAuth:
+          type: apiKey
+          in: header
+          name: X-API-Key
+          description: API Key generated from the Kuadrant Dev Portal
+    security:
+      - ApiKeyAuth: []
     paths:
       /mcp:
         post:
-          summary: MCP protocol endpoint
+          summary: MCP protocol endpoint (HTTP)
+      /mcp/sse:
+        get:
+          summary: MCP Server-Sent Events endpoint

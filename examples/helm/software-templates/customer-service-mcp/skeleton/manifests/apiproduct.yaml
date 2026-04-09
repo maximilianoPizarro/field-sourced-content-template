@@ -1,0 +1,34 @@
+apiVersion: devportal.kuadrant.io/v1alpha1
+kind: APIProduct
+metadata:
+  name: ${{values.uniqueName}}-api
+  namespace: ${{values.namespace}}
+  labels:
+    app.kubernetes.io/name: ${{values.name}}
+    backstage.io/kubernetes-id: ${{values.uniqueName}}
+spec:
+  displayName: "${{values.uniqueName}} — MCP Server API"
+  description: |
+    Model Context Protocol server para AI-powered customer service.
+    Protegido con API Key (header X-API-Key) y rate limiting (120 req/min).
+    Genera tu API Key desde el Dev Portal para conectar tu cliente MCP.
+    Endpoints: /mcp (HTTP), /mcp/sse (Server-Sent Events)
+  version: "v1"
+  publishStatus: Published
+  approvalMode: automatic
+  tags:
+    - api-key
+    - kuadrant
+    - mcp
+    - neuralbank
+  contact:
+    team: ${{values.owner}}
+    email: "${{values.owner}}@redhat.local"
+  documentation:
+    openAPISpecURL: "https://${{values.name}}-${{values.namespace}}.${{values.clusterDomain}}/q/openapi"
+    swaggerUI: "https://${{values.name}}-${{values.namespace}}.${{values.clusterDomain}}/q/swagger-ui"
+    gitRepository: "https://gitea-gitea.${{values.clusterDomain}}/ws-${{values.owner}}/${{values.name}}"
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: ${{values.name}}-route

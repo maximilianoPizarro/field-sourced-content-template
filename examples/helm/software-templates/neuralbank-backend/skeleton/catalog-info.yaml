@@ -55,8 +55,18 @@ spec:
       version: 1.0.0
       description: >
         REST API for credit and customer management.
-        Protected by Kuadrant OIDCPolicy (Keycloak OIDC) and
-        RateLimitPolicy (60 req/min per user).
+        Protected by Kuadrant AuthPolicy (API Key via X-API-Key header)
+        and RateLimitPolicy (120 req/min).
+        Generate your API Key from the Dev Portal.
+    components:
+      securitySchemes:
+        ApiKeyAuth:
+          type: apiKey
+          in: header
+          name: X-API-Key
+          description: API Key generated from the Kuadrant Dev Portal
+    security:
+      - ApiKeyAuth: []
     paths:
       /api/customers:
         get:

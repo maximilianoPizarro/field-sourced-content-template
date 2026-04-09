@@ -8,6 +8,7 @@ metadata:
     backstage.io/kubernetes-id: ${{values.uniqueName}}
   annotations:
     networking.istio.io/service-type: ClusterIP
+    kuadrant.io/namespace: kuadrant-system
 spec:
   gatewayClassName: istio
   listeners:

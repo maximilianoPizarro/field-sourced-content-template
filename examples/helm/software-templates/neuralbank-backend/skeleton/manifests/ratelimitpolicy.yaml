@@ -8,11 +8,9 @@ metadata:
     backstage.io/kubernetes-id: ${{values.uniqueName}}
 spec:
   limits:
-    api-per-user:
-      counters:
-        - expression: auth.identity.username
+    api-global:
       rates:
-        - limit: 60
+        - limit: 120
           window: 1m
   targetRef:
     group: gateway.networking.k8s.io

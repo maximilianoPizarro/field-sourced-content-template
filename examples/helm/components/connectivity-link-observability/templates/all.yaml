@@ -597,13 +597,143 @@ spec:
       "annotations": { "list": [] },
       "title": "Service Mesh Overview",
       "uid": "service-mesh-overview",
-      "version": 2,
+      "version": 3,
       "panels": [
+        {
+          "title": "Total Requests/s",
+          "type": "gauge",
+          "gridPos": { "h": 7, "w": 6, "x": 0, "y": 0 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps", "min": 0, "max": 100,
+              "thresholds": { "mode": "absolute", "steps": [
+                { "color": "super-light-green", "value": null },
+                { "color": "green", "value": 1 },
+                { "color": "orange", "value": 50 },
+                { "color": "red", "value": 80 }
+              ]}
+            }
+          },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
+          "targets": [{ "expr": "sum(rate(istio_requests_total[5m]))", "instant": true }],
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+        },
+        {
+          "title": "Success Rate",
+          "type": "gauge",
+          "gridPos": { "h": 7, "w": 6, "x": 6, "y": 0 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit", "min": 0, "max": 1,
+              "thresholds": { "mode": "absolute", "steps": [
+                { "color": "red", "value": null },
+                { "color": "orange", "value": 0.90 },
+                { "color": "yellow", "value": 0.95 },
+                { "color": "green", "value": 0.99 }
+              ]}
+            }
+          },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
+          "targets": [{ "expr": "sum(rate(istio_requests_total{response_code=~\"2..\"}[5m])) / sum(rate(istio_requests_total[5m]))", "instant": true }],
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+        },
+        {
+          "title": "P95 Latency",
+          "type": "gauge",
+          "gridPos": { "h": 7, "w": 6, "x": 12, "y": 0 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms", "min": 0, "max": 2000,
+              "thresholds": { "mode": "absolute", "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 100 },
+                { "color": "orange", "value": 500 },
+                { "color": "red", "value": 1000 }
+              ]}
+            }
+          },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
+          "targets": [{ "expr": "histogram_quantile(0.95, sum(rate(istio_request_duration_milliseconds_bucket[5m])) by (le))", "instant": true }],
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+        },
+        {
+          "title": "Error Rate",
+          "type": "gauge",
+          "gridPos": { "h": 7, "w": 6, "x": 18, "y": 0 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit", "min": 0, "max": 0.5,
+              "thresholds": { "mode": "absolute", "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 0.01 },
+                { "color": "orange", "value": 0.05 },
+                { "color": "red", "value": 0.10 }
+              ]}
+            }
+          },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
+          "targets": [{ "expr": "sum(rate(istio_requests_total{response_code=~\"[45]..\"}[5m])) / sum(rate(istio_requests_total[5m]))", "instant": true }],
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+        },
+        {
+          "title": "2xx Responses",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 0, "y": 7 },
+          "fieldConfig": { "defaults": { "unit": "reqps", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } } },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+          "targets": [{ "expr": "sum(rate(istio_requests_total{response_code=~\"2..\"}[5m]))", "instant": true }],
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+        },
+        {
+          "title": "4xx Errors",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 4, "y": 7 },
+          "fieldConfig": { "defaults": { "unit": "reqps", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 0.1 }, { "color": "red", "value": 1 }] } } },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+          "targets": [{ "expr": "sum(rate(istio_requests_total{response_code=~\"4..\"}[5m]))", "instant": true }],
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+        },
+        {
+          "title": "5xx Errors",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 8, "y": 7 },
+          "fieldConfig": { "defaults": { "unit": "reqps", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 0.01 }, { "color": "red", "value": 0.1 }] } } },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+          "targets": [{ "expr": "sum(rate(istio_requests_total{response_code=~\"5..\"}[5m]))", "instant": true }],
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+        },
+        {
+          "title": "TCP Sent",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 12, "y": 7 },
+          "fieldConfig": { "defaults": { "unit": "Bps", "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] } } },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+          "targets": [{ "expr": "sum(rate(istio_tcp_sent_bytes_total[5m]))", "instant": true }],
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+        },
+        {
+          "title": "TCP Received",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 16, "y": 7 },
+          "fieldConfig": { "defaults": { "unit": "Bps", "thresholds": { "mode": "absolute", "steps": [{ "color": "purple", "value": null }] } } },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+          "targets": [{ "expr": "sum(rate(istio_tcp_received_bytes_total[5m]))", "instant": true }],
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+        },
+        {
+          "title": "Connections/s",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 20, "y": 7 },
+          "fieldConfig": { "defaults": { "unit": "cps", "thresholds": { "mode": "absolute", "steps": [{ "color": "yellow", "value": null }] } } },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+          "targets": [{ "expr": "sum(rate(istio_tcp_connections_opened_total[5m]))", "instant": true }],
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+        },
         {
           "title": "Traffic Flow — Request Rate (source → destination)",
           "description": "L7 HTTP request rate from gateways and waypoint proxies",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 11 },
           "fieldConfig": {
             "defaults": {
               "unit": "reqps",
@@ -623,7 +753,7 @@ spec:
           "title": "Request Rate by Namespace",
           "description": "Total request rate per destination namespace (L7 + L4 combined view)",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 19 },
           "fieldConfig": {
             "defaults": {
               "unit": "reqps",
@@ -647,7 +777,7 @@ spec:
           "title": "Success Rate (2xx %)",
           "description": "Percentage of successful (2xx) responses per destination service",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 27 },
           "fieldConfig": {
             "defaults": {
               "unit": "percentunit",
@@ -677,7 +807,7 @@ spec:
           "title": "Success Rate — Current",
           "description": "Instant success rate gauge per destination service",
           "type": "gauge",
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 27 },
           "fieldConfig": {
             "defaults": {
               "unit": "percentunit",
@@ -706,7 +836,7 @@ spec:
           "title": "Latency P50 / P95 / P99",
           "description": "Request latency percentiles by destination service",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 35 },
           "fieldConfig": {
             "defaults": {
               "unit": "ms",
@@ -731,10 +861,36 @@ spec:
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
         },
         {
+          "title": "P95 Latency per Service",
+          "description": "Current P95 latency gauge per destination service",
+          "type": "gauge",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 35 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms", "min": 0, "max": 2000,
+              "thresholds": { "mode": "absolute", "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 100 },
+                { "color": "orange", "value": 500 },
+                { "color": "red", "value": 1000 }
+              ]}
+            }
+          },
+          "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(istio_request_duration_milliseconds_bucket{reporter=\"destination\"}[5m])) by (le, destination_workload, destination_workload_namespace))",
+              "legendFormat": "{{`{{destination_workload_namespace}}`}}/{{`{{destination_workload}}`}}",
+              "instant": true
+            }
+          ],
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+        },
+        {
           "title": "TCP Traffic — Bytes Sent",
           "description": "TCP bytes sent rate from ztunnel L4 telemetry",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 43 },
           "fieldConfig": {
             "defaults": {
               "unit": "Bps",
@@ -754,7 +910,7 @@ spec:
           "title": "TCP Traffic — Bytes Received",
           "description": "TCP bytes received rate from ztunnel L4 telemetry",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 43 },
           "fieldConfig": {
             "defaults": {
               "unit": "Bps",
@@ -774,7 +930,7 @@ spec:
           "title": "Active Connections (opened − closed rate)",
           "description": "Net connection rate per destination from ztunnel",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 51 },
           "fieldConfig": {
             "defaults": {
               "unit": "cps",
@@ -798,7 +954,7 @@ spec:
           "title": "TCP Connections Opened Rate",
           "description": "Rate of new TCP connections per destination",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 40 },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 51 },
           "fieldConfig": {
             "defaults": {
               "unit": "cps",
@@ -818,7 +974,7 @@ spec:
           "title": "Waypoint — Request Rate (L7 via waypoint)",
           "description": "L7 traffic handled by ambient mesh waypoint proxies",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 48 },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 59 },
           "fieldConfig": {
             "defaults": {
               "unit": "reqps",
@@ -846,7 +1002,7 @@ spec:
           "title": "Waypoint — Latency P95",
           "description": "P95 latency for traffic processed by waypoint proxies",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 48 },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 59 },
           "fieldConfig": {
             "defaults": {
               "unit": "ms",
@@ -870,7 +1026,7 @@ spec:
           "title": "Error Breakdown — 4xx by Destination",
           "description": "Client error rate (4xx) per destination service and response code",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 56 },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 67 },
           "fieldConfig": {
             "defaults": {
               "unit": "reqps",
@@ -890,7 +1046,7 @@ spec:
           "title": "Error Breakdown — 5xx by Destination",
           "description": "Server error rate (5xx) per destination service and response code",
           "type": "timeseries",
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 56 },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 67 },
           "fieldConfig": {
             "defaults": {
               "unit": "reqps",
@@ -934,27 +1090,43 @@ data:
     #!/bin/sh
     DOMAIN="{{ .Values.clusterDomain | default "apps.cluster-l9nhj.dynamic.redhatworkshops.io" }}"
 
-    TARGETS="
+    INTERNAL="
     http://neuralbank-gateway-istio.neuralbank-stack.svc:80/q/health
     http://neuralbank-gateway-istio.neuralbank-stack.svc:80/api/v1/customers
+    http://neuralbank-gateway-istio.neuralbank-stack.svc:80/api/v1/accounts
     http://nfl-wallet-gateway-istio.nfl-wallet-prod.svc:80/q/health
     http://nfl-wallet-gateway-istio.nfl-wallet-prod.svc:80/api/v1/wallets
     http://nfl-wallet-gateway-istio.nfl-wallet-test.svc:80/q/health
+    http://nfl-wallet-gateway-istio.nfl-wallet-test.svc:80/api/v1/wallets
     http://litemaas-gateway-istio.litemaas.svc:80/api/health
     http://litemaas-gateway-istio.litemaas.svc:80/v1/models
     "
 
+    EXTERNAL="
+    https://neuralbank-gateway-istio-neuralbank-stack.${DOMAIN}/q/health
+    https://neuralbank-gateway-istio-neuralbank-stack.${DOMAIN}/api/v1/customers
+    https://nfl-wallet-gateway-istio-nfl-wallet-prod.${DOMAIN}/q/health
+    https://nfl-wallet-gateway-istio-nfl-wallet-prod.${DOMAIN}/api/v1/wallets
+    https://nfl-wallet-gateway-istio-nfl-wallet-test.${DOMAIN}/q/health
+    https://litemaas-gateway-istio-litemaas.${DOMAIN}/api/health
+    https://litemaas-gateway-istio-litemaas.${DOMAIN}/v1/models
+    "
+
     echo "=== Mesh Traffic Generator ==="
-    echo "Interval: ${INTERVAL:-10}s | Targets: $(echo "$TARGETS" | wc -w)"
+    echo "Interval: ${INTERVAL:-3}s | Internal: $(echo $INTERNAL | wc -w) | External: $(echo $EXTERNAL | wc -w)"
+
+    fire_batch() {
+      for url in $INTERNAL $EXTERNAL; do
+        curl -sk -o /dev/null -w "$(date +%H:%M:%S) %{http_code} $url\n" \
+          --connect-timeout 3 --max-time 5 "$url" 2>/dev/null &
+      done
+      wait
+    }
 
     while true; do
-      for url in $TARGETS; do
-        code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 3 --max-time 5 "$url" 2>/dev/null)
-        echo "$(date +%H:%M:%S) $code $url"
-      done
-
-      jitter=$((RANDOM % 5))
-      sleep $(( ${INTERVAL:-10} + jitter ))
+      fire_batch
+      echo "$(date +%H:%M:%S) --- batch done ---"
+      sleep $(( ${INTERVAL:-3} + RANDOM % 3 ))
     done
 ---
 apiVersion: apps/v1
@@ -968,7 +1140,7 @@ metadata:
   name: mesh-traffic-generator
   namespace: openshift-cluster-observability-operator
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: mesh-traffic-generator
@@ -980,17 +1152,17 @@ spec:
       containers:
       - name: traffic-gen
         image: registry.access.redhat.com/ubi9/ubi-minimal:latest
-        command: ["/bin/sh", "/scripts/generate.sh"]
+        command: ["/bin/sh", "-c", "microdnf install -y curl && exec /scripts/generate.sh"]
         env:
         - name: INTERVAL
-          value: "10"
+          value: "3"
         resources:
           requests:
-            cpu: 10m
-            memory: 32Mi
-          limits:
-            cpu: 50m
+            cpu: 20m
             memory: 64Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
         volumeMounts:
         - name: scripts
           mountPath: /scripts

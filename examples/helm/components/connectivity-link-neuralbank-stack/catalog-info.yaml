@@ -140,6 +140,10 @@ metadata:
   name: neuralbank-api
   namespace: default
   description: "Neuralbank REST API — endpoints para clientes, créditos y operaciones bancarias"
+  annotations:
+    kuadrant.io/namespace: neuralbank-stack
+    kuadrant.io/apiproduct: neuralbank-api
+    kuadrant.io/httproute: neuralbank-api-route
   tags:
     - rest
     - openapi

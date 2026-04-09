@@ -37,6 +37,10 @@ kind: API
 metadata:
   name: ${{values.uniqueName}}-api
   description: "MCP Server API for customer service AI agent"
+  annotations:
+    kuadrant.io/namespace: ${{values.namespace}}
+    kuadrant.io/apiproduct: ${{values.uniqueName}}-api
+    kuadrant.io/httproute: ${{values.name}}-route
 spec:
   type: openapi
   lifecycle: experimental

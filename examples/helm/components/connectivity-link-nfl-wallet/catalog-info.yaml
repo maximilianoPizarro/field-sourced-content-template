@@ -81,6 +81,10 @@ metadata:
   name: nfl-wallet-api
   namespace: default
   description: "NFL Wallet REST API — Customer Service endpoints protegidos con API Key (header X-API-Key)"
+  annotations:
+    kuadrant.io/namespace: nfl-wallet-prod
+    kuadrant.io/apiproduct: nfl-wallet-api
+    kuadrant.io/httproute: nfl-wallet-api-route
   tags:
     - rest
     - openapi

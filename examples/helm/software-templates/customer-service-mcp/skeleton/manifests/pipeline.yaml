@@ -21,16 +21,8 @@ spec:
   tasks:
     - name: git-clone
       taskRef:
-        resolver: hub
-        params:
-          - name: type
-            value: artifact
-          - name: kind
-            value: task
-          - name: name
-            value: git-clone
-          - name: version
-            value: "0.9"
+        kind: Task
+        name: git-clone
       params:
         - name: url
           value: $(params.git-url)
@@ -43,16 +35,8 @@ spec:
       runAfter:
         - git-clone
       taskRef:
-        resolver: hub
-        params:
-          - name: type
-            value: artifact
-          - name: kind
-            value: task
-          - name: name
-            value: maven
-          - name: version
-            value: "0.3"
+        kind: Task
+        name: maven
       params:
         - name: MAVEN_IMAGE
           value: maven:3.9-eclipse-temurin-17
@@ -69,16 +53,8 @@ spec:
       runAfter:
         - maven-build
       taskRef:
-        resolver: hub
-        params:
-          - name: type
-            value: artifact
-          - name: kind
-            value: task
-          - name: name
-            value: buildah
-          - name: version
-            value: "0.8"
+        kind: Task
+        name: buildah
       params:
         - name: IMAGE
           value: $(params.image-name)
@@ -91,16 +67,8 @@ spec:
       runAfter:
         - build-image
       taskRef:
-        resolver: hub
-        params:
-          - name: type
-            value: artifact
-          - name: kind
-            value: task
-          - name: name
-            value: openshift-client
-          - name: version
-            value: "0.2"
+        kind: Task
+        name: openshift-client
       params:
         - name: SCRIPT
           value: |

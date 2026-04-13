@@ -1,0 +1,339 @@
+apiVersion: sonataflow.org/v1alpha08
+kind: SonataFlowPlatform
+metadata:
+  name: sonataflow-platform
+  namespace: kogito-bpm
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  build:
+    config:
+      strategyOptions:
+        KanikoBuildCacheEnabled: "true"
+  devMode:
+    baseImage: registry.redhat.io/openshift-serverless-1/logic-swf-devmode-rhel8:1.36
+---
+apiVersion: sonataflow.org/v1alpha08
+kind: SonataFlow
+metadata:
+  name: customer-onboarding
+  namespace: kogito-bpm
+  annotations:
+    sonataflow.org/description: "Customer Onboarding BPM - triggered by CDC events from Kafka"
+    sonataflow.org/version: "1.0.0"
+    argocd.argoproj.io/sync-wave: "9"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  labels:
+    app: customer-onboarding
+    app.kubernetes.io/part-of: kogito-bpm
+    app.openshift.io/runtime: kogito
+spec:
+  flow:
+    start: ReceiveCDCEvent
+    events:
+      - name: cdcCustomerEvent
+        type: cdc.public.customers
+        source: debezium/cdc
+      - name: approvalCompleted
+        type: approval.completed
+        source: internal
+    functions:
+      - name: classifyCustomer
+        type: expression
+        operation: |
+          .customer | if .amount >= 50000 then "premium" elif .amount >= 10000 then "standard" else "basic" end
+      - name: logEvent
+        type: custom
+        custom:
+          type: sysout
+      - name: sendApprovalRequest
+        type: rest
+        operation: "http://cdc-bridge-bridge-service.kafka-cdc.svc:8080/topics/bpm.approval.requests#POST"
+      - name: sendWelcomeNotification
+        type: rest
+        operation: "http://n8n-mailpit.openshift-lightspeed.svc:8025/api/v1/send#POST"
+      - name: publishMetrics
+        type: rest
+        operation: "http://cdc-bridge-bridge-service.kafka-cdc.svc:8080/topics/bpm.onboarding.metrics#POST"
+    states:
+      - name: ReceiveCDCEvent
+        type: event
+        onEvents:
+          - eventRefs:
+              - cdcCustomerEvent
+            eventDataFilter:
+              data: ".payload.after"
+              toStateData: ".customer"
+        transition: ValidateCustomerData
+
+      - name: ValidateCustomerData
+        type: switch
+        dataConditions:
+          - condition: ".customer.email != null and .customer.first_name != null"
+            name: ValidData
+            transition: ClassifyCustomer
+          - condition: ".customer.email == null or .customer.first_name == null"
+            name: InvalidData
+            transition: HandleInvalidData
+        defaultCondition:
+          transition: HandleInvalidData
+
+      - name: HandleInvalidData
+        type: operation
+        actions:
+          - name: logInvalidData
+            functionRef:
+              refName: logEvent
+            actionDataFilter:
+              fromStateData: '{"message": "Invalid customer data received", "customer": .customer}'
+        end: true
+
+      - name: ClassifyCustomer
+        type: operation
+        actions:
+          - name: classify
+            functionRef:
+              refName: classifyCustomer
+            actionDataFilter:
+              toStateData: ".tier"
+        transition: CheckApprovalRequired
+
+      - name: CheckApprovalRequired
+        type: switch
+        dataConditions:
+          - condition: '.tier == "premium"'
+            name: NeedsApproval
+            transition: RequestManagerApproval
+          - condition: '.tier != "premium"'
+            name: AutoApproved
+            transition: ProvisionAccount
+        defaultCondition:
+          transition: ProvisionAccount
+
+      - name: RequestManagerApproval
+        type: callback
+        action:
+          name: requestApproval
+          functionRef:
+            refName: sendApprovalRequest
+          actionDataFilter:
+            fromStateData: |
+              {
+                "records": [{
+                  "value": {
+                    "customer_id": .customer.id,
+                    "name": "\(.customer.first_name) \(.customer.last_name)",
+                    "email": .customer.email,
+                    "tier": .tier,
+                    "status": "pending_approval"
+                  }
+                }]
+              }
+        eventRef: approvalCompleted
+        eventDataFilter:
+          data: ".approved"
+          toStateData: ".approval_result"
+        timeouts:
+          eventTimeout: PT24H
+        transition: EvaluateApproval
+
+      - name: EvaluateApproval
+        type: switch
+        dataConditions:
+          - condition: ".approval_result == true"
+            name: Approved
+            transition: ProvisionAccount
+          - condition: ".approval_result != true"
+            name: Rejected
+            transition: NotifyRejection
+        defaultCondition:
+          transition: NotifyRejection
+
+      - name: NotifyRejection
+        type: operation
+        actions:
+          - name: sendRejectionEmail
+            functionRef:
+              refName: sendWelcomeNotification
+            actionDataFilter:
+              fromStateData: |
+                {
+                  "from": {"name": "Onboarding BPM", "email": "bpm@neuralbank.io"},
+                  "to": [{"name": "\(.customer.first_name)", "email": "\(.customer.email)"}],
+                  "subject": "Application Under Review",
+                  "text": "Dear \(.customer.first_name), your premium account application requires additional review. We will contact you shortly."
+                }
+        end: true
+
+      - name: ProvisionAccount
+        type: parallel
+        branches:
+          - name: CreateAccount
+            actions:
+              - name: logProvisioning
+                functionRef:
+                  refName: logEvent
+                actionDataFilter:
+                  fromStateData: '{"message": "Provisioning account", "tier": .tier, "customer": .customer.email}'
+          - name: SendWelcome
+            actions:
+              - name: sendWelcome
+                functionRef:
+                  refName: sendWelcomeNotification
+                actionDataFilter:
+                  fromStateData: |
+                    {
+                      "from": {"name": "NeuralBank Onboarding", "email": "onboarding@neuralbank.io"},
+                      "to": [{"name": "\(.customer.first_name)", "email": "\(.customer.email)"}],
+                      "subject": "Welcome to NeuralBank - \(.tier | ascii_upcase) Account",
+                      "text": "Hello \(.customer.first_name) \(.customer.last_name)!\n\nYour \(.tier) account has been successfully created.\n\nThank you for choosing NeuralBank."
+                    }
+        completionType: allOf
+        transition: EmitOnboardingMetric
+
+      - name: EmitOnboardingMetric
+        type: operation
+        actions:
+          - name: publishMetric
+            functionRef:
+              refName: publishMetrics
+            actionDataFilter:
+              fromStateData: |
+                {
+                  "records": [{
+                    "value": {
+                      "event_type": "customer_onboarded",
+                      "customer_id": .customer.id,
+                      "tier": .tier,
+                      "timestamp": (now | todate)
+                    }
+                  }]
+                }
+        end: true
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: bpm.approval.requests
+  namespace: kafka-cdc
+  labels:
+    strimzi.io/cluster: cdc-cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: 604800000
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: bpm.onboarding.metrics
+  namespace: kafka-cdc
+  labels:
+    strimzi.io/cluster: cdc-cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: 2592000000
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: onboarding-process-docs
+  namespace: kogito-bpm
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+  labels:
+    app: customer-onboarding
+data:
+  README.md: |
+    # Customer Onboarding BPM Process
+
+    ## Process Flow
+
+    1. **ReceiveCDCEvent** - Listens for CDC events from `cdc.public.customers` Kafka topic
+    2. **ValidateCustomerData** - Validates required fields (email, first_name)
+    3. **ClassifyCustomer** - Classifies customer tier based on amount:
+       - >= 50,000 → Premium (requires manager approval)
+       - >= 10,000 → Standard (auto-approved)
+       - < 10,000 → Basic (auto-approved)
+    4. **RequestManagerApproval** - For premium customers, sends approval request
+       via Kafka Bridge to `bpm.approval.requests` topic (24h timeout)
+    5. **ProvisionAccount** - Parallel execution:
+       - Creates the account record
+       - Sends welcome email via Mailpit
+    6. **EmitOnboardingMetric** - Publishes metrics to `bpm.onboarding.metrics`
+
+    ## Integration Points
+
+    | System | Protocol | Purpose |
+    |--------|----------|---------|
+    | Kafka CDC | CloudEvents | Trigger (CDC events) |
+    | Kafka Bridge | REST/HTTP | Publish approval requests & metrics |
+    | Mailpit | REST/HTTP | Email notifications |
+    | Apicurio Registry | REST | Schema governance |
+
+  process-diagram.txt: |
+    ┌──────────────────┐
+    │  CDC Event        │
+    │  (Kafka Topic)    │
+    └────────┬─────────┘
+             │
+    ┌────────▼─────────┐
+    │ Validate Customer │
+    │ Data              │
+    └────────┬─────────┘
+             │
+    ┌────────▼─────────┐
+    │ Classify Customer │
+    │ (basic/standard/  │
+    │  premium)         │
+    └────────┬─────────┘
+             │
+        ┌────┴────┐
+        │ Premium? │
+        └────┬────┘
+       Yes   │   No
+    ┌────────▼──┐  ┌──▼──────────┐
+    │ Manager    │  │ Auto-       │
+    │ Approval   │  │ Approved    │
+    │ (24h SLA)  │  │             │
+    └────────┬──┘  └──┬──────────┘
+             │        │
+    ┌────────▼────────▼┐
+    │ Provision Account │
+    │ (parallel)        │
+    │ ├─ Create Account │
+    │ └─ Send Welcome   │
+    └────────┬─────────┘
+             │
+    ┌────────▼─────────┐
+    │ Emit Onboarding   │
+    │ Metric            │
+    └──────────────────┘
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: customer-onboarding
+  namespace: kogito-bpm
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+spec:
+  host: customer-onboarding-kogito-bpm.{{ .Values.clusterDomain }}
+  to:
+    kind: Service
+    name: customer-onboarding
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

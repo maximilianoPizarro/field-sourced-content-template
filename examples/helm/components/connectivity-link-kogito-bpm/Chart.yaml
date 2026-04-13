@@ -1,0 +1,6 @@
+apiVersion: v2
+name: connectivity-link-kogito-bpm
+description: BPM with Kogito/SonataFlow - Customer Onboarding workflow triggered by CDC events from Kafka
+type: application
+version: 0.1.0
+appVersion: "1.36.0"

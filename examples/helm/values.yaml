@@ -285,6 +285,15 @@ connectivityLink:
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
+    # --- Kogito BPM (SonataFlow) ---
+    - id: connectivity-link-kogito-bpm
+      enabled: true
+      path: connectivity-link-kogito-bpm
+      destinationNamespace: kogito-bpm
+      syncWave: "8"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
 
 # ============================================================
 # Lightspeed / MCP — LLM provider config for OLS component

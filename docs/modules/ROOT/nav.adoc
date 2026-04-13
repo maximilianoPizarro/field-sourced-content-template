@@ -11,3 +11,4 @@
 * xref:10-enterprise-oilgas.adoc[Caso Enterprise: Oil and Gas]
 * xref:11-drp-governance.adoc[DRP/BCP y Governance]
 * xref:12-verificacion-operativa.adoc[Verificación Operativa]
+* xref:13-kogito-bpm.adoc[BPM con Kogito / SonataFlow]

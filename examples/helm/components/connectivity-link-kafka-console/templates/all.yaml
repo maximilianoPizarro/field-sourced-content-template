@@ -12,21 +12,3 @@ spec:
     - name: cdc-cluster
       namespace: kafka-cdc
       listener: plain
----
-apiVersion: route.openshift.io/v1
-kind: Route
-metadata:
-  name: kafka-console
-  namespace: kafka-cdc
-  annotations:
-    argocd.argoproj.io/sync-wave: "5"
-spec:
-  host: kafka-console-kafka-cdc.{{ .Values.clusterDomain }}
-  to:
-    kind: Service
-    name: kafka-console-console-service
-  port:
-    targetPort: 80
-  tls:
-    termination: edge
-    insecureEdgeTerminationPolicy: Redirect

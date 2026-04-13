@@ -91,8 +91,8 @@ spec:
           - name: logInvalidData
             functionRef:
               refName: logEvent
-            actionDataFilter:
-              fromStateData: '{"message": "Invalid customer data received", "customer": .customer}'
+              arguments:
+                message: "Invalid customer data received"
         end: true
 
       - name: ClassifyCustomer
@@ -152,8 +152,8 @@ spec:
           - name: logRejection
             functionRef:
               refName: logEvent
-            actionDataFilter:
-              fromStateData: '{"message": "Customer rejected", "email": .customer.email}'
+              arguments:
+                message: "Customer rejected"
         end: true
 
       - name: ProvisionAccount
@@ -164,8 +164,8 @@ spec:
               - name: logProvisioning
                 functionRef:
                   refName: logEvent
-                actionDataFilter:
-                  fromStateData: '{"message": "Provisioning account", "tier": .tier, "customer": .customer.email}'
+                  arguments:
+                    message: "Provisioning account"
           - name: PrepareWelcome
             actions:
               - name: buildWelcome
@@ -183,8 +183,8 @@ spec:
           - name: logMetric
             functionRef:
               refName: logEvent
-            actionDataFilter:
-              fromStateData: '{"message": "Onboarding complete", "tier": .tier, "customer_id": .customer.id}'
+              arguments:
+                message: "Onboarding complete"
         end: true
 ---
 apiVersion: kafka.strimzi.io/v1beta2

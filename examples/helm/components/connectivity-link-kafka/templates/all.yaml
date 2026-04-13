@@ -258,9 +258,13 @@ spec:
           port: 9404
     - ports:
         - protocol: TCP
+          port: 3000
+        - protocol: TCP
           port: 8080
         - protocol: TCP
           port: 8083
+        - protocol: TCP
+          port: 9090
         - protocol: TCP
           port: 9092
         - protocol: TCP

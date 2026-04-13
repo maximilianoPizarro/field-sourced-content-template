@@ -45,8 +45,7 @@ spec:
           .customer | if .amount >= 50000 then "premium" elif .amount >= 10000 then "standard" else "basic" end
       - name: logEvent
         type: custom
-        custom:
-          type: sysout
+        operation: sysout
       - name: sendApprovalRequest
         type: rest
         operation: "http://cdc-bridge-bridge-service.kafka-cdc.svc:8080/topics/bpm.approval.requests#POST"

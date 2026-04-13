@@ -42,19 +42,26 @@ spec:
       - name: classifyCustomer
         type: expression
         operation: |
-          .customer | if .amount >= 50000 then "premium" elif .amount >= 10000 then "standard" else "basic" end
+          {tier: (if .customer.amount >= 50000 then "premium" elif .customer.amount >= 10000 then "standard" else "basic" end)}
       - name: logEvent
         type: custom
         operation: sysout
-      - name: sendApprovalRequest
-        type: rest
-        operation: "http://cdc-bridge-bridge-service.kafka-cdc.svc:8080/topics/bpm.approval.requests#POST"
-      - name: sendWelcomeNotification
-        type: rest
-        operation: "http://n8n-mailpit.openshift-lightspeed.svc:8025/api/v1/send#POST"
-      - name: publishMetrics
-        type: rest
-        operation: "http://cdc-bridge-bridge-service.kafka-cdc.svc:8080/topics/bpm.onboarding.metrics#POST"
+      - name: buildApprovalPayload
+        type: expression
+        operation: |
+          {approval_request: {customer_id: .customer.id, name: "\(.customer.first_name) \(.customer.last_name)", email: .customer.email, tier: .tier, status: "pending_approval"}}
+      - name: buildWelcomePayload
+        type: expression
+        operation: |
+          {notification: {to: .customer.email, subject: "Welcome to NeuralBank", body: "Hello \(.customer.first_name), your \(.tier) account is ready."}}
+      - name: buildRejectionPayload
+        type: expression
+        operation: |
+          {notification: {to: .customer.email, subject: "Application Under Review", body: "Dear \(.customer.first_name), your premium account requires additional review."}}
+      - name: buildMetricPayload
+        type: expression
+        operation: |
+          {metric: {event_type: "customer_onboarded", customer_id: .customer.id, tier: .tier}}
     states:
       - name: ReceiveCDCEvent
         type: event
@@ -115,20 +122,7 @@ spec:
         action:
           name: requestApproval
           functionRef:
-            refName: sendApprovalRequest
-          actionDataFilter:
-            fromStateData: |
-              {
-                "records": [{
-                  "value": {
-                    "customer_id": .customer.id,
-                    "name": "\(.customer.first_name) \(.customer.last_name)",
-                    "email": .customer.email,
-                    "tier": .tier,
-                    "status": "pending_approval"
-                  }
-                }]
-              }
+            refName: buildApprovalPayload
         eventRef: approvalCompleted
         eventDataFilter:
           data: ".approved"
@@ -152,17 +146,14 @@ spec:
       - name: NotifyRejection
         type: operation
         actions:
-          - name: sendRejectionEmail
+          - name: buildRejection
             functionRef:
-              refName: sendWelcomeNotification
+              refName: buildRejectionPayload
+          - name: logRejection
+            functionRef:
+              refName: logEvent
             actionDataFilter:
-              fromStateData: |
-                {
-                  "from": {"name": "Onboarding BPM", "email": "bpm@neuralbank.io"},
-                  "to": [{"name": "\(.customer.first_name)", "email": "\(.customer.email)"}],
-                  "subject": "Application Under Review",
-                  "text": "Dear \(.customer.first_name), your premium account application requires additional review. We will contact you shortly."
-                }
+              fromStateData: '{"message": "Customer rejected", "email": .customer.email}'
         end: true
 
       - name: ProvisionAccount
@@ -175,40 +166,25 @@ spec:
                   refName: logEvent
                 actionDataFilter:
                   fromStateData: '{"message": "Provisioning account", "tier": .tier, "customer": .customer.email}'
-          - name: SendWelcome
+          - name: PrepareWelcome
             actions:
-              - name: sendWelcome
+              - name: buildWelcome
                 functionRef:
-                  refName: sendWelcomeNotification
-                actionDataFilter:
-                  fromStateData: |
-                    {
-                      "from": {"name": "NeuralBank Onboarding", "email": "onboarding@neuralbank.io"},
-                      "to": [{"name": "\(.customer.first_name)", "email": "\(.customer.email)"}],
-                      "subject": "Welcome to NeuralBank - \(.tier | ascii_upcase) Account",
-                      "text": "Hello \(.customer.first_name) \(.customer.last_name)!\n\nYour \(.tier) account has been successfully created.\n\nThank you for choosing NeuralBank."
-                    }
+                  refName: buildWelcomePayload
         completionType: allOf
         transition: EmitOnboardingMetric
 
       - name: EmitOnboardingMetric
         type: operation
         actions:
-          - name: publishMetric
+          - name: buildMetric
             functionRef:
-              refName: publishMetrics
+              refName: buildMetricPayload
+          - name: logMetric
+            functionRef:
+              refName: logEvent
             actionDataFilter:
-              fromStateData: |
-                {
-                  "records": [{
-                    "value": {
-                      "event_type": "customer_onboarded",
-                      "customer_id": .customer.id,
-                      "tier": .tier,
-                      "timestamp": (now | todate)
-                    }
-                  }]
-                }
+              fromStateData: '{"message": "Onboarding complete", "tier": .tier, "customer_id": .customer.id}'
         end: true
 ---
 apiVersion: kafka.strimzi.io/v1beta2

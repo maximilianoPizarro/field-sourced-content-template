@@ -9,17 +9,38 @@ metadata:
     istio-discovery: enabled
 ---
 apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: broker
+  namespace: kafka-cdc
+  labels:
+    strimzi.io/cluster: cdc-cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  replicas: 3
+  roles:
+    - broker
+    - controller
+  storage:
+    type: persistent-claim
+    size: 10Gi
+    deleteClaim: false
+---
+apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
 metadata:
   name: cdc-cluster
   namespace: kafka-cdc
   annotations:
+    strimzi.io/node-pools: enabled
+    strimzi.io/kraft: enabled
     argocd.argoproj.io/sync-wave: "4"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   kafka:
     version: "4.0.0"
-    replicas: 3
     listeners:
       - name: plain
         port: 9092
@@ -35,11 +56,6 @@ spec:
       transaction.state.log.min.isr: 2
       default.replication.factor: 3
       min.insync.replicas: 2
-      inter.broker.protocol.version: "4.0"
-    storage:
-      type: persistent-claim
-      size: 10Gi
-      deleteClaim: false
     metricsConfig:
       type: jmxPrometheusExporter
       valueFrom:

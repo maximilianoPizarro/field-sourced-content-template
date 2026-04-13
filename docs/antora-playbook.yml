@@ -5,9 +5,9 @@ site:
 
 content:
   sources:
-    - url: .
+    - url: https://github.com/maximilianoPizarro/field-sourced-content-template.git
       start_path: docs
-      branches: HEAD
+      branches: main
 
 asciidoc:
   extensions:
@@ -66,4 +66,4 @@ ui:
         }
 
 output:
-  dir: ./_site
+  dir: ./build/site

@@ -38,12 +38,12 @@ jobs:
       - name: Build with Antora
         run: |
           antora --fetch docs/antora-playbook.yml
-          touch docs/_site/.nojekyll
+          touch build/site/.nojekyll
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/_site
+          path: build/site
 
   deploy:
     environment:

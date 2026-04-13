@@ -104,7 +104,7 @@ spec:
     spec:
       containers:
         - name: camel
-          image: quay.io/maximilianopizarro/camel-cdc-processor:latest
+          image: quay.io/quarkus/quarkus-micro-image:2.0
           ports:
             - containerPort: 8080
               name: http

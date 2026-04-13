@@ -71,7 +71,7 @@ metadata:
   annotations:
     strimzi.io/use-connector-resources: "true"
 spec:
-  version: "3.9.0"
+  version: "4.0.0"
   replicas: 2
   bootstrapServers: cdc-cluster-kafka-bootstrap:9093
   build:

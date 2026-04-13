@@ -58,6 +58,19 @@ data:
     CREATE PUBLICATION cdc_publication FOR TABLE customers, orders;
 ---
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cdc-postgresql-cfg
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+data:
+  custom.conf: |
+    wal_level = logical
+    max_replication_slots = 4
+    max_wal_senders = 4
+---
+apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: cdc-postgresql-data
@@ -100,19 +113,14 @@ spec:
           envFrom:
             - secretRef:
                 name: cdc-postgresql-secret
-          args:
-            - "-c"
-            - "wal_level=logical"
-            - "-c"
-            - "max_replication_slots=4"
-            - "-c"
-            - "max_wal_senders=4"
           volumeMounts:
             - name: data
               mountPath: /var/lib/pgsql/data
             - name: init-scripts
               mountPath: /opt/app-root/src/postgresql-init/init.sql
               subPath: init.sql
+            - name: pg-cfg
+              mountPath: /opt/app-root/src/postgresql-cfg
           resources:
             requests:
               cpu: 250m
@@ -135,6 +143,9 @@ spec:
         - name: init-scripts
           configMap:
             name: cdc-postgresql-init
+        - name: pg-cfg
+          configMap:
+            name: cdc-postgresql-cfg
 ---
 apiVersion: v1
 kind: Service

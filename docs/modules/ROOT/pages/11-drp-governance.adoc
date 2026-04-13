@@ -1,0 +1,255 @@
+= DRP/BCP y Governance
+:navtitle: DRP/BCP y Governance
+
+== Plan de Recuperación ante Desastres (DRP)
+
+=== Estrategia de backup
+
+==== Kafka
+
+Los datos de Kafka se respaldan mediante dos mecanismos:
+
+* *Storage persistente* (`persistent-claim`) — los PVCs sobreviven a reinicios de pods
+* *MirrorMaker 2* — replicación cross-cluster para disaster recovery
+
+==== PostgreSQL
+
+[source,bash]
+----
+oc exec -it deploy/cdc-postgresql -n kafka-cdc -- pg_dump -U cdcuser cdcdb > backup.sql
+----
+
+Para un enfoque automatizado, usar CronJobs:
+
+[source,yaml]
+----
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgresql-backup
+  namespace: kafka-cdc
+spec:
+  schedule: "0 2 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: backup
+              image: registry.redhat.io/rhel9/postgresql-16:latest
+              command:
+                - /bin/sh
+                - -c
+                - pg_dump -h cdc-postgresql -U cdcuser cdcdb | gzip > /backups/cdcdb-$(date +%Y%m%d).sql.gz
+              envFrom:
+                - secretRef:
+                    name: cdc-postgresql-secret
+              volumeMounts:
+                - name: backup-storage
+                  mountPath: /backups
+          restartPolicy: OnFailure
+          volumes:
+            - name: backup-storage
+              persistentVolumeClaim:
+                claimName: postgresql-backups
+----
+
+==== Apicurio Registry
+
+Los schemas se almacenan en Kafka (`kafkasql` mode), por lo que se replican junto con el cluster Kafka.
+
+Para exportar schemas manualmente:
+
+[source,bash]
+----
+curl -s https://apicurio-registry-kafka-cdc.apps.<domain>/apis/registry/v2/groups/default/artifacts \
+  | jq -r '.artifacts[].id' \
+  | while read id; do
+      curl -s "https://apicurio-registry-kafka-cdc.apps.<domain>/apis/registry/v2/groups/default/artifacts/$id" \
+        > "schemas/$id.json"
+    done
+----
+
+== MirrorMaker 2 — Replicación Cross-Cluster
+
+MirrorMaker 2 replica topics entre clusters Kafka para disaster recovery o geo-distribución:
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaMirrorMaker2
+metadata:
+  name: cdc-mirror
+  namespace: kafka-cdc
+spec:
+  version: "3.9.0"
+  replicas: 1
+  connectCluster: target
+  clusters:
+    - alias: source
+      bootstrapServers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093
+      tls:
+        trustedCertificates:
+          - secretName: cdc-cluster-cluster-ca-cert
+            certificate: ca.crt
+    - alias: target
+      bootstrapServers: target-cluster-kafka-bootstrap.kafka-dr.svc:9093
+      tls:
+        trustedCertificates:
+          - secretName: target-cluster-cluster-ca-cert
+            certificate: ca.crt
+  mirrors:
+    - sourceCluster: source
+      targetCluster: target
+      sourceConnector:
+        config:
+          replication.factor: 3
+          offset-syncs.topic.replication.factor: 3
+          sync.topic.acls.enabled: "false"
+        tasksMax: 2
+      topicsPattern: "cdc\\..*"
+      groupsPattern: ".*"
+----
+
+=== Capacidades de MirrorMaker 2
+
+[cols="1,2",options="header"]
+|===
+| Feature | Descripción
+
+| *Topic mirroring*
+| Replica topics que matchean el patrón `cdc\..*` al cluster target
+
+| *Offset sync*
+| Sincroniza offsets de consumer groups para failover transparente
+
+| *ACL sync*
+| Opcionalmente replica ACLs (deshabilitado en este ejemplo)
+
+| *Automatic topic creation*
+| Crea topics en el target con la misma configuración del source
+|===
+
+=== Procedimiento de failover
+
+. Verificar que MirrorMaker 2 está sincronizado: los consumer group offsets deben estar al día
+. Detener productores en el cluster source (o redirigir DNS)
+. Verificar lag cero en el cluster target
+. Redirigir consumidores al cluster target
+. Actualizar DNS/Routes para apuntar al cluster target
+
+== Business Continuity Plan (BCP)
+
+=== RPO y RTO
+
+[cols="1,1,2",options="header"]
+|===
+| Componente | RPO | RTO
+
+| Kafka (con MirrorMaker 2)
+| Segundos (replicación async)
+| < 5 minutos (failover manual)
+
+| PostgreSQL (con backup diario)
+| 24 horas
+| < 30 minutos (restore desde backup)
+
+| Apicurio Registry
+| Igual que Kafka (kafkasql)
+| < 5 minutos
+
+| KafkaConnect
+| N/A (stateless, config en Kafka)
+| < 2 minutos (recrear pods)
+
+| Camel Processor
+| N/A (stateless)
+| < 1 minuto (recrear pods)
+|===
+
+=== Niveles de resiliencia
+
+* *Nivel 1 (actual)* — HA dentro del cluster: 3 brokers, RF=3, ISR=2, replicas de Connect y Camel
+* *Nivel 2 (con MirrorMaker 2)* — DR cross-cluster: replicación a cluster secundario
+* *Nivel 3 (multi-región)* — Clusters en diferentes regiones con MirrorMaker 2 bidireccional
+
+== Governance y Compliance
+
+=== Gobierno de datos con Apicurio Registry
+
+Apicurio Registry proporciona governance sobre los schemas de eventos:
+
+[cols="1,2",options="header"]
+|===
+| Capacidad | Descripción
+
+| *Schema versioning*
+| Cada cambio de schema genera una nueva versión
+
+| *Compatibility rules*
+| Forward, backward, full compatibility enforcement
+
+| *Schema validation*
+| Los productores validan contra el schema antes de enviar
+
+| *Artifact groups*
+| Organización de schemas por dominio/equipo
+|===
+
+=== Reglas de compatibilidad
+
+Para habilitar validación de compatibilidad en Apicurio:
+
+[source,bash]
+----
+curl -X PUT https://apicurio-registry-kafka-cdc.apps.<domain>/apis/registry/v2/groups/default/artifacts/customer-schema/rules/COMPATIBILITY \
+  -H "Content-Type: application/json" \
+  -d '{"type": "COMPATIBILITY", "config": "BACKWARD"}'
+----
+
+Con `BACKWARD` compatibility:
+
+* Se pueden agregar campos opcionales
+* No se pueden eliminar campos requeridos
+* No se pueden cambiar tipos de datos
+
+Esto protege a los consumidores existentes de cambios incompatibles.
+
+=== Compliance
+
+[cols="1,2",options="header"]
+|===
+| Requisito | Implementación
+
+| *Retención de datos*
+| Configurable por topic (7 días CDC, 30 días DLQ)
+
+| *Acceso controlado*
+| KafkaUser con ACLs + SCRAM-SHA-512
+
+| *Encriptación en tránsito*
+| TLS entre todos los componentes (listener 9093)
+
+| *Encriptación en reposo*
+| Disponible via Kroxylicious o storage encryption de OpenShift
+
+| *Auditoría*
+| Logs de acceso en Kafka, eventos en OpenShift
+
+| *Trazabilidad*
+| Service Mesh (Kiali) + headers de Debezium (source, timestamp, op)
+|===
+
+=== Retención y eliminación de datos
+
+Para cumplir con regulaciones como GDPR, se puede configurar eliminación automática:
+
+[source,yaml]
+----
+config:
+  cleanup.policy: delete
+  retention.ms: 604800000
+  retention.bytes: -1
+----
+
+Para topics con `compact`, los tombstone records (key + null value) permiten eliminar registros específicos cuando se necesita "right to be forgotten".

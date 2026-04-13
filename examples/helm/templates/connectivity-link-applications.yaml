@@ -94,6 +94,21 @@ spec:
       jsonPointers:
         - /metadata/annotations
         - /status
+    - group: kafka.strimzi.io
+      kind: "*"
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: console.streamshub.io
+      kind: "*"
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: registry.apicur.io
+      kind: "*"
+      jsonPointers:
+        - /metadata/annotations
+        - /status
     - group: ""
       kind: ConfigMap
       jsonPointers:
@@ -172,6 +187,26 @@ spec:
         showroom:
           url: {{ printf "https://showroom-showroom.%s" $domain | quote }}
     {{- else if eq .path "connectivity-link-nfl-wallet" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+    {{- else if eq .path "connectivity-link-kafka" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+    {{- else if eq .path "connectivity-link-kafka-console" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+    {{- else if eq .path "connectivity-link-apicurio-registry" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+    {{- else if eq .path "connectivity-link-cdc-demo" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+    {{- else if eq .path "connectivity-link-camel-cdc" }}
     helm:
       valuesObject:
         clusterDomain: {{ $domain }}

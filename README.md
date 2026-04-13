@@ -63,6 +63,11 @@ This deployment provisions a full Neuralbank developer workshop environment on O
 | **Keycloak** | Identity provider for backstage and neuralbank realms (200 users) |
 | **Istio / Gateway API** | Service mesh with Gateway, HTTPRoute per scaffolded service |
 | **Kuadrant** | API management: OIDCPolicy (auth) + RateLimitPolicy per service |
+| **Streams for Apache Kafka** | Kafka cluster (KRaft mode) with topics, bridge, and Kafka exporter |
+| **Streams Console** | StreamsHub web console for monitoring Kafka clusters and topics |
+| **Apicurio Registry** | Schema Registry (Avro/JSON/Protobuf) for CDC event validation |
+| **CDC Demo (Debezium)** | Change Data Capture pipeline: PostgreSQL → Debezium → Kafka → Mailpit |
+| **Kafka Bridge** | HTTP REST proxy for producing/consuming Kafka messages via curl |
 | **Showroom** | Antora-based workshop lab guide (English) |
 | **OLS (Lightspeed)** | AI assistant with MCP Gateway integration |
 | **LiteMaaS** | LLM proxy for model access |
@@ -126,6 +131,8 @@ User in Developer Hub
 | `@kuadrant/kuadrant-backstage-plugin-frontend` | External | Kuadrant UI (API Products, API Keys) |
 | `backstage-plugin-notifications` | Built-in | In-app notifications system |
 | `backstage-plugin-notifications-backend-module-email-dynamic` | Built-in | Email notifications processor (SMTP/Mailpit) |
+| `backstage-community-plugin-kafka` | Built-in | Kafka consumer group offsets on entity pages |
+| `backstage-community-plugin-kafka-backend-dynamic` | Built-in | Kafka cluster connectivity for the Kafka plugin |
 | `red-hat-developer-hub-backstage-plugin-lightspeed` | OCI overlay | Red Hat Developer Lightspeed AI assistant (frontend) |
 | `red-hat-developer-hub-backstage-plugin-lightspeed-backend` | OCI overlay | Red Hat Developer Lightspeed AI assistant (backend) |
 
@@ -144,6 +151,7 @@ User in Developer Hub
 - API documentation (OpenAPI)
 - Kuadrant API Product info (OIDCPolicy, RateLimitPolicy, API keys)
 - Component relationships (System graph: frontend → backend → MCP)
+- Kafka consumer group offsets and topic lag — via `kafka.apache.org/consumer-groups` annotation
 - Notifications (in-app bell + email via Mailpit)
 - Lightspeed AI assistant (contextual help with RAG)
 
@@ -364,6 +372,9 @@ All services use the cluster domain pattern `apps.<cluster-domain>`:
 | **Grafana** | `https://grafana-observability.apps.<domain>` |
 | **Kiali** | `https://kiali-openshift-cluster-observability-operator.apps.<domain>` |
 | **Thanos Querier** | `https://thanos-querier.apps.<domain>` |
+| **Kafka Console** | `https://kafka-console-kafka-cdc.apps.<domain>` |
+| **Apicurio Registry** | `https://apicurio-registry-kafka-cdc.apps.<domain>` |
+| **Kafka Bridge (REST)** | `https://kafka-bridge-kafka-cdc.apps.<domain>` |
 | **Lightspeed** | Available from OpenShift Console |
 
 ## How It Works
@@ -397,6 +408,20 @@ metadata:
   labels:
     demo.redhat.com/userinfo: ""
 ```
+
+## Kafka / CDC Troubleshooting with Lightspeed
+
+| Situation | Lightspeed Prompt |
+|-----------|-------------------|
+| Kafka cluster not ready | _"Get the Kafka resource in namespace kafka-cdc and show its status"_ |
+| KafkaConnect build failing | _"Get the logs from the KafkaConnect pod in namespace kafka-cdc"_ |
+| Debezium connector not capturing changes | _"Get the KafkaConnectors in namespace kafka-cdc and show their status"_ |
+| CDC events not arriving to topics | _"List KafkaTopics in namespace kafka-cdc and show message counts"_ |
+| Kafka Bridge not responding | _"Get pods in namespace kafka-cdc with label strimzi.io/kind=KafkaBridge"_ |
+| Apicurio Registry not available | _"Get pods in namespace kafka-cdc with label app=apicurio-registry"_ |
+| Consumer group lag growing | _"Get the Kafka exporter metrics for consumer group lag in kafka-cdc"_ |
+| Camel CDC processor errors | _"Get the logs from deployment camel-cdc-processor in namespace kafka-cdc"_ |
+| Streams Console not loading | _"Get the Console resource in namespace kafka-cdc and show its status"_ |
 
 ## Documentation
 

@@ -1,0 +1,6 @@
+clusterDomain: "apps.cluster.example.com"
+
+postgresql:
+  database: cdcdb
+  username: cdcuser
+  password: cdc-demo-2024

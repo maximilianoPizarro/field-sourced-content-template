@@ -29,6 +29,10 @@ spec:
       autoProvision: true
       template: <username>-devspaces
     secondsOfRunBeforeIdling: 1800
+    defaultPlugins:
+      - editor: che-incubator/che-code/latest
+        plugins:
+          - redhat.vscode-kaoto
     storage:
       pvcStrategy: per-user
   gitServices: {}

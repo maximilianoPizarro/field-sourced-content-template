@@ -1,0 +1,221 @@
+= Caso Enterprise: Oil and Gas
+:navtitle: Caso Enterprise: Oil and Gas
+
+== Arquitectura Enterprise — IoT/SCADA en Oil and Gas
+
+El mismo patrón CDC implementado en este workshop se aplica directamente a escenarios de misión crítica en la industria de Oil and Gas, donde sensores IoT y sistemas SCADA generan datos continuos que deben procesarse en tiempo real.
+
+== Escenario: Monitoreo de Pozos y Pipeline
+
+[mermaid]
+....
+graph LR
+    S1["fa:fa-thermometer-half Sensores<br/>(Presion/Temp)"]
+    SCADA["fa:fa-industry SCADA<br/>(Historian DB)"]
+    DBZ2["fa:fa-bolt Debezium<br/>(CDC)"]
+    KF["fa:fa-stream Kafka<br/>(KRaft)"]
+    PROC["fa:fa-cogs Camel<br/>(Procesamiento)"]
+    ALERT["fa:fa-bell Alertas<br/>(Critical)"]
+    DL["fa:fa-database Data Lake<br/>(S3/ODF)"]
+    ML["fa:fa-brain ML Model<br/>(Prediccion)"]
+
+    S1 -->|Modbus/OPC-UA| SCADA
+    SCADA -->|WAL changes| DBZ2
+    DBZ2 -->|CDC events| KF
+    KF -->|raw events| PROC
+    PROC -->|anomalias| ALERT
+    PROC -->|historico| DL
+    DL -->|training data| ML
+    ML -->|predictions| KF
+....
+
+== Componentes y Adaptación
+
+[cols="1,1,2",options="header"]
+|===
+| Componente Workshop | Adaptación Oil and Gas | Configuración
+
+| PostgreSQL (cdcdb)
+| Historian DB (OSIsoft PI / Aveva)
+| Tablas de sensores con timestamps de alta precisión
+
+| Debezium (PostgresConnector)
+| Debezium (PostgresConnector o custom)
+| CDC sobre tablas de lecturas de sensores
+
+| Kafka (3 brokers)
+| Kafka (5+ brokers)
+| Más particiones para alto throughput de sensores
+
+| Camel (notificaciones)
+| Camel (procesamiento de anomalías)
+| Content-based routing por tipo de sensor y umbral
+
+| Mailpit (email)
+| PagerDuty / OpsGenie (alertas críticas)
+| Integración con sistemas de on-call
+|===
+
+== Topics para Oil and Gas
+
+Adaptación de los topics del workshop para un escenario de monitoreo:
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: oilgas.sensors.pressure
+  namespace: kafka-oilgas
+  labels:
+    strimzi.io/cluster: oilgas-cluster
+spec:
+  partitions: 12
+  replicas: 3
+  config:
+    retention.ms: 2592000000
+    cleanup.policy: delete
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: oilgas.sensors.temperature
+  namespace: kafka-oilgas
+  labels:
+    strimzi.io/cluster: oilgas-cluster
+spec:
+  partitions: 12
+  replicas: 3
+  config:
+    retention.ms: 2592000000
+    cleanup.policy: delete
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: oilgas.alerts.critical
+  namespace: kafka-oilgas
+  labels:
+    strimzi.io/cluster: oilgas-cluster
+spec:
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: 7776000000
+    cleanup.policy: delete
+----
+
+Diferencias clave:
+
+* *12 particiones* para sensores — mayor throughput por los miles de sensores concurrentes
+* *Retención 30 días* para datos de sensores — cumplimiento regulatorio
+* *Retención 90 días* para alertas críticas — auditoría e investigación de incidentes
+
+== Schema Registry para Sensores
+
+Apicurio Registry valida los schemas de los eventos de sensores, garantizando consistencia:
+
+[source,json]
+----
+{
+  "type": "object",
+  "properties": {
+    "sensor_id": {"type": "string"},
+    "well_id": {"type": "string"},
+    "reading_type": {"type": "string", "enum": ["pressure", "temperature", "flow_rate"]},
+    "value": {"type": "number"},
+    "unit": {"type": "string"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "quality": {"type": "integer", "minimum": 0, "maximum": 100}
+  },
+  "required": ["sensor_id", "well_id", "reading_type", "value", "timestamp"]
+}
+----
+
+== Ruta Camel para Detección de Anomalías
+
+Adaptación de la ruta Camel del workshop para procesar datos de sensores:
+
+[source,yaml]
+----
+- route:
+    id: sensor-anomaly-detection
+    from:
+      uri: kafka:oilgas.sensors.pressure
+      parameters:
+        brokers: oilgas-cluster-kafka-bootstrap.kafka-oilgas.svc:9093
+        groupId: anomaly-detector
+        securityProtocol: SASL_SSL
+        saslMechanism: SCRAM-SHA-512
+    steps:
+      - unmarshal:
+          json:
+            library: jackson
+      - choice:
+          when:
+            - simple: "${body[value]} > 3500"
+              steps:
+                - setBody:
+                    simple: |
+                      {"sensor":"${body[sensor_id]}",
+                       "well":"${body[well_id]}",
+                       "value":${body[value]},
+                       "severity":"CRITICAL",
+                       "message":"Presion excede umbral critico"}
+                - marshal:
+                    json:
+                      library: jackson
+                - to:
+                    uri: kafka:oilgas.alerts.critical
+          otherwise:
+            steps:
+              - log:
+                  message: "Sensor ${body[sensor_id]} reading normal: ${body[value]}"
+----
+
+== Consideraciones Enterprise
+
+[cols="1,2",options="header"]
+|===
+| Requisito | Implementación
+
+| *Latencia < 1s*
+| Kafka + Debezium proporciona latencia sub-segundo end-to-end
+
+| *Compliance*
+| Retención configurable por topic, schemas versionados en Apicurio
+
+| *Geo-distribución*
+| MirrorMaker 2 para replicación entre plantas/regiones
+
+| *Seguridad*
+| SCRAM-SHA-512 + TLS + ACLs por sensor/planta
+
+| *Escalabilidad*
+| Agregar particiones y brokers sin downtime
+
+| *Observabilidad*
+| Grafana dashboards + PrometheusRule alertas + Kiali traffic
+|===
+
+== Alertas Específicas Oil and Gas
+
+Extensión del `PrometheusRule` del workshop para sensores:
+
+[source,yaml]
+----
+- alert: SensorDataLagHigh
+  expr: kafka_consumergroup_lag{topic=~"oilgas.sensors.*"} > 5000
+  for: 2m
+  labels:
+    severity: critical
+  annotations:
+    summary: "Lag critico en datos de sensores"
+- alert: NoSensorData
+  expr: rate(kafka_server_brokertopicmetrics_messagesin_total{topic=~"oilgas.sensors.*"}[5m]) == 0
+  for: 5m
+  labels:
+    severity: critical
+  annotations:
+    summary: "Sin datos de sensores — posible desconexion SCADA"
+----

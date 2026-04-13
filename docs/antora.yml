@@ -1,0 +1,5 @@
+name: ROOT
+version: ~
+title: "Streams for Apache Kafka — CDC Workshop"
+nav:
+  - modules/ROOT/nav.adoc

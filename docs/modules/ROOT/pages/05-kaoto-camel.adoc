@@ -1,0 +1,107 @@
+= Kaoto + Apache Camel
+:navtitle: Kaoto + Apache Camel
+
+== ¿Qué es Apache Camel?
+
+https://camel.apache.org/[Apache Camel] es un framework de integración open source que implementa los Enterprise Integration Patterns (EIP). Permite conectar sistemas diversos usando una amplia biblioteca de componentes.
+
+*Red Hat build of Apache Camel for Quarkus* es la distribución soportada para OpenShift — cloud-native, arranque rápido, nativa GraalVM.
+
+NOTE: Red Hat Camel K (serverless) alcanzó End of Life en junio 2025. La ruta de migración es *Camel for Quarkus*, que ofrece el mismo modelo de rutas pero con deployment tradicional.
+
+== ¿Qué es Kaoto?
+
+https://kaoto.io/[Kaoto] es un diseñador visual *low-code* para rutas Apache Camel. Permite crear y editar integraciones arrastrando componentes — sin necesidad de escribir YAML/XML manualmente.
+
+*Kaoto está disponible como extensión VS Code* (`redhat.vscode-kaoto`) y viene pre-instalado en los workspaces de *DevSpaces* de este cluster.
+
+== Ruta Camel del CDC Pipeline
+
+La ruta de integración consume eventos CDC de Kafka y envía notificaciones por email a Mailpit:
+
+[source,yaml]
+----
+- route:
+    id: cdc-customer-notification
+    from:
+      uri: kafka:cdc.public.customers
+      parameters:
+        brokers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092
+        groupId: camel-cdc-consumer
+        autoOffsetReset: latest
+    steps:
+      - log:
+          message: "CDC event received: ${body}"
+      - unmarshal:
+          json:
+            library: jackson
+      - choice:
+          when:
+            - jsonpath:
+                expression: "$.payload.op"
+              simple: "${body[payload][op]} == 'c'"
+              steps:
+                - setHeader:
+                    name: subject
+                    constant: "New Customer Created"
+                - setBody:
+                    simple: |
+                      {"from":{"name":"CDC Pipeline","email":"cdc@neuralbank.io"},
+                       "to":[{"name":"Admin","email":"admin@neuralbank.io"}],
+                       "subject":"New Customer Created",
+                       "text":"Customer created in the database."}
+          otherwise:
+            steps:
+              - setBody:
+                  simple: |
+                    {"from":{"name":"CDC Pipeline","email":"cdc@neuralbank.io"},
+                     "to":[{"name":"Admin","email":"admin@neuralbank.io"}],
+                     "subject":"Customer Record Changed",
+                     "text":"A change was detected on the customers table."}
+      - marshal:
+          json:
+            library: jackson
+      - to:
+          uri: http://n8n-mailpit.openshift-lightspeed.svc:8025/api/v1/send
+----
+
+== Usando Kaoto en DevSpaces
+
+. Abrí DevSpaces: `https://devspaces.YOUR_CLUSTER_DOMAIN`
+. Crea un workspace nuevo o abrí uno existente
+. La extensión *Kaoto* está pre-instalada automáticamente
+. Abrí cualquier archivo `.camel.yaml` — Kaoto muestra la vista visual
+. Podes arrastrar componentes, modificar parámetros y guardar — el YAML se actualiza automáticamente
+
+=== Componentes Camel usados en este pipeline
+
+[cols="1,2",options="header"]
+|===
+| Componente | Uso
+
+| `camel-kafka`
+| Consume mensajes del topic CDC
+
+| `camel-jackson`
+| Marshal/Unmarshal JSON
+
+| `camel-http`
+| HTTP POST a Mailpit API
+
+| `camel-jsonpath`
+| Evaluación de expresiones JSONPath para content-based routing
+
+| `camel-micrometer`
+| Exporta métricas Prometheus del procesamiento
+|===
+
+== Métricas del procesador Camel
+
+El procesador Camel expone métricas Prometheus en `/q/metrics`:
+
+[source,bash]
+----
+curl -s http://camel-cdc-processor.kafka-cdc.svc:8080/q/metrics | grep camel
+----
+
+Estas métricas son recogidas por el PodMonitor y visualizadas en el dashboard de Grafana "Kafka CDC Pipeline".

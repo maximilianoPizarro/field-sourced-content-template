@@ -1,0 +1,170 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: camel-cdc-route
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+data:
+  cdc-to-mail.camel.yaml: |
+    - route:
+        id: cdc-customer-notification
+        from:
+          uri: kafka:cdc.public.customers
+          parameters:
+            brokers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093
+            groupId: camel-cdc-consumer
+            autoOffsetReset: latest
+            valueDeserializer: org.apache.kafka.common.serialization.StringDeserializer
+            securityProtocol: SASL_SSL
+            saslMechanism: SCRAM-SHA-512
+            saslJaasConfig: "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"${env:KAFKA_USER}\" password=\"${env:KAFKA_PASSWORD}\";"
+            sslTruststoreLocation: /etc/kafka-certs/ca.crt
+            sslTruststoreType: PEM
+        onException:
+          - exceptions:
+              - java.lang.Exception
+            handled:
+              constant: true
+            steps:
+              - to:
+                  uri: kafka:dlq.cdc-camel-errors
+                  parameters:
+                    brokers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092
+              - log:
+                  message: "Error sent to DLQ: ${exception.message}"
+        steps:
+          - log:
+              message: "CDC event received: ${body}"
+          - unmarshal:
+              json:
+                library: jackson
+          - choice:
+              when:
+                - jsonpath:
+                    expression: "$.payload.op"
+                    resultType: String
+                  simple: "${body[payload][op]} == 'c'"
+                  steps:
+                    - setHeader:
+                        name: subject
+                        constant: "New Customer Created"
+                    - setBody:
+                        simple: >
+                          {
+                            "from": {"name": "CDC Pipeline", "email": "cdc@neuralbank.io"},
+                            "to": [{"name": "Admin", "email": "admin@neuralbank.io"}],
+                            "subject": "New Customer Created",
+                            "text": "Customer ${body[payload][after][first_name]} ${body[payload][after][last_name]} (${body[payload][after][email]}) was created."
+                          }
+                - otherwise:
+                    steps:
+                      - setBody:
+                          simple: >
+                            {
+                              "from": {"name": "CDC Pipeline", "email": "cdc@neuralbank.io"},
+                              "to": [{"name": "Admin", "email": "admin@neuralbank.io"}],
+                              "subject": "Customer Record Changed",
+                              "text": "A change was detected on the customers table. Operation: ${body[payload][op]}"
+                            }
+          - marshal:
+              json:
+                library: jackson
+          - to:
+              uri: http://n8n-mailpit.openshift-lightspeed.svc:8025/api/v1/send
+              parameters:
+                httpMethod: POST
+          - log:
+              message: "Notification sent to Mailpit"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: camel-cdc-processor
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+  labels:
+    app: camel-cdc-processor
+    app.kubernetes.io/part-of: cdc-demo
+    app.openshift.io/runtime: camel
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: camel-cdc-processor
+  template:
+    metadata:
+      labels:
+        app: camel-cdc-processor
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: /q/metrics
+    spec:
+      containers:
+        - name: camel
+          image: quay.io/maximilianopizarro/camel-cdc-processor:latest
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          env:
+            - name: CAMEL_MAIN_ROUTES_INCLUDE_PATTERN
+              value: "file:/config/*.camel.yaml"
+            - name: KAFKA_USER
+              value: cdc-user
+            - name: KAFKA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cdc-user
+                  key: password
+          volumeMounts:
+            - name: route-config
+              mountPath: /config
+            - name: kafka-ca-cert
+              mountPath: /etc/kafka-certs
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /q/health/live
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /q/health/ready
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      volumes:
+        - name: route-config
+          configMap:
+            name: camel-cdc-route
+        - name: kafka-ca-cert
+          secret:
+            secretName: cdc-cluster-cluster-ca-cert
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: camel-cdc-processor
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+  labels:
+    app: camel-cdc-processor
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: camel-cdc-processor

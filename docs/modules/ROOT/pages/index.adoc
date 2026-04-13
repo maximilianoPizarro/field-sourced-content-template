@@ -1,0 +1,154 @@
+= Streams for Apache Kafka — CDC Demo Workshop
+:page-layout: home
+:!showtitle:
+
+image::redhat-openshift-logo.svg[Red Hat OpenShift,200,align=center]
+
+== Bienvenido al Workshop
+
+En este workshop explorarás cómo implementar un pipeline de *Change Data Capture (CDC)* completo sobre OpenShift usando las tecnologías del ecosistema de *Streams for Apache Kafka*.
+
+=== Qué vas a aprender
+
+* Desplegar un cluster *Kafka en modo KRaft* (sin Zookeeper) usando AMQ Streams
+* Configurar *Debezium* para capturar cambios en PostgreSQL en tiempo real
+* Usar *Apicurio Registry* como Schema Registry para validación de eventos
+* Diseñar rutas de integración visualmente con *Kaoto* dentro de *DevSpaces*
+* Monitorear el pipeline con *Grafana dashboards* y *Service Mesh (Kiali)*
+* Gestionar Kafka desde *Developer Hub* con el plugin de Kafka
+* Usar *Lightspeed (MCP)* para troubleshooting del pipeline
+
+=== Arquitectura del Demo
+
+++++
+<div id="cdc-overview-3d" class="three-container"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function() {
+  const container = document.getElementById('cdc-overview-3d');
+  if (!container) return;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.setClearColor(0x0a0a0a);
+  container.appendChild(renderer.domElement);
+
+  const components = [
+    { name: 'PostgreSQL', color: 0x336791, x: -6, y: 0 },
+    { name: 'Debezium', color: 0xCC0000, x: -3, y: 0 },
+    { name: 'Kafka', color: 0x231F20, x: 0, y: 0 },
+    { name: 'Camel', color: 0xF69923, x: 3, y: 0 },
+    { name: 'Mailpit', color: 0x0066CC, x: 6, y: 0 }
+  ];
+
+  const nodes = [];
+  components.forEach(c => {
+    const geo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+    const mat = new THREE.MeshPhongMaterial({ color: c.color, transparent: true, opacity: 0.85 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(c.x, c.y, 0);
+    scene.add(mesh);
+    nodes.push(mesh);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 24px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(c.name, 128, 40);
+    const texture = new THREE.CanvasTexture(canvas);
+    const spriteMat = new THREE.SpriteMaterial({ map: texture });
+    const sprite = new THREE.Sprite(spriteMat);
+    sprite.position.set(c.x, -1.5, 0);
+    sprite.scale.set(3, 0.75, 1);
+    scene.add(sprite);
+  });
+
+  for (let i = 0; i < components.length - 1; i++) {
+    const points = [
+      new THREE.Vector3(components[i].x + 0.85, 0, 0),
+      new THREE.Vector3(components[i + 1].x - 0.85, 0, 0)
+    ];
+    const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+    const lineMat = new THREE.LineBasicMaterial({ color: 0x00ff88, linewidth: 2 });
+    scene.add(new THREE.Line(lineGeo, lineMat));
+  }
+
+  const particles = [];
+  for (let i = 0; i < 30; i++) {
+    const pGeo = new THREE.SphereGeometry(0.08, 8, 8);
+    const pMat = new THREE.MeshBasicMaterial({ color: 0x00ff88 });
+    const p = new THREE.Mesh(pGeo, pMat);
+    p.position.set(-6 + Math.random() * 12, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3);
+    p.userData.speed = 0.02 + Math.random() * 0.03;
+    scene.add(p);
+    particles.push(p);
+  }
+
+  const ambientLight = new THREE.AmbientLight(0x404040, 2);
+  scene.add(ambientLight);
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+  dirLight.position.set(5, 5, 5);
+  scene.add(dirLight);
+
+  camera.position.set(0, 2, 12);
+  camera.lookAt(0, 0, 0);
+
+  let time = 0;
+  function animate() {
+    requestAnimationFrame(animate);
+    time += 0.01;
+    nodes.forEach((n, i) => {
+      n.rotation.x = Math.sin(time + i) * 0.1;
+      n.rotation.y += 0.005;
+    });
+    particles.forEach(p => {
+      p.position.x += p.userData.speed;
+      if (p.position.x > 7) p.position.x = -7;
+    });
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  window.addEventListener('resize', () => {
+    camera.aspect = container.clientWidth / container.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth, container.clientHeight);
+  });
+})();
+</script>
+++++
+
+=== Componentes del Pipeline
+
+[cols="1,3",options="header"]
+|===
+| Componente | Descripción
+
+| image:kafka-icon.svg[Kafka,24] *Streams for Apache Kafka*
+| Cluster Kafka en modo KRaft, topics, bridge HTTP y exporter de métricas
+
+| image:debezium-icon.svg[Debezium,24] *Debezium*
+| CDC connector que captura cambios de PostgreSQL en tiempo real
+
+| image:apicurio-icon.svg[Apicurio,24] *Apicurio Registry*
+| Schema Registry para validación de esquemas Avro/JSON/Protobuf
+
+| image:camel-icon.svg[Camel,24] *Apache Camel + Kaoto*
+| Rutas de integración diseñadas visualmente, consumiendo eventos CDC
+
+| image:redhat-openshift-logo.svg[OpenShift,24] *Service Mesh + Grafana*
+| Observabilidad end-to-end con dashboards y trazas en Kiali
+|===
+
+=== Acceso al entorno
+
+* *Kafka Console*: `https://kafka-console-kafka-cdc.YOUR_CLUSTER_DOMAIN`
+* *Apicurio Registry*: `https://apicurio-registry-kafka-cdc.YOUR_CLUSTER_DOMAIN`
+* *Kafka Bridge (REST)*: `https://kafka-bridge-kafka-cdc.YOUR_CLUSTER_DOMAIN`
+* *Grafana*: `https://grafana-observability.YOUR_CLUSTER_DOMAIN`
+* *Developer Hub*: `https://backstage-developer-hub-developer-hub.YOUR_CLUSTER_DOMAIN`
+* *DevSpaces (Kaoto)*: `https://devspaces.YOUR_CLUSTER_DOMAIN`

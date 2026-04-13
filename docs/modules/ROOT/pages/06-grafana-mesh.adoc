@@ -1,0 +1,173 @@
+= Observabilidad + Service Mesh
+:navtitle: Observabilidad + Service Mesh
+
+== Observabilidad del CDC Pipeline
+
+El pipeline completo está instrumentado con métricas Prometheus, dashboards Grafana y trazabilidad via Service Mesh.
+
+=== Stack de observabilidad
+
+[cols="1,2",options="header"]
+|===
+| Componente | Rol
+
+| *Prometheus* (via Cluster Observability Operator)
+| Scraping de métricas JMX de Kafka, Debezium y Camel
+
+| *Grafana*
+| Dashboard "Kafka CDC Pipeline" con paneles de throughput, lag y latencia
+
+| *Kiali*
+| Visualización del tráfico entre servicios en el Service Mesh
+
+| *Kafka Exporter*
+| Exporta métricas de consumer group lag a Prometheus
+|===
+
+== Dashboard Grafana — Kafka CDC Pipeline
+
+Acceso: `https://grafana-observability.YOUR_CLUSTER_DOMAIN`
+
+El dashboard se asocia a la instancia de Grafana mediante `instanceSelector`. El label debe coincidir con el de la instancia `Grafana` CR:
+
+[source,yaml]
+----
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: kafka-cdc-pipeline
+  namespace: openshift-cluster-observability-operator
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana-observability
+  json: |
+    { ... }
+----
+
+IMPORTANT: El label `dashboards: grafana-observability` debe coincidir exactamente con el label de la instancia `Grafana` CR. Un mismatch (por ejemplo `connectivity-link`) hará que el dashboard nunca se monte.
+
+El dashboard *"Kafka CDC Pipeline"* incluye los siguientes paneles:
+
+[cols="1,2",options="header"]
+|===
+| Panel | Métrica
+
+| *Kafka Broker — Messages In/s*
+| `sum(rate(kafka_server_brokertopicmetrics_messagesin_total[5m])) by (topic)`
+
+| *Kafka Broker — Bytes In/Out*
+| Throughput de bytes por segundo (entrada y salida)
+
+| *Consumer Group Lag*
+| `kafka_consumergroup_lag > 0` — lag por partición y consumer group
+
+| *Debezium — Streaming Duration*
+| `debezium_postgres_MilliSecondsSinceLastEvent` — latencia del CDC
+
+| *KafkaConnect — Task Status*
+| Cantidad de connectors activos
+
+| *KafkaConnect — Records Processed/s*
+| `rate(kafka_connect_task_sink_record_send_total[5m])` — records procesados por segundo
+|===
+
+== PodMonitors para métricas
+
+Se configuran PodMonitors para cada componente del pipeline:
+
+[source,yaml]
+----
+apiVersion: monitoring.rhobs/v1
+kind: PodMonitor
+metadata:
+  name: kafka-cluster-metrics
+  namespace: openshift-cluster-observability-operator
+spec:
+  namespaceSelector:
+    matchNames:
+    - kafka-cdc
+  podMetricsEndpoints:
+  - interval: 30s
+    port: tcp-prometheus
+  selector:
+    matchLabels:
+      strimzi.io/cluster: cdc-cluster
+      strimzi.io/kind: Kafka
+----
+
+== Service Mesh — Istio Ambient Mode
+
+El namespace `kafka-cdc` está enrollado en el Service Mesh usando *Istio ambient mode* (sin sidecars):
+
+[source,yaml]
+----
+metadata:
+  labels:
+    istio.io/dataplane-mode: ambient
+    istio-discovery: enabled
+----
+
+=== Tráfico visible en Kiali
+
+Acceso: `https://kiali-openshift-cluster-observability-operator.YOUR_CLUSTER_DOMAIN`
+
+En Kiali se puede ver el grafo de servicios del namespace `kafka-cdc`:
+
+* PostgreSQL → KafkaConnect (Debezium)
+* KafkaConnect → Kafka brokers
+* Kafka → Camel CDC Processor
+* Camel → Mailpit (HTTP)
+
+El modo ambient proporciona:
+
+* mTLS automático entre todos los pods del namespace
+* Métricas L4/L7 sin sidecars (via ztunnel)
+* Visibilidad del tráfico en Kiali sin overhead de CPU/RAM por sidecar
+
+== Alertas — PrometheusRule
+
+Las alertas están desplegadas como un recurso `PrometheusRule` que Prometheus evalúa automáticamente:
+
+[source,yaml]
+----
+apiVersion: monitoring.rhobs/v1
+kind: PrometheusRule
+metadata:
+  name: kafka-cdc-alerts
+  namespace: openshift-cluster-observability-operator
+  labels:
+    openshift.io/user-monitoring: "true"
+spec:
+  groups:
+    - name: kafka-cdc
+      rules:
+        - alert: KafkaConsumerLagHigh
+          expr: kafka_consumergroup_lag > 1000
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Consumer lag alto en {{ $labels.consumergroup }}"
+        - alert: DebeziumDisconnected
+          expr: debezium_postgres_Connected == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Debezium desconectado de PostgreSQL"
+        - alert: KafkaConnectTaskFailed
+          expr: kafka_connect_worker_connector_failed_task_count > 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "KafkaConnect connector en estado FAILED"
+----
+
+Para verificar que las alertas están activas:
+
+[source,bash]
+----
+oc get prometheusrule kafka-cdc-alerts -n openshift-cluster-observability-operator -o yaml
+----

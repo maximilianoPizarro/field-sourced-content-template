@@ -1163,3 +1163,243 @@ spec:
           name: mesh-traffic-generator
           defaultMode: 0755
       terminationGracePeriodSeconds: 5
+---
+apiVersion: monitoring.rhobs/v1
+kind: PodMonitor
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  labels:
+    k8s-app: kafka-metrics
+    openshift.io/user-monitoring: "true"
+  name: kafka-cluster-metrics
+  namespace: openshift-cluster-observability-operator
+spec:
+  namespaceSelector:
+    matchNames:
+    - kafka-cdc
+  podMetricsEndpoints:
+  - interval: 30s
+    port: tcp-prometheus
+  selector:
+    matchLabels:
+      strimzi.io/cluster: cdc-cluster
+      strimzi.io/kind: Kafka
+---
+apiVersion: monitoring.rhobs/v1
+kind: PodMonitor
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  labels:
+    k8s-app: kafka-connect-metrics
+    openshift.io/user-monitoring: "true"
+  name: kafka-connect-metrics
+  namespace: openshift-cluster-observability-operator
+spec:
+  namespaceSelector:
+    matchNames:
+    - kafka-cdc
+  podMetricsEndpoints:
+  - interval: 30s
+    port: tcp-prometheus
+  selector:
+    matchLabels:
+      strimzi.io/cluster: cdc-connect
+      strimzi.io/kind: KafkaConnect
+---
+apiVersion: monitoring.rhobs/v1
+kind: PodMonitor
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  labels:
+    k8s-app: kafka-exporter-metrics
+    openshift.io/user-monitoring: "true"
+  name: kafka-exporter-metrics
+  namespace: openshift-cluster-observability-operator
+spec:
+  namespaceSelector:
+    matchNames:
+    - kafka-cdc
+  podMetricsEndpoints:
+  - interval: 30s
+    port: tcp-prometheus
+  selector:
+    matchLabels:
+      strimzi.io/cluster: cdc-cluster
+      strimzi.io/name: cdc-cluster-kafka-exporter
+---
+apiVersion: monitoring.rhobs/v1
+kind: PodMonitor
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  labels:
+    k8s-app: camel-cdc-metrics
+    openshift.io/user-monitoring: "true"
+  name: camel-cdc-metrics
+  namespace: openshift-cluster-observability-operator
+spec:
+  namespaceSelector:
+    matchNames:
+    - kafka-cdc
+  podMetricsEndpoints:
+  - interval: 30s
+    path: /q/metrics
+    port: http
+  selector:
+    matchLabels:
+      app: camel-cdc-processor
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  name: kafka-cdc-pipeline
+  namespace: openshift-cluster-observability-operator
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana-observability
+  json: |
+    {
+      "annotations": {"list": []},
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "links": [],
+      "panels": [
+        {
+          "title": "Kafka Broker — Messages In/s",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(rate(kafka_server_brokertopicmetrics_messagesin_total[5m])) by (topic)",
+              "legendFormat": "{{topic}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {"unit": "msg/s"}
+          }
+        },
+        {
+          "title": "Kafka Broker — Bytes In/Out per Second",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(rate(kafka_server_brokertopicmetrics_bytesin_total[5m]))",
+              "legendFormat": "Bytes In"
+            },
+            {
+              "expr": "sum(rate(kafka_server_brokertopicmetrics_bytesout_total[5m]))",
+              "legendFormat": "Bytes Out"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {"unit": "Bps"}
+          }
+        },
+        {
+          "title": "Consumer Group Lag",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+          "targets": [
+            {
+              "expr": "kafka_consumergroup_lag > 0",
+              "legendFormat": "{{consumergroup}} / {{topic}} [{{partition}}]"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {"unit": "short"}
+          }
+        },
+        {
+          "title": "Debezium — Streaming Duration (ms)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+          "targets": [
+            {
+              "expr": "debezium_postgres_MilliSecondsSinceLastEvent",
+              "legendFormat": "ms since last event"
+            },
+            {
+              "expr": "debezium_postgres_NumberOfEventsFiltered",
+              "legendFormat": "events filtered"
+            }
+          ]
+        },
+        {
+          "title": "KafkaConnect — Task Status",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 16},
+          "targets": [
+            {
+              "expr": "kafka_connect_worker_connector_count",
+              "legendFormat": "Connectors"
+            }
+          ]
+        },
+        {
+          "title": "KafkaConnect — Records Processed/s",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 18, "x": 6, "y": 16},
+          "targets": [
+            {
+              "expr": "sum(rate(kafka_connect_task_sink_record_send_total[5m])) by (connector)",
+              "legendFormat": "{{connector}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {"unit": "rec/s"}
+          }
+        }
+      ],
+      "schemaVersion": 39,
+      "tags": ["kafka", "cdc", "debezium", "strimzi"],
+      "templating": {"list": []},
+      "time": {"from": "now-1h", "to": "now"},
+      "title": "Kafka CDC Pipeline",
+      "uid": "kafka-cdc-pipeline"
+    }
+---
+apiVersion: monitoring.rhobs/v1
+kind: PrometheusRule
+metadata:
+  name: kafka-cdc-alerts
+  namespace: openshift-cluster-observability-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  labels:
+    openshift.io/user-monitoring: "true"
+spec:
+  groups:
+    - name: kafka-cdc
+      rules:
+        - alert: KafkaConsumerLagHigh
+          expr: kafka_consumergroup_lag > 1000
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Consumer lag alto en {{ $labels.consumergroup }}"
+            description: "El consumer group {{ $labels.consumergroup }} tiene lag > 1000 en el topic {{ $labels.topic }} particion {{ $labels.partition }}"
+        - alert: DebeziumDisconnected
+          expr: debezium_postgres_Connected == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Debezium desconectado de PostgreSQL"
+            description: "El connector Debezium perdio la conexion con la base de datos PostgreSQL"
+        - alert: KafkaConnectTaskFailed
+          expr: kafka_connect_worker_connector_failed_task_count > 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "KafkaConnect connector en estado FAILED"
+            description: "Hay {{ $value }} tasks en estado FAILED en KafkaConnect"

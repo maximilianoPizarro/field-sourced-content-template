@@ -1,0 +1,138 @@
+= MCP + Lightspeed
+:navtitle: MCP + Lightspeed
+
+== OpenShift Lightspeed con MCP
+
+OpenShift Lightspeed es un asistente de IA integrado en la consola de OpenShift que tiene acceso a *herramientas MCP* (Model Context Protocol) para diagnosticar y resolver problemas en el cluster.
+
+En este cluster, Lightspeed tiene acceso a *55+ herramientas MCP* que cubren Kubernetes, OpenShift, ArgoCD, Developer Hub, y ahora también el pipeline de Kafka/CDC.
+
+== Prompts de troubleshooting para el CDC Pipeline
+
+=== Kafka Cluster
+
+[cols="1,2",options="header"]
+|===
+| Situación | Prompt para Lightspeed
+
+| Cluster Kafka no está listo
+| _"Get the Kafka resource in namespace kafka-cdc and show its status"_
+
+| Brokers no arrancan
+| _"Get pods in namespace kafka-cdc with label strimzi.io/kind=Kafka and show their status"_
+
+| Topics no se crean
+| _"List KafkaTopics in namespace kafka-cdc"_
+|===
+
+=== Debezium / KafkaConnect
+
+[cols="1,2",options="header"]
+|===
+| Situación | Prompt para Lightspeed
+
+| KafkaConnect build fallando
+| _"Get the logs from the KafkaConnect pod in namespace kafka-cdc"_
+
+| Debezium no captura cambios
+| _"Get the KafkaConnectors in namespace kafka-cdc and show their status"_
+
+| Connector en estado FAILED
+| _"Get events in namespace kafka-cdc related to KafkaConnect"_
+
+| Replication slot no se crea
+| _"Get the logs from deployment cdc-postgresql in namespace kafka-cdc"_
+|===
+
+=== Kafka Bridge
+
+[cols="1,2",options="header"]
+|===
+| Situación | Prompt para Lightspeed
+
+| Bridge no responde
+| _"Get pods in namespace kafka-cdc with label strimzi.io/kind=KafkaBridge"_
+
+| Error al producir via REST
+| _"Get the logs from the KafkaBridge pod in namespace kafka-cdc"_
+|===
+
+=== Apicurio Registry
+
+[cols="1,2",options="header"]
+|===
+| Situación | Prompt para Lightspeed
+
+| Registry no disponible
+| _"Get pods in namespace kafka-cdc with label app=apicurio-registry"_
+
+| Error de conexión a Kafka
+| _"Get the logs from the ApicurioRegistry pod in namespace kafka-cdc"_
+|===
+
+=== Camel CDC Processor
+
+[cols="1,2",options="header"]
+|===
+| Situación | Prompt para Lightspeed
+
+| Procesador no arranca
+| _"Get pods in namespace kafka-cdc with label app=camel-cdc-processor"_
+
+| Errores en la ruta Camel
+| _"Get the logs from deployment camel-cdc-processor in namespace kafka-cdc"_
+
+| Emails no llegan a Mailpit
+| _"Check connectivity from namespace kafka-cdc to n8n-mailpit.openshift-lightspeed.svc"_
+|===
+
+=== Streams Console
+
+[cols="1,2",options="header"]
+|===
+| Situación | Prompt para Lightspeed
+
+| Consola no carga
+| _"Get the Console resource in namespace kafka-cdc and show its status"_
+
+| Error de autenticación
+| _"Get events in namespace kafka-cdc related to Console"_
+|===
+
+== Workflow de diagnóstico rápido
+
+Para validar todo el pipeline CDC después de un deployment, ejecuta estos prompts en secuencia:
+
+[source,text]
+----
+1. "Get the Kafka resource in namespace kafka-cdc and check if it's ready"
+2. "Get KafkaConnectors in namespace kafka-cdc and show their status"
+3. "Get pods in namespace kafka-cdc and check their status"
+4. "Check if consumer group camel-cdc-consumer has lag in namespace kafka-cdc"
+5. "Get the Console resource in namespace kafka-cdc"
+6. "Get the ApicurioRegistry resource in namespace kafka-cdc"
+----
+
+== MCP Tools disponibles para Kafka
+
+Las herramientas MCP registradas en `mcp-system` que son relevantes para el pipeline CDC:
+
+[cols="1,2",options="header"]
+|===
+| Tool | Uso
+
+| `k8s_listPods`
+| Listar pods del namespace kafka-cdc
+
+| `k8s_getPodLogs`
+| Ver logs de cualquier componente del pipeline
+
+| `k8s_listEvents`
+| Ver eventos del namespace para troubleshooting
+
+| `ocp_getRoute`
+| Verificar acceso a Kafka Console, Bridge, Apicurio
+
+| `argo_listApplications`
+| Ver estado de las ArgoCD Applications de Kafka/CDC
+|===

@@ -1,0 +1,136 @@
+= Arquitectura del CDC Pipeline
+:navtitle: Arquitectura CDC Pipeline
+
+== Real-Time Data Streaming
+
+El streaming en tiempo real es el flujo continuo de datos a medida que se generan, permitiendo análisis y procesamiento inmediato para extraer información significativa.
+
+*Fuentes de datos comunes:*
+
+* Actividad en sitios web
+* Transacciones bancarias
+* Compras de e-commerce
+* Actividad de jugadores en gaming
+* Sensores IoT
+
+== Change Data Capture (CDC)
+
+CDC es un patrón de integración que identifica y captura cambios realizados en una base de datos (INSERT, UPDATE, DELETE) y los propaga como eventos a otros sistemas en tiempo real.
+
+=== ¿Por qué CDC?
+
+[cols="1,1",options="header"]
+|===
+| Enfoque tradicional | CDC con Debezium
+
+| Polling periódico a la DB
+| Captura basada en WAL (write-ahead log)
+
+| Alta latencia (segundos/minutos)
+| Latencia sub-segundo
+
+| Carga adicional en la DB
+| Impacto mínimo (lee el log de transacciones)
+
+| Puede perder cambios entre polls
+| Captura todos los cambios, incluyendo deletes
+|===
+
+== Arquitectura del Pipeline
+
+[mermaid]
+....
+graph LR
+    PG["fa:fa-database PostgreSQL<br/>(WAL logical)"]
+    DBZ["fa:fa-bolt Debezium<br/>(KafkaConnect)"]
+    K["fa:fa-stream Kafka<br/>(KRaft 3 brokers)"]
+    AR["fa:fa-book Apicurio<br/>(Schema Registry)"]
+    CAM["fa:fa-route Apache Camel<br/>(Quarkus)"]
+    MP["fa:fa-envelope Mailpit<br/>(Email)"]
+    GR["fa:fa-chart-bar Grafana<br/>(Dashboard)"]
+    KI["fa:fa-project-diagram Kiali<br/>(Service Mesh)"]
+
+    PG -->|WAL changes| DBZ
+    DBZ -->|CDC events| K
+    DBZ -.->|schema validation| AR
+    K -->|consume| CAM
+    CAM -->|HTTP POST| MP
+    K -.->|metrics| GR
+    DBZ -.->|metrics| GR
+    CAM -.->|metrics| GR
+    K -.->|traffic| KI
+....
+
+== Flujo de datos detallado
+
+. Un usuario inserta o actualiza un registro en PostgreSQL
+. PostgreSQL escribe el cambio en el Write-Ahead Log (WAL) con `wal_level=logical`
+. Debezium (corriendo como KafkaConnect plugin) lee el WAL via replication slot
+. Debezium serializa el evento como JSON (opcionalmente Avro via Apicurio Registry)
+. El evento se publica en el topic Kafka correspondiente (`cdc.public.customers`)
+. Apache Camel consume el evento del topic
+. Camel transforma el evento y envía una notificación por email via Mailpit
+. Todo el pipeline es monitoreado en Grafana y visible en Kiali (Service Mesh)
+
+== Namespace y recursos
+
+Todos los componentes del CDC pipeline se despliegan en el namespace `kafka-cdc`:
+
+[source,yaml]
+----
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kafka-cdc
+  labels:
+    istio.io/dataplane-mode: ambient
+    istio-discovery: enabled
+----
+
+El label `istio.io/dataplane-mode: ambient` enrolla automáticamente el namespace en el Service Mesh, haciendo visible todo el tráfico en Kiali sin necesidad de sidecars.
+
+== Alta Disponibilidad
+
+El pipeline está configurado con múltiples réplicas y storage persistente para tolerancia a fallos.
+
+=== Kafka Brokers — Storage Persistente
+
+Los brokers usan `persistent-claim` en lugar de `ephemeral` para retener datos entre reinicios:
+
+[source,yaml]
+----
+spec:
+  kafka:
+    replicas: 3
+    storage:
+      type: persistent-claim
+      size: 10Gi
+      deleteClaim: false
+----
+
+* `size: 10Gi` — capacidad por broker (ajustar según volumen de datos)
+* `deleteClaim: false` — los PVCs se preservan al escalar o eliminar el cluster
+
+=== KafkaConnect — 2 réplicas
+
+KafkaConnect se despliega con 2 réplicas para balanceo de carga y failover de los connectors:
+
+[source,yaml]
+----
+spec:
+  replicas: 2
+----
+
+Kafka Connect distribuye automáticamente las tasks entre las réplicas disponibles. Si una réplica cae, la otra asume las tasks.
+
+=== Camel CDC Processor — 2 réplicas
+
+El procesador Camel se escala a 2 réplicas. Kafka balancea las particiones entre los consumidores del mismo group:
+
+[source,yaml]
+----
+spec:
+  replicas: 2
+----
+
+Con 3 particiones por topic y 2 consumidores, cada réplica procesa ~1.5 particiones en promedio.

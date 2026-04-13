@@ -1,0 +1,308 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cdc-postgresql-secret
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+stringData:
+  POSTGRESQL_DATABASE: {{ .Values.postgresql.database }}
+  POSTGRESQL_USER: {{ .Values.postgresql.username }}
+  POSTGRESQL_PASSWORD: {{ .Values.postgresql.password }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cdc-postgresql-init
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+data:
+  init.sql: |
+    ALTER SYSTEM SET wal_level = 'logical';
+    ALTER SYSTEM SET max_replication_slots = 4;
+    ALTER SYSTEM SET max_wal_senders = 4;
+
+    CREATE TABLE IF NOT EXISTS customers (
+      id SERIAL PRIMARY KEY,
+      first_name VARCHAR(100) NOT NULL,
+      last_name VARCHAR(100) NOT NULL,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS orders (
+      id SERIAL PRIMARY KEY,
+      customer_id INTEGER REFERENCES customers(id),
+      product VARCHAR(255) NOT NULL,
+      amount DECIMAL(10,2) NOT NULL,
+      status VARCHAR(50) DEFAULT 'pending',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    INSERT INTO customers (first_name, last_name, email) VALUES
+      ('Ana', 'Garcia', 'ana.garcia@neuralbank.io'),
+      ('Carlos', 'Lopez', 'carlos.lopez@neuralbank.io'),
+      ('Maria', 'Rodriguez', 'maria.rodriguez@neuralbank.io'),
+      ('Pedro', 'Martinez', 'pedro.martinez@neuralbank.io'),
+      ('Laura', 'Fernandez', 'laura.fernandez@neuralbank.io')
+    ON CONFLICT (email) DO NOTHING;
+
+    INSERT INTO orders (customer_id, product, amount, status) VALUES
+      (1, 'Personal Loan', 15000.00, 'approved'),
+      (2, 'Credit Card', 5000.00, 'pending'),
+      (3, 'Mortgage', 250000.00, 'reviewing'),
+      (4, 'Auto Loan', 35000.00, 'approved'),
+      (5, 'Business Line', 100000.00, 'pending');
+
+    CREATE PUBLICATION cdc_publication FOR TABLE customers, orders;
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cdc-postgresql-data
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cdc-postgresql
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  labels:
+    app: cdc-postgresql
+    app.kubernetes.io/part-of: cdc-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cdc-postgresql
+  template:
+    metadata:
+      labels:
+        app: cdc-postgresql
+    spec:
+      containers:
+        - name: postgresql
+          image: registry.redhat.io/rhel9/postgresql-16:latest
+          ports:
+            - containerPort: 5432
+              protocol: TCP
+          envFrom:
+            - secretRef:
+                name: cdc-postgresql-secret
+          args:
+            - "-c"
+            - "wal_level=logical"
+            - "-c"
+            - "max_replication_slots=4"
+            - "-c"
+            - "max_wal_senders=4"
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/pgsql/data
+            - name: init-scripts
+              mountPath: /opt/app-root/src/postgresql-init/init.sql
+              subPath: init.sql
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U $POSTGRESQL_USER -d $POSTGRESQL_DATABASE
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: cdc-postgresql-data
+        - name: init-scripts
+          configMap:
+            name: cdc-postgresql-init
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cdc-postgresql
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  labels:
+    app: cdc-postgresql
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+      protocol: TCP
+  selector:
+    app: cdc-postgresql
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnect
+metadata:
+  name: cdc-connect
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    strimzi.io/use-connector-resources: "true"
+spec:
+  version: "3.9.0"
+  replicas: 2
+  bootstrapServers: cdc-cluster-kafka-bootstrap:9093
+  authentication:
+    type: scram-sha-512
+    username: cdc-user
+    passwordSecret:
+      secretName: cdc-user
+      password: password
+  tls:
+    trustedCertificates:
+      - secretName: cdc-cluster-cluster-ca-cert
+        certificate: ca.crt
+  config:
+    group.id: cdc-connect-cluster
+    offset.storage.topic: cdc-connect-offsets
+    config.storage.topic: cdc-connect-configs
+    status.storage.topic: cdc-connect-status
+    offset.storage.replication.factor: 3
+    config.storage.replication.factor: 3
+    status.storage.replication.factor: 3
+    key.converter: org.apache.kafka.connect.json.JsonConverter
+    value.converter: org.apache.kafka.connect.json.JsonConverter
+    key.converter.schemas.enable: true
+    value.converter.schemas.enable: true
+  build:
+    output:
+      type: docker
+      image: image-registry.openshift-image-registry.svc:5000/kafka-cdc/cdc-connect:latest
+    plugins:
+      - name: debezium-postgresql
+        artifacts:
+          - type: maven
+            group: io.debezium
+            artifact: debezium-connector-postgres
+            version: 2.7.3.Final
+      - name: http-sink
+        artifacts:
+          - type: maven
+            group: io.aiven
+            artifact: http-connector-for-apache-kafka
+            version: 0.7.0
+  metricsConfig:
+    type: jmxPrometheusExporter
+    valueFrom:
+      configMapKeyRef:
+        name: connect-metrics-config
+        key: connect-metrics-config.yml
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: connect-metrics-config
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+data:
+  connect-metrics-config.yml: |
+    lowercaseOutputName: true
+    lowercaseOutputLabelNames: true
+    rules:
+    - pattern: kafka.connect<type=connect-worker-metrics, connector=(.+)><>([a-z-]+)
+      name: kafka_connect_worker_$2
+      type: GAUGE
+      labels:
+        connector: "$1"
+    - pattern: kafka.connect<type=connector-metrics, client-id=(.+)><>([a-z-]+)
+      name: kafka_connect_connector_$2
+      type: GAUGE
+      labels:
+        client_id: "$1"
+    - pattern: kafka.connect<type=connector-task-metrics, connector=(.+), task=(.+)><>([a-z-]+)
+      name: kafka_connect_task_$3
+      type: GAUGE
+      labels:
+        connector: "$1"
+        task: "$2"
+    - pattern: debezium.([^.]+)<type=connector-metrics, context=([^,]+), server=([^>]+)><>([A-Za-z]+)
+      name: debezium_$1_$4
+      type: GAUGE
+      labels:
+        context: "$2"
+        server: "$3"
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnector
+metadata:
+  name: debezium-postgresql-source
+  namespace: kafka-cdc
+  labels:
+    strimzi.io/cluster: cdc-connect
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  class: io.debezium.connector.postgresql.PostgresConnector
+  tasksMax: 1
+  config:
+    database.hostname: cdc-postgresql
+    database.port: "5432"
+    database.user: {{ .Values.postgresql.username }}
+    database.password: {{ .Values.postgresql.password }}
+    database.dbname: {{ .Values.postgresql.database }}
+    topic.prefix: cdc
+    schema.include.list: public
+    table.include.list: "public.customers,public.orders"
+    plugin.name: pgoutput
+    publication.name: cdc_publication
+    slot.name: debezium_cdc
+    decimal.handling.mode: string
+    tombstones.on.delete: false
+    snapshot.mode: initial
+    errors.tolerance: all
+    errors.deadletterqueue.topic.name: dlq.cdc-errors
+    errors.deadletterqueue.topic.replication.factor: 3
+    errors.deadletterqueue.context.headers.enable: true
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnector
+metadata:
+  name: mailpit-http-sink
+  namespace: kafka-cdc
+  labels:
+    strimzi.io/cluster: cdc-connect
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  class: io.aiven.kafka.connect.http.HttpSinkConnector
+  tasksMax: 1
+  config:
+    topics: "cdc.public.customers,cdc.public.orders"
+    http.url: "http://n8n-mailpit.openshift-lightspeed.svc:8025/api/v1/send"
+    http.authorization.type: none
+    http.headers.content.type: "application/json"
+    batching.enabled: "false"
+    key.converter: org.apache.kafka.connect.storage.StringConverter
+    value.converter: org.apache.kafka.connect.json.JsonConverter
+    value.converter.schemas.enable: "false"
+    errors.tolerance: all
+    errors.deadletterqueue.topic.name: dlq.cdc-errors
+    errors.deadletterqueue.topic.replication.factor: 3
+    errors.deadletterqueue.context.headers.enable: true

@@ -1,0 +1,106 @@
+= Schema Registry — Apicurio
+:navtitle: Schema Registry — Apicurio
+
+== ¿Qué es Apicurio Registry?
+
+https://www.apicur.io/registry/[Apicurio Registry] es un schema registry open source que almacena y gestiona esquemas de datos y APIs. Es parte del ecosistema de *Streams for Apache Kafka*.
+
+*Formatos soportados:*
+
+* Apache Avro
+* JSON Schema
+* Protobuf
+* OpenAPI
+* AsyncAPI
+* GraphQL
+* WSDL / XML Schema
+
+== ¿Por qué un Schema Registry?
+
+En un pipeline CDC, los eventos que Debezium produce tienen una estructura definida. Sin un schema registry:
+
+* Los consumidores no saben qué formato esperar
+* Cambios en la estructura de las tablas pueden romper consumidores
+* No hay validación de datos en tránsito
+
+Con Apicurio Registry:
+
+* Los schemas se registran y versionan centralmente
+* Los productores validan contra el schema antes de enviar
+* Los consumidores obtienen el schema automáticamente
+* Evolución de schemas compatible (forward, backward, full)
+
+== Despliegue en OpenShift
+
+[source,yaml]
+----
+apiVersion: registry.apicur.io/v1
+kind: ApicurioRegistry
+metadata:
+  name: apicurio-registry
+  namespace: kafka-cdc
+spec:
+  configuration:
+    persistence: kafkasql
+    kafkasql:
+      bootstrapServers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092
+  deployment:
+    replicas: 1
+----
+
+El storage `kafkasql` usa Kafka como backend de persistencia — no requiere base de datos adicional.
+
+== Acceso a la UI
+
+La interfaz web de Apicurio Registry está disponible en:
+
+`https://apicurio-registry-kafka-cdc.YOUR_CLUSTER_DOMAIN`
+
+Desde ahí podes:
+
+* Explorar schemas registrados
+* Ver versiones y compatibilidad
+* Registrar nuevos schemas manualmente
+* Ver el contenido de cada schema
+
+== Integración con Debezium
+
+Para usar Apicurio como serializer en Debezium, se configura el converter en KafkaConnect:
+
+[source,yaml]
+----
+config:
+  key.converter: io.apicurio.registry.utils.converter.AvroConverter
+  key.converter.apicurio.registry.url: http://apicurio-registry-service.kafka-cdc.svc:8080/apis/registry/v2
+  key.converter.apicurio.registry.auto-register: "true"
+  value.converter: io.apicurio.registry.utils.converter.AvroConverter
+  value.converter.apicurio.registry.url: http://apicurio-registry-service.kafka-cdc.svc:8080/apis/registry/v2
+  value.converter.apicurio.registry.auto-register: "true"
+----
+
+NOTE: En este demo usamos JSON converter por simplicidad, pero la integración con Avro via Apicurio está lista para habilitarse.
+
+== API REST del Registry
+
+Apicurio Registry expone una API REST completa:
+
+[source,bash]
+----
+# Listar artifacts
+curl -s https://apicurio-registry-kafka-cdc.apps.<domain>/apis/registry/v2/groups/default/artifacts
+
+# Registrar un schema
+curl -X POST https://apicurio-registry-kafka-cdc.apps.<domain>/apis/registry/v2/groups/default/artifacts \
+  -H "Content-Type: application/json; artifactType=JSON" \
+  -H "X-Registry-ArtifactId: customer-schema" \
+  -d '{
+    "type": "object",
+    "properties": {
+      "id": {"type": "integer"},
+      "first_name": {"type": "string"},
+      "last_name": {"type": "string"},
+      "email": {"type": "string", "format": "email"}
+    },
+    "required": ["id", "first_name", "last_name", "email"]
+  }'
+----

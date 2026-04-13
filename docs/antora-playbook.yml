@@ -1,0 +1,69 @@
+site:
+  title: "Streams for Apache Kafka — CDC Demo Workshop"
+  url: https://maximilianopizarro.github.io/field-sourced-content-template
+  start_page: ROOT::index.adoc
+
+content:
+  sources:
+    - url: .
+      start_path: docs
+      branches: HEAD
+
+asciidoc:
+  extensions:
+    - asciidoctor-kroki
+
+ui:
+  bundle:
+    url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable
+    snapshot: true
+  supplemental_files:
+    - path: ui.yml
+      contents: |
+        static_files:
+          - .nojekyll
+    - path: .nojekyll
+      contents: ""
+    - path: css/extra.css
+      contents: |
+        :root {
+          --color-brand-red: #CC0000;
+          --color-brand-dark: #151515;
+          --color-brand-blue: #0066CC;
+        }
+        .navbar {
+          background: var(--color-brand-dark) !important;
+          border-bottom: 3px solid var(--color-brand-red);
+        }
+        .navbar .navbar-brand {
+          color: #fff !important;
+          font-weight: 700;
+        }
+        .nav-panel-menu .nav-link.is-current-page {
+          border-left: 3px solid var(--color-brand-red);
+          font-weight: 700;
+        }
+        .doc a {
+          color: var(--color-brand-blue);
+        }
+        .doc th {
+          background: var(--color-brand-dark);
+          color: #fff;
+        }
+        .admonitionblock .icon {
+          background: var(--color-brand-blue);
+        }
+        pre.highlight code {
+          font-size: 0.85rem;
+        }
+        .three-container {
+          width: 100%;
+          height: 500px;
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          margin: 1.5rem 0;
+          background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+        }
+
+output:
+  dir: ./_site

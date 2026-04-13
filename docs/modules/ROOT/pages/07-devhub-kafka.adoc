@@ -1,0 +1,96 @@
+= Developer Hub — Kafka Plugin
+:navtitle: Developer Hub — Kafka Plugin
+
+== Kafka Plugin en Red Hat Developer Hub
+
+El plugin `@backstage-community/plugin-kafka` permite ver información de Kafka directamente en las entity pages de Developer Hub.
+
+=== ¿Qué muestra?
+
+* *Topic offsets*: posición actual de producción por partición
+* *Consumer group offsets*: posición de consumo por consumer group
+* *Consumer lag*: diferencia entre posición de producción y consumo
+* *Dashboard URL*: link directo a Grafana/Streams Console
+
+=== Configuración
+
+El plugin está habilitado como dynamic plugin en Developer Hub:
+
+[source,yaml]
+----
+# Backend — conectividad al cluster Kafka
+- package: ./dynamic-plugins/dist/backstage-community-plugin-kafka-backend-dynamic
+  disabled: false
+  pluginConfig:
+    kafka:
+      clientId: backstage
+      clusters:
+        - name: cdc-cluster
+          brokers:
+            - cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092
+
+# Frontend — UI en entity pages
+- package: ./dynamic-plugins/dist/backstage-community-plugin-kafka
+  disabled: false
+  pluginConfig:
+    dynamicPlugins:
+      frontend:
+        backstage-community.plugin-kafka:
+          mountPoints:
+            - mountPoint: entity.page.overview/cards
+              importName: EntityKafkaContent
+              config:
+                if:
+                  anyOf:
+                    - hasAnnotation: kafka.apache.org/consumer-groups
+----
+
+=== Annotación en catalog entities
+
+Para que el plugin de Kafka aparezca en una entity page, agrega la siguiente anotación al `catalog-info.yaml` del componente:
+
+[source,yaml]
+----
+metadata:
+  annotations:
+    kafka.apache.org/consumer-groups: camel-cdc-consumer
+----
+
+Esto hace que Developer Hub muestre los offsets y lag del consumer group `camel-cdc-consumer` directamente en la vista del componente.
+
+== Streams for Apache Kafka Console
+
+Además del plugin de Developer Hub, la *Streams Console* (StreamsHub) proporciona una UI dedicada para gestión de Kafka:
+
+Acceso: `https://kafka-console-kafka-cdc.YOUR_CLUSTER_DOMAIN`
+
+=== Features de la Streams Console
+
+[cols="1,2",options="header"]
+|===
+| Feature | Descripción
+
+| *Cluster Overview*
+| Vista general del cluster: brokers, particiones, replication factor
+
+| *Topics*
+| Listar topics, ver mensajes en tiempo real, buscar por offset
+
+| *Consumer Groups*
+| Ver estado de consumer groups, lag por partición, reset de offsets
+
+| *Kafka Nodes*
+| Estado de cada broker, métricas de disco y red
+
+| *Kafka Connect* (Tech Preview)
+| Gestión de connectors directamente desde la consola
+|===
+
+== Verificación
+
+Para verificar que el plugin de Kafka funciona:
+
+. Accede a Developer Hub: `https://backstage-developer-hub-developer-hub.YOUR_CLUSTER_DOMAIN`
+. Navega a un componente que tenga la anotación `kafka.apache.org/consumer-groups`
+. En la pestaña *Overview*, deberías ver el card de Kafka con offsets y lag
+. Clickea en el consumer group para ver el detalle por partición

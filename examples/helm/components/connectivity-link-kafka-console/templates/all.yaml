@@ -1,0 +1,32 @@
+apiVersion: console.streamshub.io/v1alpha1
+kind: Console
+metadata:
+  name: kafka-console
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  hostname: kafka-console-kafka-cdc.{{ .Values.clusterDomain }}
+  kafkaClusters:
+    - name: cdc-cluster
+      namespace: kafka-cdc
+      listener: plain
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: kafka-console
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  host: kafka-console-kafka-cdc.{{ .Values.clusterDomain }}
+  to:
+    kind: Service
+    name: kafka-console
+  port:
+    targetPort: https
+  tls:
+    termination: reencrypt
+    insecureEdgeTerminationPolicy: Redirect

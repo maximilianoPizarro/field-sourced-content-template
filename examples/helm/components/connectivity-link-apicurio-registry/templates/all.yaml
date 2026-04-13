@@ -1,0 +1,33 @@
+apiVersion: registry.apicur.io/v1
+kind: ApicurioRegistry
+metadata:
+  name: apicurio-registry
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  configuration:
+    persistence: kafkasql
+    kafkasql:
+      bootstrapServers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092
+  deployment:
+    replicas: 1
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: apicurio-registry
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  host: apicurio-registry-kafka-cdc.{{ .Values.clusterDomain }}
+  to:
+    kind: Service
+    name: apicurio-registry-service
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

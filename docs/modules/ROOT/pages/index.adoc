@@ -1,6 +1,4 @@
 = Streams for Apache Kafka — CDC Demo Workshop
-:page-layout: home
-:!showtitle:
 
 image::redhat-openshift-logo.svg[Red Hat OpenShift,200,align=center]
 

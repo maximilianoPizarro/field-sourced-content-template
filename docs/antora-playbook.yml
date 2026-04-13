@@ -24,6 +24,14 @@ ui:
           - .nojekyll
     - path: .nojekyll
       contents: ""
+    - path: partials/header-content.hbs
+      contents: |
+        <button class="navbar-burger" data-target="topbar-nav">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <a class="navbar-item" href="{{or siteRootPath (or site.url '/')}}">{{site.title}}</a>
     - path: css/extra.css
       contents: |
         :root {

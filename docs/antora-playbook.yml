@@ -32,6 +32,8 @@ ui:
           <span></span>
         </button>
         <a class="navbar-item" href="{{or siteRootPath (or site.url '/')}}">{{site.title}}</a>
+    - path: partials/toolbar.hbs
+      contents: ""
     - path: css/extra.css
       contents: |
         :root {

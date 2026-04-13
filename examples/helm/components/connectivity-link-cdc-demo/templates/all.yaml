@@ -63,7 +63,7 @@ metadata:
   name: cdc-postgresql-data
   namespace: kafka-cdc
   annotations:
-    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-wave: "6"
 spec:
   accessModes:
     - ReadWriteOnce

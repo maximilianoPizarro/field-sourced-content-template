@@ -84,6 +84,32 @@ spec:
     rebalance.timeout.ms: "60000"
 ----
 
+== How it Works
+
+=== Write path (producer → broker)
+
+. The producer sends a batch of records to the *leader* of the target partition.
+. The leader appends the batch to its local log (sequential I/O, O(1) disk access).
+. Each *follower* in the ISR fetches the batch from the leader and writes it to its own log.
+. Once `min.insync.replicas` (including the leader) confirm the write, the leader sends an ACK to the producer.
+. If a follower falls behind by more than `replica.lag.time.max.ms`, it is removed from the ISR. It rejoins automatically once it catches up.
+
+=== Read path (consumer → broker)
+
+. The consumer calls `poll()` on the leader of each assigned partition.
+. The leader returns batches starting from the consumer's *last committed offset*.
+. The consumer processes the batch and commits the new offset (either auto-commit or manual).
+. If the consumer crashes, another member of the consumer group takes over the partition after the session timeout, starting from the last committed offset.
+
+=== Compaction: how log cleanup works
+
+For topics with `cleanup.policy: compact`, the log cleaner runs periodically:
+
+. It scans the *dirty* portion of the log (records after the last clean point).
+. For each key, it keeps only the *latest value* and removes older versions.
+. A *tombstone record* (key with `null` value) marks a key for deletion — it is retained for `delete.retention.ms` before physical removal.
+. Compaction never modifies the *active segment* — only closed segments are cleaned.
+
 == Recovery
 
 === Checking Consumer Group Offsets
@@ -98,6 +124,8 @@ oc exec -n kafka-cdc cdc-cluster-broker-0 -- bin/kafka-consumer-groups.sh \
   --describe
 ----
 
+The output shows `CURRENT-OFFSET`, `LOG-END-OFFSET`, and `LAG` per partition. A high lag value indicates the consumer is falling behind.
+
 === Resetting Offsets
 
 To reprocess events from the beginning:
@@ -111,6 +139,16 @@ oc exec -n kafka-cdc cdc-cluster-broker-0 -- bin/kafka-consumer-groups.sh \
   --topic cdc.public.customers \
   --execute
 ----
+
+WARNING: Stop the consumer group before resetting offsets. For KafkaConnect, scale the connector to 0 tasks first, reset, then scale back.
+
+=== Debezium recovery
+
+Debezium maintains its own checkpoint in the Connect offset topic — the PostgreSQL *LSN* (Log Sequence Number). After a restart:
+
+. KafkaConnect reads the last committed offset for the Debezium connector task.
+. Debezium extracts the LSN from that offset and reconnects to the PostgreSQL replication slot.
+. The database replays WAL changes from that LSN forward — no events are lost or duplicated (at-least-once delivery).
 
 == DLQ / Dead Letter Queue
 
@@ -143,14 +181,176 @@ config:
   errors.deadletterqueue.context.headers.enable: true
 ----
 
+=== DLQ error context
+
+When `context.headers.enable: true`, each DLQ record includes headers with diagnostic information:
+
+* `__connect.errors.topic` — original topic name
+* `__connect.errors.partition` — original partition number
+* `__connect.errors.offset` — original offset
+* `__connect.errors.exception.class.name` — Java exception class
+* `__connect.errors.exception.message` — human-readable error message
+
+This enables root-cause analysis without guessing which records failed and why.
+
 == Lag Monitoring
 
 Consumer group lag is tracked in the link:https://grafana-observability.{cluster_domain}[Grafana^] dashboard under *Consumer Group Lag*. Alerts fire when lag exceeds 1000 messages for more than 5 minutes.
 
+[source,yaml]
+----
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kafka-cdc-alerts
+  namespace: kafka-cdc
+spec:
+  groups:
+    - name: kafka-cdc
+      rules:
+        - alert: KafkaConsumerLagHigh
+          expr: kafka_consumergroup_lag_sum > 1000
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Consumer group lag is above 1000"
+        - alert: KafkaConnectTaskFailed
+          expr: kafka_connect_connector_task_status{status="failed"} > 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "A Kafka Connect task has failed"
+----
+
 == DRP/BCP
 
-* **Data persistence**: PVCs survive pod/node failures
-* **Topic replication**: 3-way replication across brokers on different nodes
-* **Connector state**: Stored in Kafka internal topics, survives Connect restarts
-* **Database WAL**: Debezium resumes from last committed LSN position
-* **Backup**: PVC snapshots + topic data can be exported with MirrorMaker 2
+=== Data persistence and recovery guarantees
+
+[cols="1,2,1",options="header"]
+|===
+|Component |Recovery mechanism |RPO
+
+|*Kafka topics*
+|PVC storage + 3-way replication across brokers on different nodes
+|0 (no data loss within ISR)
+
+|*Connect offsets*
+|Stored in internal Kafka topics (`connect-offsets`), survives Connect restarts
+|Last committed offset
+
+|*Debezium state*
+|LSN checkpoint in Connect offsets; WAL replay from PostgreSQL
+|Last committed LSN
+
+|*PostgreSQL*
+|WAL + PVC snapshots; optional CronJob backups
+|Depends on backup frequency
+
+|*Apicurio schemas*
+|Stored in Kafka topics (kafkasql); inherits Kafka durability
+|0 (replicated with Kafka)
+|===
+
+=== PostgreSQL backup (CronJob)
+
+[source,yaml]
+----
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgresql-backup
+  namespace: kafka-cdc
+spec:
+  schedule: "0 2 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: backup
+              image: registry.redhat.io/rhel9/postgresql-16:latest
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  pg_dump -h cdc-postgresql -U cdcuser cdcdb | \
+                    gzip > /backups/cdcdb-$(date +%Y%m%d-%H%M%S).sql.gz
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: cdc-postgresql
+                      key: password
+              volumeMounts:
+                - name: backup-vol
+                  mountPath: /backups
+          volumes:
+            - name: backup-vol
+              persistentVolumeClaim:
+                claimName: postgresql-backups
+          restartPolicy: OnFailure
+----
+
+=== MirrorMaker 2: cross-cluster replication
+
+For disaster recovery across clusters, Strimzi provides MirrorMaker 2:
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaMirrorMaker2
+metadata:
+  name: cdc-mirror
+  namespace: kafka-cdc
+spec:
+  version: "4.0.0"
+  replicas: 1
+  connectCluster: target
+  clusters:
+    - alias: source
+      bootstrapServers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092
+    - alias: target
+      bootstrapServers: target-cluster-kafka-bootstrap.kafka-dr.svc:9092
+  mirrors:
+    - sourceCluster: source
+      targetCluster: target
+      sourceConnector:
+        config:
+          replication.factor: 3
+          offset-syncs.topic.replication.factor: 3
+          sync.topic.acls.enabled: "false"
+      topicsPattern: "cdc\\..*"
+      groupsPattern: ".*"
+----
+
+=== Failover procedure
+
+. Verify the target cluster has caught up (lag ≈ 0 on mirror connector).
+. Stop the source cluster or redirect DNS.
+. Update consumer bootstrap servers to the target cluster.
+. Resume processing — consumer offsets are translated automatically by MirrorMaker 2.
+
+=== Resilience levels
+
+[cols="1,2,2",options="header"]
+|===
+|Level |Scope |Mechanism
+
+|*Pod failure*
+|Single pod crashes
+|Kubernetes restarts; Kafka leader election; Connect rebalancing
+
+|*Node failure*
+|Worker node goes down
+|Pod rescheduling; PVC reattachment; ISR catches up
+
+|*AZ failure*
+|Availability zone outage
+|Multi-AZ pod distribution; PVC in another zone
+
+|*Cluster failure*
+|Entire cluster is lost
+|MirrorMaker 2 to DR cluster; PostgreSQL backup restore
+|===

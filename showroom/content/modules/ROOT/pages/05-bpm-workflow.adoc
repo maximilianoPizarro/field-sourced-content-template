@@ -30,6 +30,98 @@
 </script>
 ++++
 
+=== Why BPM in a CDC Pipeline?
+
+[cols="1,1",options="header"]
+|===
+|Without BPM |With BPM (SonataFlow)
+
+|CDC events are processed linearly
+|CDC events trigger business processes with conditional logic
+
+|No approvals or SLAs
+|Approvals with timeout (24h SLA for premium customers)
+
+|Simple notifications (fire-and-forget)
+|Parallel orchestration: provision + notify simultaneously
+
+|No customer classification
+|Automatic classification: basic / standard / premium
+
+|No process metrics
+|Onboarding metrics emitted to Kafka
+|===
+
+== Architecture
+
+[mermaid]
+....
+graph LR
+    PG["fa:fa-database PostgreSQL"]
+    DBZ["fa:fa-bolt Debezium"]
+    K["fa:fa-stream Kafka"]
+    SF["fa:fa-cogs SonataFlow"]
+    MP["fa:fa-envelope Mailpit"]
+    KB["fa:fa-exchange-alt Kafka Bridge"]
+    APR["fa:fa-check-circle Approval<br/>Topic"]
+    MET["fa:fa-chart-line Metrics<br/>Topic"]
+
+    PG -->|WAL| DBZ
+    DBZ -->|CDC events| K
+    K -->|CloudEvents| SF
+    SF -->|Welcome email| MP
+    SF -->|Approval request| KB
+    KB -->|produce| APR
+    SF -->|Metrics| KB
+    KB -->|produce| MET
+....
+
+== Operator: OpenShift Serverless Logic
+
+The operator is installed from Red Hat Operators:
+
+[source,yaml]
+----
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: logic-operator-rhel8
+  namespace: openshift-serverless-logic
+spec:
+  channel: alpha
+  installPlanApproval: Automatic
+  name: logic-operator-rhel8
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+----
+
+The operator provides the following CRDs:
+
+* `SonataFlow` — Defines a serverless workflow
+* `SonataFlowPlatform` — Configures the platform (build, runtime)
+* `SonataFlowBuild` — Manages workflow builds
+* `SonataFlowClusterPlatform` — Cluster-wide configuration
+
+== SonataFlow Platform
+
+The platform is configured in the `kogito-bpm` namespace:
+
+[source,yaml]
+----
+apiVersion: sonataflow.org/v1alpha08
+kind: SonataFlowPlatform
+metadata:
+  name: sonataflow-platform
+  namespace: kogito-bpm
+spec:
+  build:
+    config:
+      strategyOptions:
+        KanikoBuildCacheEnabled: "true"
+  devMode:
+    baseImage: registry.redhat.io/openshift-serverless-1/logic-swf-devmode-rhel8:1.36
+----
+
 == SonataFlow Swagger UI
 
 Explore REST operations exposed by the workflow service (health, metadata, and any generated APIs) in Swagger UI:
@@ -38,20 +130,94 @@ link:https://customer-onboarding-kogito-bpm.{cluster_domain}/q/swagger-ui[Sonata
 
 For interactive process debugging and instance inspection, the Quarkus Dev UI remains useful: link:https://customer-onboarding-kogito-bpm.{cluster_domain}/q/dev-ui[SonataFlow Dev UI^].
 
+== Process diagram
+
+[source]
+----
+┌──────────────────┐
+│  CDC Event        │
+│  (Kafka Topic)    │
+└────────┬─────────┘
+         │
+┌────────▼─────────┐
+│ Validate Customer │
+│ Data              │
+└────────┬─────────┘
+         │
+┌────────▼─────────┐
+│ Classify Customer │
+│ (basic/standard/  │
+│  premium)         │
+└────────┬─────────┘
+         │
+    ┌────┴────┐
+    │ Premium? │
+    └────┬────┘
+   Yes   │   No
+┌────────▼──┐  ┌──▼──────────┐
+│ Manager    │  │ Auto-       │
+│ Approval   │  │ Approved    │
+│ (24h SLA)  │  │             │
+└────────┬──┘  └──┬──────────┘
+         │        │
+┌────────▼────────▼┐
+│ Provision Account │
+│ (parallel)        │
+│ ├─ Create Account │
+│ └─ Send Welcome   │
+└────────┬─────────┘
+         │
+┌────────▼─────────┐
+│ Emit Onboarding   │
+│ Metric            │
+└──────────────────┘
+----
+
+== Workflow states
+
+[cols="2,1,3",options="header"]
+|===
+|State |Type |Description
+
+|`ReceiveCDCEvent`
+|Event
+|Listens for CDC events from `cdc.public.customers` via CloudEvents
+
+|`ValidateCustomerData`
+|Switch
+|Validates that the event contains `email` and `first_name`
+
+|`ClassifyCustomer`
+|Operation
+|Classifies customer tier: basic (<10k), standard (10k-50k), premium (>50k)
+
+|`CheckApprovalRequired`
+|Switch
+|Evaluates whether the tier requires manual approval
+
+|`RequestManagerApproval`
+|Callback
+|Sends approval request to `bpm.approval.requests` via Kafka Bridge. Waits for response event with 24-hour timeout
+
+|`EvaluateApproval`
+|Switch
+|Evaluates the approval response
+
+|`ProvisionAccount`
+|Parallel
+|Runs in parallel: create account + send welcome email via Mailpit
+
+|`EmitOnboardingMetric`
+|Operation
+|Publishes onboarding metric to `bpm.onboarding.metrics`
+|===
+
 == SonataFlow custom resource
 
-The *Customer Onboarding* workflow is declared as a `SonataFlow` CR. The following illustrates the resource shape (events and start state); the deployed manifest in Git contains the full `states` graph.
+=== Events (Kafka CDC as CloudEvents)
 
 [source,yaml]
 ----
-apiVersion: sonataflow.org/v1alpha08
-kind: SonataFlow
-metadata:
-  name: customer-onboarding
-  namespace: kogito-bpm
-  labels:
-    app: customer-onboarding
-    app.kubernetes.io/part-of: kogito-bpm
 spec:
   flow:
     start: ReceiveCDCEvent
@@ -62,33 +228,176 @@ spec:
       - name: approvalCompleted
         type: approval.completed
         source: internal
+----
+
+=== Functions (classification, REST, logs)
+
+[source,yaml]
+----
     functions:
       - name: classifyCustomer
         type: expression
         operation: |
-          {tier: (if .customer.amount >= 50000 then "premium" elif .customer.amount >= 10000 then "standard" else "basic" end)}
-    states:
-      - name: ReceiveCDCEvent
-        type: event
-        onEvents:
-          - eventRefs:
-              - cdcCustomerEvent
-            eventDataFilter:
-              data: ".payload.after"
-              toStateData: ".customer"
-        transition: ValidateCustomerData
-      # ... additional states: validation, classification, approval, provisioning, metrics
+          .customer | if .amount >= 50000 then "premium"
+                    elif .amount >= 10000 then "standard"
+                    else "basic" end
+      - name: sendApprovalRequest
+        type: rest
+        operation: "http://cdc-bridge-bridge-service.kafka-cdc.svc:8080/topics/bpm.approval.requests#POST"
+      - name: sendWelcomeNotification
+        type: rest
+        operation: "http://n8n-mailpit.openshift-lightspeed.svc:8025/api/v1/send#POST"
+      - name: publishMetrics
+        type: rest
+        operation: "http://cdc-bridge-bridge-service.kafka-cdc.svc:8080/topics/bpm.onboarding.metrics#POST"
 ----
 
-== Workflow steps (high level)
+=== Approval state with callback and timeout
 
-. *ReceiveCDCEvent* — Consumes CloudEvents from `cdc.public.customers` (Debezium payload in the event body).
-. *ValidateCustomerData* — Ensures required fields (for example email, name) are present.
-. *ClassifyCustomer* — Derives tier (for example basic / standard / premium) from business data.
-. *CheckApprovalRequired* — Routes premium flows through approval when configured.
-. *RequestManagerApproval* — Publishes approval requests and waits for callback events when applicable.
-. *ProvisionAccount* — Parallel work such as account creation and welcome notifications.
-. *EmitOnboardingMetric* — Publishes completion metrics to `bpm.onboarding.metrics`.
+[source,yaml]
+----
+      - name: RequestManagerApproval
+        type: callback
+        action:
+          name: requestApproval
+          functionRef:
+            refName: sendApprovalRequest
+          actionDataFilter:
+            fromStateData: |
+              {
+                "records": [{
+                  "value": {
+                    "customer_id": .customer.id,
+                    "name": "\(.customer.first_name) \(.customer.last_name)",
+                    "email": .customer.email,
+                    "tier": .tier,
+                    "status": "pending_approval"
+                  }
+                }]
+              }
+        eventRef: approvalCompleted
+        timeouts:
+          eventTimeout: PT24H
+        transition: EvaluateApproval
+----
+
+=== Parallel execution: provision + notify
+
+[source,yaml]
+----
+      - name: ProvisionAccount
+        type: parallel
+        branches:
+          - name: CreateAccount
+            actions:
+              - name: logProvisioning
+                functionRef:
+                  refName: logEvent
+          - name: SendWelcome
+            actions:
+              - name: sendWelcome
+                functionRef:
+                  refName: sendWelcomeNotification
+                actionDataFilter:
+                  fromStateData: |
+                    {
+                      "from": {"name": "NeuralBank Onboarding", "email": "onboarding@neuralbank.io"},
+                      "to": [{"name": "\(.customer.first_name)", "email": "\(.customer.email)"}],
+                      "subject": "Welcome to NeuralBank - \(.tier) Account",
+                      "text": "Hello \(.customer.first_name)! Your \(.tier) account has been created."
+                    }
+        completionType: allOf
+----
+
+== Kafka topics for BPM
+
+The BPM module adds two additional topics to the Kafka cluster:
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: bpm.approval.requests
+  namespace: kafka-cdc
+  labels:
+    strimzi.io/cluster: cdc-cluster
+spec:
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: 604800000
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: bpm.onboarding.metrics
+  namespace: kafka-cdc
+  labels:
+    strimzi.io/cluster: cdc-cluster
+spec:
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: 2592000000
+----
+
+== How it Works
+
+=== SonataFlow execution engine
+
+SonataFlow executes workflows defined in the https://serverlessworkflow.io/[Serverless Workflow Specification] as Quarkus microservices:
+
+. The operator receives the `SonataFlow` CR and generates a *Quarkus application* with the embedded workflow runtime.
+. Upon receiving a CDC event (CloudEvent via Kafka or HTTP), the engine creates a *workflow instance* with a unique ID.
+. Each instance maintains its own *state data* — a JSON document that transforms at each transition.
+. The engine executes transitions defined in the workflow in an *event-driven* manner: each state is evaluated and executed in order, using the previous result as input.
+
+=== Callback pattern: asynchronous approvals
+
+The `RequestManagerApproval` state uses the specification's *callback pattern*:
+
+. The workflow executes the *action* (send approval request to `bpm.approval.requests` via Kafka Bridge).
+. The engine *suspends* the workflow instance — it consumes no CPU or memory while waiting.
+. The instance is persisted in the Data Index with status `WAITING`.
+. When the `approvalCompleted` event arrives (a message in the topic with the correct `workflowInstanceId`), the engine *resumes* the instance from the exact point where it was suspended.
+. If the event does not arrive within `PT24H` (24 hours), the timeout fires and the workflow transitions to the next state with a timeout flag.
+
+=== Parallel execution: branches
+
+The `ProvisionAccount` state executes *branches* in parallel:
+
+. The engine launches both branches (`CreateAccount` and `SendWelcome`) simultaneously as coroutines.
+. `completionType: allOf` indicates the workflow waits for *both* branches to complete before transitioning.
+. If a branch fails, the workflow can retry or handle the error according to the defined policy.
+. Results from both branches are merged into the instance's state data.
+
+== Integration with the CDC pipeline
+
+[cols="2,2,2",options="header"]
+|===
+|Component |Integration |Protocol
+
+|**Debezium → Kafka**
+|Produces CDC events that trigger the workflow
+|CloudEvents over Kafka
+
+|**Kafka Bridge**
+|The workflow publishes approvals and metrics via REST
+|HTTP → Kafka
+
+|**Mailpit**
+|The workflow sends welcome and rejection emails
+|HTTP REST
+
+|**Apicurio Registry**
+|Schema governance for BPM topics
+|REST
+
+|**Grafana**
+|Visualization of onboarding metrics
+|Prometheus scraping
+|===
 
 == Workflow health
 
@@ -100,3 +409,45 @@ curl -sS "https://customer-onboarding-kogito-bpm.{cluster_domain}/q/health" | jq
 ----
 
 If `jq` is unavailable, omit the pipe. Expect HTTP 200 with UP status for liveness/readiness when the pod is ready.
+
+== Comparison: Kogito vs RHPAM vs SonataFlow
+
+[cols="1,1,1,1",options="header"]
+|===
+|Feature |RHPAM 7.x (legacy) |Kogito |SonataFlow
+
+|Runtime
+|Wildfly/EAP
+|Quarkus/Spring Boot
+|Quarkus (serverless)
+
+|Process definition
+|BPMN 2.0
+|BPMN 2.0 / DMN
+|Serverless Workflow Spec
+
+|Deployment
+|Business Central + KIE Server
+|Kubernetes Operator
+|SonataFlow Operator
+
+|Scalability
+|Manual horizontal
+|Cloud-native auto-scaling
+|Knative serverless (scale-to-zero)
+
+|Kafka integration
+|Via JMS/AMQP bridge
+|Native (Quarkus Kafka)
+|CloudEvents native
+
+|Visual designer
+|Business Central
+|VS Code Extension
+|Kaoto + VS Code
+
+|Status
+|Deprecated (migrate to SonataFlow)
+|Mature → migrate to SonataFlow
+|Recommended for new projects
+|===

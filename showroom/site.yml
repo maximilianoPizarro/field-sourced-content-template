@@ -297,4 +297,18 @@ ui:
               document.body.appendChild(overlay);
             });
           });
+          // Ensure all 3D containers have a fullscreen button
+          var selectors = document.querySelectorAll('.three-container, [id^="scene-"]');
+          selectors.forEach(function(el) {
+            if (el.querySelector('.fullscreen-btn')) return;
+            el.style.position = el.style.position || 'relative';
+            var btn = document.createElement('button');
+            btn.className = 'fullscreen-btn';
+            btn.textContent = '\u26F6 Fullscreen';
+            btn.onclick = function() {
+              if (el.requestFullscreen) el.requestFullscreen();
+              else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+            };
+            el.appendChild(btn);
+          });
         });

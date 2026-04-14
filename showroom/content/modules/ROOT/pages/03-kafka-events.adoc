@@ -48,7 +48,7 @@ Select a topic, open a partition, and click a message to inspect JSON. CDC envel
 
 == Partition design
 
-Partitions split a topic’s write load and allow parallel consumers. Strimzi models topics with the `KafkaTopic` CR (cluster label must match your `Kafka` resource name):
+Partitions split a topic's write load and allow parallel consumers. Strimzi models topics with the `KafkaTopic` CR (cluster label must match your `Kafka` resource name):
 
 [source,yaml]
 ----
@@ -69,6 +69,27 @@ spec:
 
 Higher partition counts increase parallelism but also operational surface area (more leadership elections, more consumer coordination). CDC keys often follow primary keys so related updates stay ordered *per key* within a partition.
 
+=== Partition key strategy
+
+Debezium uses the primary key of each table row as the Kafka message key. This means:
+
+* All changes for a given `customer_id` go to the *same partition* — ordering is guaranteed per customer.
+* Across different customers, events may land on different partitions and process in parallel.
+* Compaction works correctly because it preserves the *latest value* for each key.
+
+=== Partition balance across brokers
+
+With 3 partitions and 3 brokers, each broker is leader of one partition and follower for two others:
+
+[source]
+----
+Partition 0:  Leader=Broker0   Replicas=[Broker0, Broker1, Broker2]
+Partition 1:  Leader=Broker1   Replicas=[Broker1, Broker2, Broker0]
+Partition 2:  Leader=Broker2   Replicas=[Broker2, Broker0, Broker1]
+----
+
+This ensures write load is distributed evenly and no single broker is a bottleneck.
+
 == Consumer groups
 
 List consumer groups against the in-cluster bootstrap address (from a pod that already has Kafka binaries, such as a broker):
@@ -79,7 +100,17 @@ oc exec -n kafka-cdc cdc-cluster-broker-0 -- bin/kafka-consumer-groups.sh \
   --bootstrap-server localhost:9092 --list
 ----
 
-For a specific group, add `--describe --group <name>` to see lag per partition. Lag shows how far behind processing is — useful when tuning consumers or investigating backpressure.
+For a specific group, add `--describe --group <name>` to see lag per partition:
+
+[source,bash]
+----
+oc exec -n kafka-cdc cdc-cluster-broker-0 -- bin/kafka-consumer-groups.sh \
+  --bootstrap-server localhost:9092 \
+  --group connect-mailpit-http-sink \
+  --describe
+----
+
+The output shows `CURRENT-OFFSET`, `LOG-END-OFFSET`, and `LAG` per partition. Lag shows how far behind processing is — useful when tuning consumers or investigating backpressure.
 
 == List topics from the broker pod
 
@@ -87,5 +118,86 @@ Confirm topic names and replication from the broker (matches the console, useful
 
 [source,bash]
 ----
-oc exec -n kafka-cdc cdc-cluster-broker-0 -- bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+oc exec -n kafka-cdc cdc-cluster-broker-0 -- bin/kafka-topics.sh \
+  --bootstrap-server localhost:9092 --list
 ----
+
+For detailed topic metadata including partition count, replication factor, and ISR status:
+
+[source,bash]
+----
+oc exec -n kafka-cdc cdc-cluster-broker-0 -- bin/kafka-topics.sh \
+  --bootstrap-server localhost:9092 \
+  --topic cdc.public.customers \
+  --describe
+----
+
+== How it Works
+
+=== KRaft Consensus (no Zookeeper)
+
+Starting with Kafka 3.x, cluster metadata is managed internally using the *KRaft* (Kafka Raft) protocol:
+
+. Each broker has a role: *controller* (metadata management) or *broker* (data storage and serving), or both in small clusters (combined mode).
+. Controllers form a _quorum_ using Raft. One controller is elected as *active controller* — it is the only one that writes metadata.
+. When a topic is created or a partition reassigned, the active controller writes the change to an internal log (`__cluster_metadata`) that replicates to the other controllers.
+. Brokers receive metadata by subscribing to the controller log — no polling, it is push-based.
+. If the active controller fails, the remaining controllers elect a new leader via Raft in *milliseconds*, eliminating the minutes-long delay that occurred with Zookeeper.
+
+=== Message lifecycle
+
+. A *producer* sends a batch of records to the broker that is *leader* for the target partition.
+. The leader writes the batch to its local log (append-only on disk, sequential I/O).
+. The *followers* (replicas) fetch the batch from the leader and write it to their own logs.
+. When `min.insync.replicas` replicas (including the leader) confirm the write, the leader sends an *ACK* to the producer.
+. The offset for the batch is assigned sequentially — it is immutable and monotonically increasing.
+. A *consumer* with an assigned _consumer group_ calls `poll()` to the leader of each assigned partition, receiving batches starting from its last committed offset.
+
+=== Strimzi Reconciliation Loop
+
+The Strimzi Cluster Operator works as a classic _Kubernetes controller_:
+
+. It watches changes on `Kafka`, `KafkaConnect`, `KafkaTopic`, and `KafkaUser` CRs.
+. It computes the diff between the desired state (CR) and the actual state (StatefulSets, ConfigMaps, Secrets).
+. It applies changes in a *rolling* fashion — it never stops all brokers simultaneously.
+. Topic and User Operators run as sidecars in the _Entity Operator_ pod and reconcile their CRs against the Kafka API directly (not Kubernetes resources).
+
+== Offset management and checkpoints
+
+Consumer offsets are committed to an internal Kafka topic (`__consumer_offsets`). This provides exactly-once semantics when used with the transactional API.
+
+For Connect-based consumers (like Debezium and the HTTP Sink), offsets are stored in Connect-internal topics:
+
+[source,yaml]
+----
+config:
+  offset.storage.topic: connect-offsets
+  config.storage.topic: connect-configs
+  status.storage.topic: connect-status
+  offset.storage.replication.factor: 3
+----
+
+Debezium maintains an additional checkpoint: the PostgreSQL *LSN* (Log Sequence Number). After a restart, Debezium reads its last committed LSN from the Connect offset topic and resumes from that exact WAL position.
+
+== Retention and reprocessing
+
+Topics can use time-based deletion or key-based compaction:
+
+[cols="1,1,2",options="header"]
+|===
+|Policy |Config |Behavior
+
+|*delete*
+|`retention.ms: 604800000`
+|Messages older than 7 days are deleted
+
+|*compact*
+|`cleanup.policy: compact`
+|Only the latest value per key is kept; older versions are removed by the log cleaner
+
+|*compact,delete*
+|Both policies
+|Compaction runs continuously, and messages older than retention are also deleted
+|===
+
+WARNING: Resetting offsets to reprocess events from a compacted topic will only replay the *latest version* of each key, not the full history. For DLQ topics, use `delete` policy with long retention (30 days) to preserve error context.

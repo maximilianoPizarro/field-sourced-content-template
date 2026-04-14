@@ -59,6 +59,10 @@ spec:
         operations: [Read]
 ----
 
+* `scram-sha-512` — credential-based authentication managed by Strimzi
+* ACLs restrict which topics and consumer groups each client can access
+* Strimzi automatically provisions Kubernetes Secrets with the credentials
+
 The `KafkaUser` CR provisions credentials automatically via Strimzi. ACLs restrict which topics and consumer groups a client can access.
 
 == Encryption
@@ -113,6 +117,75 @@ spec:
 
 No Kafka broker ports are exposed outside the cluster. Consumers and producers connect via internal `ClusterIP` services.
 
+== How it Works
+
+=== SCRAM-SHA-512 authentication in Kafka
+
+SCRAM (Salted Challenge Response Authentication Mechanism) works as a 4-step handshake between the client and the broker:
+
+. The client sends its *username* to the broker.
+. The broker responds with a random *salt* and the stored *iteration count* for that user.
+. The client generates a *salted password* using PBKDF2 with SHA-512, calculates a cryptographic *client proof*, and sends it to the broker.
+. The broker verifies the proof against the stored credentials and sends a *server signature* that the client validates.
+
+At no point does the password travel in plaintext. Strimzi automates the entire lifecycle: when a `KafkaUser` CR is created, the User Operator generates the SCRAM credentials, stores them in Kafka, and creates a Kubernetes `Secret` with the password for clients to mount as an environment variable.
+
+=== TLS: encryption in transit
+
+* **Client → Broker**: the TLS listener (port 9093) terminates TLS at the broker. Strimzi generates certificates automatically using an internal CA (`cdc-cluster-cluster-ca-cert`).
+* **Broker → Broker**: inter-broker communication uses mutual TLS (mTLS). Each broker has its own certificate signed by the cluster CA.
+* **Service Mesh (mTLS ambient)**: Istio ambient mode adds a *second layer* of mTLS at L4 (ztunnel), encrypting all TCP traffic between pods in the `kafka-cdc` namespace — even traffic to the `plain` listener (9092) is encrypted at the network level.
+
+=== ACLs: granular authorization
+
+Kafka ACLs operate as *allowlists* — everything is denied by default:
+
+. Each ACL defines a *principal* (SCRAM user), a *resource* (topic, group, cluster), a *pattern* (literal or prefix), and the permitted *operations*.
+. The broker's authorizer evaluates ACLs on every client request.
+. Pattern `prefix` enables flexible rules: `name: cdc, patternType: prefix` authorizes access to all topics starting with `cdc` (including `cdc.public.customers`, `cdc.public.orders`).
+. If no ACL matches, the request is *denied* with an authorization error.
+
+=== KafkaConnect client security configuration
+
+KafkaConnect is configured to use the TLS listener (9093) with SCRAM-SHA-512:
+
+[source,yaml]
+----
+spec:
+  bootstrapServers: cdc-cluster-kafka-bootstrap:9093
+  authentication:
+    type: scram-sha-512
+    username: cdc-user
+    passwordSecret:
+      secretName: cdc-user
+      password: password
+  tls:
+    trustedCertificates:
+      - secretName: cdc-cluster-cluster-ca-cert
+        certificate: ca.crt
+----
+
+Strimzi automatically generates the `cdc-cluster-cluster-ca-cert` secret with the cluster CA certificate.
+
+=== Apache Camel client security configuration
+
+Camel uses SASL/SSL properties in the `kafka` component parameters:
+
+[source,yaml]
+----
+parameters:
+  brokers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093
+  securityProtocol: SASL_SSL
+  saslMechanism: SCRAM-SHA-512
+  saslJaasConfig: >-
+    org.apache.kafka.common.security.scram.ScramLoginModule required
+    username="${env:KAFKA_USER}" password="${env:KAFKA_PASSWORD}";
+  sslTruststoreLocation: /etc/kafka-certs/ca.crt
+  sslTruststoreType: PEM
+----
+
+Credentials are injected as environment variables from the Strimzi-generated Secret.
+
 == Governance & Compliance
 
 === Schema Registry Rules
@@ -136,6 +209,30 @@ Explore registered schemas in link:https://apicurio-registry-kafka-cdc.{cluster_
 
 === Audit Trail
 
-* Kafka retains all events for the configured retention period (7 days default)
-* Debezium captures the full before/after state of every database change
-* OpenShift audit logs track API access to the cluster
+* Kafka retains all events for the configured retention period (7 days default), providing a complete event history
+* Debezium captures the full before/after state of every database change — the immutable log serves as a compliance record
+* OpenShift audit logs track API access to the cluster, including who created/modified resources and when
+* Schema Registry maintains version history of every artifact, enabling traceability of schema evolution decisions
+* Consumer group offsets provide proof of which events have been processed and when
+
+=== Compliance considerations
+
+[cols="1,2",options="header"]
+|===
+|Requirement |How the pipeline addresses it
+
+|*Data lineage*
+|Debezium `source` metadata (LSN, timestamp, table) in every event traces changes back to the originating database operation
+
+|*Access control*
+|SCRAM + ACLs limit who can produce/consume specific topics; OpenShift RBAC controls platform access
+
+|*Encryption*
+|TLS in transit (listeners + mTLS inter-broker); PVCs can use encrypted storage classes at rest
+
+|*Retention*
+|Configurable per-topic; compacted topics can satisfy both retention and right-to-erasure (tombstone records)
+
+|*Auditability*
+|OpenShift audit logs + Kafka event log + Apicurio version history provide end-to-end audit trail
+|===

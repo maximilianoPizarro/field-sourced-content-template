@@ -38,6 +38,45 @@ Registered artifacts in this demo typically include:
 
 Exact names may include group IDs or content-hash suffixes depending on SerDes configuration; search by artifact name or topic in the UI.
 
+== ApicurioRegistry deployment
+
+The registry is deployed via the Apicurio operator using `kafkasql` persistence — no external database required:
+
+[source,yaml]
+----
+apiVersion: registry.apicur.io/v1
+kind: ApicurioRegistry
+metadata:
+  name: apicurio-registry
+  namespace: kafka-cdc
+spec:
+  configuration:
+    persistence: kafkasql
+    kafkasql:
+      bootstrapServers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092
+  deployment:
+    replicas: 1
+----
+
+The `kafkasql` backend stores schemas as messages in internal Kafka topics, inheriting the cluster's replication (RF=3) and durability guarantees without needing a separate database.
+
+== Debezium integration
+
+To use Apicurio as the serializer for Debezium events, configure the converter in KafkaConnect:
+
+[source,yaml]
+----
+config:
+  key.converter: io.apicurio.registry.utils.converter.AvroConverter
+  key.converter.apicurio.registry.url: http://apicurio-registry-service.kafka-cdc.svc:8080/apis/registry/v2
+  key.converter.apicurio.registry.auto-register: "true"
+  value.converter: io.apicurio.registry.utils.converter.AvroConverter
+  value.converter.apicurio.registry.url: http://apicurio-registry-service.kafka-cdc.svc:8080/apis/registry/v2
+  value.converter.apicurio.registry.auto-register: "true"
+----
+
+NOTE: This demo uses JSON converter for simplicity, but the Avro integration via Apicurio is ready to be enabled for production workloads where schema enforcement is critical.
+
 == Example customer CDC event (JSON Schema)
 
 Debezium emits a structured envelope. A simplified JSON Schema illustrating the *shape* of a customer change value (your registry may store Avro or JSON Schema variants):
@@ -78,6 +117,44 @@ required: [op, source]
 
 The live artifact in Apicurio will be more detailed (full Debezium field list, logical types, and optional tombstone handling).
 
+== How it Works
+
+=== Schema validation cycle
+
+The Schema Registry acts as a *living contract* between producers and consumers:
+
+. A *producer* (Debezium, Camel) serializes a message and sends the schema to the registry (if `auto-register=true`).
+. Apicurio validates the schema against the configured *global rules*:
+** **VALIDITY** — the schema must be syntactically correct (valid JSON Schema, valid Avro, etc.)
+** **COMPATIBILITY** — the schema must be compatible with the previous version according to the selected policy
+. If validation passes, Apicurio assigns a *globalId* to the schema and stores it.
+. The producer includes the `globalId` in the Kafka message header (not the full schema — this saves bandwidth).
+. A *consumer* receives the message, extracts the `globalId` from the header, and fetches the full schema from Apicurio for deserialization.
+. If the producer attempts to register an incompatible schema (e.g., removing a required field), Apicurio *rejects* the registration with HTTP 409, preventing the breaking change before it reaches Kafka.
+
+=== Compatibility modes
+
+[cols="1,2",options="header"]
+|===
+|Mode |Guarantee
+
+|*BACKWARD*
+|Consumers with the new schema can read data written with the old schema. Allows adding optional fields.
+
+|*FORWARD*
+|Consumers with the old schema can read data written with the new schema. Allows removing optional fields.
+
+|*FULL*
+|Combination of BACKWARD + FORWARD. Only allows adding or removing optional fields.
+
+|*NONE*
+|No compatibility validation — useful in development, risky in production.
+|===
+
+=== KafkaSQL persistence
+
+In this demo, Apicurio uses `kafkasql` as backend: schemas are stored as messages in internal Kafka topics. This eliminates the need for an additional database and inherits Kafka's replication and durability (RF=3).
+
 == Schema evolution and compatibility
 
 * *Backward compatibility* — New consumers read old data. Adding optional fields is usually safe.
@@ -87,3 +164,47 @@ The live artifact in Apicurio will be more detailed (full Debezium field list, l
 In Apicurio, global or per-artifact compatibility policies (for example `BACKWARD`, `FORWARD`, `FULL`) reject incompatible version bumps at registration time. That keeps producers and consumers aligned when CDC shapes evolve with table migrations.
 
 For CDC, coordinate database migrations (new columns, nullability) with schema registration so Kafka Connect and downstream services stay compatible.
+
+== REST API
+
+Apicurio Registry exposes a full REST API for programmatic interaction:
+
+[source,bash]
+----
+# List artifacts
+curl -s https://apicurio-registry-kafka-cdc.{cluster_domain}/apis/registry/v2/groups/default/artifacts
+
+# Register a schema
+curl -X POST https://apicurio-registry-kafka-cdc.{cluster_domain}/apis/registry/v2/groups/default/artifacts \
+  -H "Content-Type: application/json; artifactType=JSON" \
+  -H "X-Registry-ArtifactId: customer-schema" \
+  -d '{
+    "type": "object",
+    "properties": {
+      "id": {"type": "integer"},
+      "first_name": {"type": "string"},
+      "last_name": {"type": "string"},
+      "email": {"type": "string", "format": "email"}
+    },
+    "required": ["id", "first_name", "last_name", "email"]
+  }'
+----
+
+== Governance rules
+
+Configure global rules to enforce contract discipline across all artifacts:
+
+[source,json]
+----
+{
+  "rules": {
+    "VALIDITY": "FULL",
+    "COMPATIBILITY": "BACKWARD"
+  }
+}
+----
+
+* **VALIDITY: FULL** — schemas must be syntactically valid
+* **COMPATIBILITY: BACKWARD** — new schemas must be readable by consumers using the previous version
+
+Explore registered schemas in link:https://apicurio-registry-kafka-cdc.{cluster_domain}[Apicurio Registry^].

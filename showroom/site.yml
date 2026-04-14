@@ -3,8 +3,9 @@ site:
   start_page: event-driven-demo::index.adoc
 content:
   sources:
-    - url: ./
-      start_path: content
+    - url: https://github.com/maximilianoPizarro/field-sourced-content-template.git
+      branches: main
+      start_path: showroom/content
 asciidoc:
   attributes:
     cluster_domain: "%cluster_domain%"

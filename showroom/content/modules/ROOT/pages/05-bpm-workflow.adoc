@@ -54,27 +54,33 @@
 
 == Architecture
 
-[mermaid]
-....
-graph LR
-    PG["fa:fa-database PostgreSQL"]
-    DBZ["fa:fa-bolt Debezium"]
-    K["fa:fa-stream Kafka"]
-    SF["fa:fa-cogs SonataFlow"]
-    MP["fa:fa-envelope Mailpit"]
-    KB["fa:fa-exchange-alt Kafka Bridge"]
-    APR["fa:fa-check-circle Approval<br/>Topic"]
-    MET["fa:fa-chart-line Metrics<br/>Topic"]
-
-    PG -->|WAL| DBZ
-    DBZ -->|CDC events| K
-    K -->|CloudEvents| SF
-    SF -->|Welcome email| MP
-    SF -->|Approval request| KB
-    KB -->|produce| APR
-    SF -->|Metrics| KB
-    KB -->|produce| MET
-....
+++++
+<div style="overflow-x:auto;padding:16px 0">
+<div style="display:flex;align-items:center;gap:8px;min-width:900px;font-family:'Red Hat Text',Helvetica,Arial,sans-serif;font-size:13px">
+  <div style="background:#336791;color:#fff;padding:10px 14px;border-radius:6px;text-align:center;white-space:nowrap"><strong>PostgreSQL</strong></div>
+  <div style="color:#6a6e73;white-space:nowrap">─ WAL ─▶</div>
+  <div style="background:#E53935;color:#fff;padding:10px 14px;border-radius:6px;text-align:center;white-space:nowrap"><strong>Debezium</strong></div>
+  <div style="color:#6a6e73;white-space:nowrap">─ CDC ─▶</div>
+  <div style="background:#231F20;color:#fff;padding:10px 14px;border-radius:6px;text-align:center;white-space:nowrap"><strong>Kafka</strong></div>
+  <div style="color:#6a6e73;white-space:nowrap">─ CloudEvents ─▶</div>
+  <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="background:#7B1FA2;color:#fff;padding:10px 14px;border-radius:6px;text-align:center;white-space:nowrap"><strong>SonataFlow</strong></div>
+      <div style="color:#6a6e73;white-space:nowrap">─ email ─▶</div>
+      <div style="background:#0066CC;color:#fff;padding:10px 14px;border-radius:6px;text-align:center;white-space:nowrap"><strong>Mailpit</strong></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-left:40px">
+      <div style="color:#6a6e73;white-space:nowrap">├─ approval ─▶</div>
+      <div style="background:#FF9800;color:#fff;padding:8px 12px;border-radius:6px;text-align:center;white-space:nowrap;font-size:12px">Approval Topic</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-left:40px">
+      <div style="color:#6a6e73;white-space:nowrap">└─ metrics ─▶</div>
+      <div style="background:#4CAF50;color:#fff;padding:8px 12px;border-radius:6px;text-align:center;white-space:nowrap;font-size:12px">Metrics Topic</div>
+    </div>
+  </div>
+</div>
+</div>
+++++
 
 == Operator: OpenShift Serverless Logic
 
@@ -132,46 +138,40 @@ For interactive process debugging and instance inspection, the Quarkus Dev UI re
 
 == Process diagram
 
-[source]
-----
-┌──────────────────┐
-│  CDC Event        │
-│  (Kafka Topic)    │
-└────────┬─────────┘
-         │
-┌────────▼─────────┐
-│ Validate Customer │
-│ Data              │
-└────────┬─────────┘
-         │
-┌────────▼─────────┐
-│ Classify Customer │
-│ (basic/standard/  │
-│  premium)         │
-└────────┬─────────┘
-         │
-    ┌────┴────┐
-    │ Premium? │
-    └────┬────┘
-   Yes   │   No
-┌────────▼──┐  ┌──▼──────────┐
-│ Manager    │  │ Auto-       │
-│ Approval   │  │ Approved    │
-│ (24h SLA)  │  │             │
-└────────┬──┘  └──┬──────────┘
-         │        │
-┌────────▼────────▼┐
-│ Provision Account │
-│ (parallel)        │
-│ ├─ Create Account │
-│ └─ Send Welcome   │
-└────────┬─────────┘
-         │
-┌────────▼─────────┐
-│ Emit Onboarding   │
-│ Metric            │
-└──────────────────┘
-----
+++++
+<div style="display:flex;flex-direction:column;align-items:center;gap:0;font-family:'Red Hat Text',Helvetica,Arial,sans-serif;font-size:13px;padding:20px 0">
+  <div style="background:#231F20;color:#fff;padding:12px 24px;border-radius:8px;text-align:center;min-width:200px"><strong>CDC Event</strong><br><span style="font-size:11px;opacity:.8">Kafka Topic</span></div>
+  <div style="width:2px;height:20px;background:#6a6e73"></div>
+  <div style="color:#6a6e73">▼</div>
+  <div style="background:#7B1FA2;color:#fff;padding:12px 24px;border-radius:8px;text-align:center;min-width:200px"><strong>Validate Customer Data</strong></div>
+  <div style="width:2px;height:20px;background:#6a6e73"></div>
+  <div style="color:#6a6e73">▼</div>
+  <div style="background:#F57C00;color:#fff;padding:12px 24px;border-radius:8px;text-align:center;min-width:200px"><strong>Classify Customer</strong><br><span style="font-size:11px;opacity:.8">basic / standard / premium</span></div>
+  <div style="width:2px;height:20px;background:#6a6e73"></div>
+  <div style="color:#6a6e73">▼</div>
+  <div style="background:#fff;color:#151515;padding:8px 20px;border:2px solid #FF9800;border-radius:20px;text-align:center"><strong>Premium?</strong></div>
+  <div style="display:flex;gap:40px;margin-top:4px">
+    <div style="display:flex;flex-direction:column;align-items:center">
+      <span style="color:#4CAF50;font-size:12px;font-weight:600">Yes</span>
+      <div style="width:2px;height:16px;background:#6a6e73"></div>
+      <div style="color:#6a6e73">▼</div>
+      <div style="background:#E53935;color:#fff;padding:12px 20px;border-radius:8px;text-align:center;min-width:160px"><strong>Manager Approval</strong><br><span style="font-size:11px;opacity:.8">24h SLA timeout</span></div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center">
+      <span style="color:#6a6e73;font-size:12px;font-weight:600">No</span>
+      <div style="width:2px;height:16px;background:#6a6e73"></div>
+      <div style="color:#6a6e73">▼</div>
+      <div style="background:#4CAF50;color:#fff;padding:12px 20px;border-radius:8px;text-align:center;min-width:160px"><strong>Auto-Approved</strong></div>
+    </div>
+  </div>
+  <div style="width:2px;height:20px;background:#6a6e73;margin-top:4px"></div>
+  <div style="color:#6a6e73">▼</div>
+  <div style="background:#0066CC;color:#fff;padding:12px 24px;border-radius:8px;text-align:center;min-width:200px"><strong>Provision Account</strong><br><span style="font-size:11px;opacity:.8">parallel: Create Account + Send Welcome</span></div>
+  <div style="width:2px;height:20px;background:#6a6e73"></div>
+  <div style="color:#6a6e73">▼</div>
+  <div style="background:#1A73E8;color:#fff;padding:12px 24px;border-radius:8px;text-align:center;min-width:200px"><strong>Emit Onboarding Metric</strong></div>
+</div>
+++++
 
 == Workflow states
 

@@ -6,6 +6,14 @@ metadata:
   description: ${{values.description}}
   language: HTML
   projectType: Static
+attributes:
+  .vscode/extensions.json: |
+    {
+      "recommendations": [
+        "redhat.vscode-yaml",
+        "redhat.vscode-xml"
+      ]
+    }
 components:
   - name: tools
     container:

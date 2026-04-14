@@ -6,6 +6,17 @@ metadata:
   language: java
   projectType: quarkus
   tags: [Quarkus, MCP, Kafka, CDC]
+attributes:
+  .vscode/extensions.json: |
+    {
+      "recommendations": [
+        "redhat.vscode-kaoto",
+        "redhat.vscode-apache-camel",
+        "redhat.java",
+        "redhat.vscode-quarkus",
+        "redhat.vscode-yaml"
+      ]
+    }
 components:
   - name: tools
     container:

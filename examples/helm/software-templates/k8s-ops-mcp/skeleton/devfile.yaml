@@ -6,6 +6,16 @@ metadata:
   language: java
   projectType: quarkus
   tags: [Quarkus, MCP, Kubernetes, OpenShift]
+attributes:
+  .vscode/extensions.json: |
+    {
+      "recommendations": [
+        "redhat.java",
+        "redhat.vscode-quarkus",
+        "redhat.vscode-yaml",
+        "redhat.vscode-xml"
+      ]
+    }
 components:
   - name: tools
     container:

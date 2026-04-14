@@ -11,6 +11,18 @@ metadata:
     - Kaoto
     - CDC
     - Kafka
+attributes:
+  .vscode/extensions.json: |
+    {
+      "recommendations": [
+        "redhat.vscode-kaoto",
+        "redhat.vscode-apache-camel",
+        "redhat.vscode-yaml",
+        "redhat.vscode-xml",
+        "redhat.java",
+        "redhat.vscode-quarkus"
+      ]
+    }
 components:
   - name: tools
     container:

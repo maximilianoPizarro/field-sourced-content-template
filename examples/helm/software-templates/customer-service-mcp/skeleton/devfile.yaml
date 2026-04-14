@@ -6,6 +6,15 @@ metadata:
   description: ${{values.description}}
   language: Java
   projectType: Quarkus
+attributes:
+  .vscode/extensions.json: |
+    {
+      "recommendations": [
+        "redhat.java",
+        "redhat.vscode-quarkus",
+        "redhat.vscode-yaml"
+      ]
+    }
 components:
   - name: tools
     container:

@@ -13,6 +13,28 @@ spec:
         KanikoBuildCacheEnabled: "true"
   devMode:
     baseImage: registry.redhat.io/openshift-serverless-1/logic-swf-devmode-rhel8:1.36
+  services:
+    dataIndex:
+      enabled: true
+      podTemplate:
+        container:
+          env:
+          - name: QUARKUS_HTTP_CORS
+            value: "true"
+          - name: QUARKUS_HTTP_CORS_ORIGINS
+            value: "/.*/"
+          - name: QUARKUS_HTTP_CORS_METHODS
+            value: "GET,POST,OPTIONS"
+          - name: QUARKUS_HTTP_CORS_HEADERS
+            value: "content-type,Accept,Authorization"
+          - name: QUARKUS_HTTP_CORS_EXPOSED_HEADERS
+            value: "Content-Type"
+          - name: QUARKUS_OIDC_ENABLED
+            value: "false"
+          - name: QUARKUS_OIDC_TENANT_ENABLED
+            value: "false"
+    jobService:
+      enabled: true
 ---
 apiVersion: sonataflow.org/v1alpha08
 kind: SonataFlow
@@ -400,6 +422,196 @@ spec:
   to:
     kind: Service
     name: swagger-ui-onboarding
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+# Data Index — external Route for browser access from Management Console
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: sonataflow-data-index
+  namespace: kogito-bpm
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+spec:
+  host: sonataflow-data-index-kogito-bpm.{{ .Values.clusterDomain }}
+  to:
+    kind: Service
+    name: sonataflow-platform-data-index-service
+  port:
+    targetPort: h2c
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+# Management Console — env.json ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sonataflow-console-envjson
+  namespace: kogito-bpm
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+  labels:
+    app: sonataflow-management-console
+data:
+  env.json: |
+    {
+      "KOGITO_CONSOLES_KEYCLOAK_DISABLE_HEALTH_CHECK": true,
+      "KOGITO_CONSOLES_KEYCLOAK_HEALTH_CHECK_URL": "",
+      "KOGITO_CONSOLES_KEYCLOAK_CLIENT_ID": "sonataflow-management-console",
+      "KOGITO_CONSOLES_KEYCLOAK_REALM": "master",
+      "KOGITO_CONSOLES_KEYCLOAK_UPDATE_TOKEN_VALIDITY": 30,
+      "KOGITO_CONSOLES_KEYCLOAK_URL": "",
+      "SONATAFLOW_MANAGEMENT_CONSOLE_DATA_INDEX_ENDPOINT": "https://sonataflow-data-index-kogito-bpm.{{ .Values.clusterDomain }}/graphql",
+      "SONATAFLOW_MANAGEMENT_CONSOLE_KOGITO_APP_NAME": "SonataFlow Management Console",
+      "SONATAFLOW_MANAGEMENT_CONSOLE_KOGITO_APP_VERSION": "1.0.0",
+      "SONATAFLOW_MANAGEMENT_CONSOLE_KOGITO_ENV_MODE": "DEV"
+    }
+---
+# Management Console — EnvJson.schema.json override (allows DATA_INDEX_ENDPOINT property)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sonataflow-console-schema
+  namespace: kogito-bpm
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+  labels:
+    app: sonataflow-management-console
+data:
+  EnvJson.schema.json: |
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "description": "SonataFlow Management Console env.json schema",
+      "properties": {
+        "SONATAFLOW_MANAGEMENT_CONSOLE_DATA_INDEX_ENDPOINT": { "type": "string" },
+        "SONATAFLOW_MANAGEMENT_CONSOLE_KOGITO_ENV_MODE": { "type": "string" },
+        "SONATAFLOW_MANAGEMENT_CONSOLE_KOGITO_APP_NAME": { "type": "string" },
+        "SONATAFLOW_MANAGEMENT_CONSOLE_KOGITO_APP_VERSION": { "type": "string" },
+        "KOGITO_CONSOLES_KEYCLOAK_DISABLE_HEALTH_CHECK": { "type": "boolean" },
+        "KOGITO_CONSOLES_KEYCLOAK_HEALTH_CHECK_URL": { "type": "string" },
+        "KOGITO_CONSOLES_KEYCLOAK_CLIENT_ID": { "type": "string" },
+        "KOGITO_CONSOLES_KEYCLOAK_REALM": { "type": "string" },
+        "KOGITO_CONSOLES_KEYCLOAK_URL": { "type": "string" },
+        "KOGITO_CONSOLES_KEYCLOAK_UPDATE_TOKEN_VALIDITY": { "type": "number" }
+      }
+    }
+---
+# Management Console — Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sonataflow-management-console
+  namespace: kogito-bpm
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+  labels:
+    app: sonataflow-management-console
+    app.kubernetes.io/part-of: kogito-bpm
+    app.openshift.io/runtime: kogito
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sonataflow-management-console
+  template:
+    metadata:
+      labels:
+        app: sonataflow-management-console
+    spec:
+      containers:
+      - name: management-console
+        image: registry.redhat.io/openshift-serverless-1/logic-management-console-rhel8:1.36.0
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        env:
+        - name: SONATAFLOW_MANAGEMENT_CONSOLE_DATA_INDEX_ENDPOINT
+          value: "https://sonataflow-data-index-kogito-bpm.{{ .Values.clusterDomain }}/graphql"
+        - name: SONATAFLOW_MANAGEMENT_CONSOLE_KOGITO_ENV_MODE
+          value: "DEV"
+        - name: KOGITO_CONSOLES_KEYCLOAK_DISABLE_HEALTH_CHECK
+          value: "true"
+        - name: KOGITO_CONSOLES_KEYCLOAK_HEALTH_CHECK_URL
+          value: ""
+        - name: KOGITO_CONSOLES_KEYCLOAK_CLIENT_ID
+          value: "sonataflow-management-console"
+        - name: KOGITO_CONSOLES_KEYCLOAK_REALM
+          value: "master"
+        - name: KOGITO_CONSOLES_KEYCLOAK_URL
+          value: ""
+        - name: KOGITO_CONSOLES_KEYCLOAK_UPDATE_TOKEN_VALIDITY
+          value: "30"
+        volumeMounts:
+        - name: env-json
+          mountPath: /home/kogito/management-console/app/env.json
+          subPath: env.json
+        - name: schema-json
+          mountPath: /home/kogito/management-console/EnvJson.schema.json
+          subPath: EnvJson.schema.json
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: env-json
+        configMap:
+          name: sonataflow-console-envjson
+      - name: schema-json
+        configMap:
+          name: sonataflow-console-schema
+---
+# Management Console — Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: sonataflow-management-console
+  namespace: kogito-bpm
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+  labels:
+    app: sonataflow-management-console
+spec:
+  selector:
+    app: sonataflow-management-console
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+---
+# Management Console — Route
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: sonataflow-management-console
+  namespace: kogito-bpm
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  host: sonataflow-management-console-kogito-bpm.{{ .Values.clusterDomain }}
+  to:
+    kind: Service
+    name: sonataflow-management-console
   port:
     targetPort: 8080
   tls:

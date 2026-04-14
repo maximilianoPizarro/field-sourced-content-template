@@ -21,7 +21,8 @@ spec:
       enable: false
     metrics:
       enable: true
-    pluginRegistry: {}
+    pluginRegistry:
+      openVSXURL: "https://open-vsx.org"
   containerRegistry: {}
   devEnvironments:
     startTimeoutSeconds: 600

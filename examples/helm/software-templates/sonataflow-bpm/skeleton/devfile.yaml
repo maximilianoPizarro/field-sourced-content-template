@@ -11,6 +11,18 @@ metadata:
     - BPM
     - Workflow
     - Kogito
+attributes:
+  .vscode/extensions.json: |
+    {
+      "recommendations": [
+        "kie-group.swf-vscode-extension",
+        "redhat.vscode-kaoto",
+        "redhat.vscode-yaml",
+        "redhat.vscode-xml",
+        "redhat.java",
+        "redhat.vscode-quarkus"
+      ]
+    }
 components:
   - name: tools
     container:

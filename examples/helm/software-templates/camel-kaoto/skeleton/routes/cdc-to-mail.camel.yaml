@@ -7,31 +7,31 @@
         groupId: camel-cdc-${{ values.name }}
         autoOffsetReset: latest
         valueDeserializer: org.apache.kafka.common.serialization.StringDeserializer
-    steps:
-      - log:
-          message: "CDC event received: ${body}"
-      - unmarshal:
-          json:
-            library: jackson
-      - choice:
-          when:
-            - simple: "${body[payload][op]} == 'c'"
+      steps:
+        - log:
+            message: "CDC event received: ${body}"
+        - unmarshal:
+            json:
+              library: jackson
+        - choice:
+            when:
+              - simple: "${body[payload][op]} == 'c'"
+                steps:
+                  - setBody:
+                      constant: '{"from":{"name":"CDC Pipeline","email":"cdc@neuralbank.io"},"to":[{"name":"Admin","email":"admin@neuralbank.io"}],"subject":"New Customer Created","text":"New customer created via CDC"}'
+            otherwise:
               steps:
                 - setBody:
-                    constant: '{"from":{"name":"CDC Pipeline","email":"cdc@neuralbank.io"},"to":[{"name":"Admin","email":"admin@neuralbank.io"}],"subject":"New Customer Created","text":"New customer created via CDC"}'
-          otherwise:
-            steps:
-              - setBody:
-                  constant: '{"from":{"name":"CDC Pipeline","email":"cdc@neuralbank.io"},"to":[{"name":"Admin","email":"admin@neuralbank.io"}],"subject":"Customer Record Changed","text":"Customer record change detected"}'
-      - setHeader:
-          name: Content-Type
-          constant: application/json
-      - marshal:
-          json:
-            library: jackson
-      - to:
-          uri: http:cdc-email-transformer.kafka-cdc.svc:8080
-          parameters:
-            httpMethod: POST
-      - log:
-          message: "Notification sent"
+                    constant: '{"from":{"name":"CDC Pipeline","email":"cdc@neuralbank.io"},"to":[{"name":"Admin","email":"admin@neuralbank.io"}],"subject":"Customer Record Changed","text":"Customer record change detected"}'
+        - setHeader:
+            name: Content-Type
+            constant: application/json
+        - marshal:
+            json:
+              library: jackson
+        - to:
+            uri: http:cdc-email-transformer.kafka-cdc.svc:8080
+            parameters:
+              httpMethod: POST
+        - log:
+            message: "Notification sent"

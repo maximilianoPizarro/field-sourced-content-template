@@ -222,6 +222,22 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  name: customer-onboarding-props
+  namespace: kogito-bpm
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+  labels:
+    app: customer-onboarding
+data:
+  application.properties: |
+    quarkus.http.cors=true
+    quarkus.http.cors.origins=/.*/
+    quarkus.http.cors.headers=accept,authorization,content-type,x-requested-with
+    quarkus.http.cors.methods=GET,POST,PUT,DELETE,OPTIONS
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: onboarding-process-docs
   namespace: kogito-bpm
   annotations:

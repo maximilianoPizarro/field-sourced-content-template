@@ -129,18 +129,24 @@ data:
       enabled: true
       default_mode: split
     tabs:
-      - name: Console
-        url: 'https://console-openshift-console.{{ .Values.deployer.domain }}'
-      - name: DevSpaces
-        url: 'https://devspaces.{{ .Values.deployer.domain }}'
-      - name: Gitea
-        url: 'https://gitea-gitea.{{ .Values.deployer.domain }}'
+      - name: Terminal
+        url: '/terminal/'
       - name: Developer Hub
         url: 'https://backstage-developer-hub-developer-hub.{{ .Values.deployer.domain }}'
       - name: Kafka Console
         url: 'https://kafka-console-kafka-cdc.{{ .Values.deployer.domain }}'
+      - name: Console
+        url: 'https://console-openshift-console.{{ .Values.deployer.domain }}'
+        external: true
+      - name: DevSpaces
+        url: 'https://devspaces.{{ .Values.deployer.domain }}'
+        external: true
+      - name: Gitea
+        url: 'https://gitea-gitea.{{ .Values.deployer.domain }}'
+        external: true
       - name: Grafana
         url: 'https://grafana-observability.{{ .Values.deployer.domain }}'
+        external: true
 ---
 # Showroom PVC
 apiVersion: v1

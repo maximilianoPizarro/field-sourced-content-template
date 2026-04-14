@@ -196,6 +196,26 @@ data:
     .ftr a{color:#73bcf7;text-decoration:none;font-size:10px}
     iframe{flex:1;min-height:0;border:0;width:100%}
     </style>
+    <script>
+    (function(){
+      var REGISTRATION_URL = 'https://workshop-registration.{{ .Values.deployer.domain }}/';
+      var params = new URLSearchParams(window.location.search);
+      var user = params.get('USER_NAME');
+      if (user) {
+        sessionStorage.setItem('EDA_USER_NAME', user);
+        sessionStorage.setItem('EDA_CLUSTER_DOMAIN', params.get('CLUSTER_DOMAIN') || '');
+      } else {
+        user = sessionStorage.getItem('EDA_USER_NAME');
+        if (user) {
+          var domain = sessionStorage.getItem('EDA_CLUSTER_DOMAIN') || '';
+          var fresh = window.location.pathname + '?USER_NAME=' + encodeURIComponent(user) + '&CLUSTER_DOMAIN=' + encodeURIComponent(domain);
+          window.location.replace(fresh);
+        } else {
+          window.location.replace(REGISTRATION_URL);
+        }
+      }
+    })();
+    </script>
     </head>
     <body>
     <div class="hdr">
@@ -214,6 +234,7 @@ data:
         <a href="https://backstage-developer-hub-developer-hub.{{ .Values.deployer.domain }}" target="_blank">Developer Hub<span class="tip">Red Hat Developer Hub &mdash; Portal de desarrollo self-service</span></a>
         <a href="https://kafka-console-kafka-cdc.{{ .Values.deployer.domain }}" target="_blank">Kafka Console<span class="tip">Streams Console &mdash; Monitoreo de topics y consumer groups</span></a>
         <a href="https://grafana-observability.{{ .Values.deployer.domain }}" target="_blank">Grafana<span class="tip">Grafana &mdash; Dashboards de metricas del pipeline CDC</span></a>
+        <a href="#" onclick="sessionStorage.clear();window.location.href='https://workshop-registration.{{ .Values.deployer.domain }}/';return false" style="border-left:1px solid #555;padding-left:8px;margin-left:4px;color:#ee0">Registro<span class="tip">Volver al registro &mdash; cambiar usuario o email</span></a>
       </div>
     </div>
     <div class="cbar">

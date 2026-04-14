@@ -1,5 +1,5 @@
 site:
-  title: "Streams for Apache Kafka — CDC Demo Workshop"
+  title: "Event-Driven Architecture Live"
   url: https://maximilianopizarro.github.io/field-sourced-content-template
   start_page: ROOT::index.adoc
 
@@ -12,6 +12,8 @@ content:
 asciidoc:
   extensions:
     - asciidoctor-kroki
+  attributes:
+    cluster_domain: "apps.cluster-l9nhj.dynamic.redhatworkshops.io"
 
 ui:
   bundle:
@@ -31,7 +33,7 @@ ui:
           <span></span>
           <span></span>
         </button>
-        <a class="navbar-item" href="{{or siteRootPath (or site.url '/')}}">{{site.title}}</a>
+        <a class="navbar-item" href="{{or siteRootPath (or site.url '/')}}">Event-Driven Architecture Live</a>
     - path: partials/toolbar.hbs
       contents: ""
     - path: css/extra.css
@@ -73,6 +75,21 @@ ui:
           border-radius: 8px;
           margin: 1.5rem 0;
           background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+        }
+        @media (max-width: 768px) {
+          .nav-container { display: none; }
+          .doc { padding: 0.5rem; }
+          .doc table { display: block; overflow-x: auto; white-space: nowrap; }
+          .doc table th, .doc table td { font-size: 0.8rem; padding: 4px 8px; }
+          .doc pre { font-size: 0.75rem; overflow-x: auto; }
+          .navbar-item { font-size: 0.85rem; }
+          .three-container, [id^="scene-"] { height: 280px !important; min-height: 280px !important; }
+          .doc h1 { font-size: 1.5rem; }
+          .doc h2 { font-size: 1.25rem; }
+        }
+        @media (max-width: 480px) {
+          .three-container, [id^="scene-"] { height: 200px !important; min-height: 200px !important; }
+          .doc { padding: 0.25rem; }
         }
     - path: js/three-helper.js
       contents: |

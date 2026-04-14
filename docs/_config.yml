@@ -1,5 +1,5 @@
-title: "From Zero To Hero with Red Hat Developer Hub"
-description: "Workshop — Neuralbank on OpenShift — Red Hat Developer Hub"
+title: "Event-Driven Architecture Live"
+description: "CDC Pipeline Demo — Streams for Apache Kafka on Red Hat OpenShift"
 baseurl: "/field-sourced-content-template"
 url: "https://maximilianopizarro.github.io"
 remote_theme: just-the-docs/just-the-docs@v0.10.0

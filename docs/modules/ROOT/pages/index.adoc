@@ -1,10 +1,10 @@
-= Streams for Apache Kafka — CDC Demo Workshop
+= Event-Driven Architecture Live
 
 ++++
 <div id="scene-index" style="width:100%;min-height:400px;"></div>
 <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
 <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script src="../_/js/three-helper.js"></script>
+<script src="_/js/three-helper.js"></script>
 <script>
 (function(){
   var ctx = ThreeHelper.initScene('scene-index', {height:420, camX:0, camY:12, camZ:25});
@@ -33,11 +33,11 @@
 
 image::redhat-openshift-logo.svg[Red Hat OpenShift,200,align=center]
 
-== Bienvenido al Workshop
+== Welcome
 
-En este workshop explorarás cómo implementar un pipeline de *Change Data Capture (CDC)* completo sobre OpenShift usando las tecnologías del ecosistema de *Streams for Apache Kafka*.
+Explore a complete *Change Data Capture (CDC)* pipeline running on Red Hat OpenShift with *Streams for Apache Kafka*, Debezium, Apache Camel, SonataFlow, and Apicurio Registry.
 
-=== Qué vas a aprender
+=== What You'll Learn
 
 * Desplegar un cluster *Kafka en modo KRaft* (sin Zookeeper) usando AMQ Streams
 * Configurar *Debezium* para capturar cambios en PostgreSQL en tiempo real

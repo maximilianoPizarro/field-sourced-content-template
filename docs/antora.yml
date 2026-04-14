@@ -1,5 +1,5 @@
 name: ROOT
 version: ~
-title: "Streams for Apache Kafka — CDC Workshop"
+title: "Event-Driven Architecture Live"
 nav:
   - modules/ROOT/nav.adoc

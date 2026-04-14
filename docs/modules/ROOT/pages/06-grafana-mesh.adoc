@@ -5,7 +5,7 @@
 <div id="scene-grafana" style="width:100%;min-height:400px;"></div>
 <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
 <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script src="../_/js/three-helper.js"></script>
+<script src="_/js/three-helper.js"></script>
 <script>
 (function(){
   var ctx = ThreeHelper.initScene('scene-grafana', {height:380, camY:12, camZ:22});

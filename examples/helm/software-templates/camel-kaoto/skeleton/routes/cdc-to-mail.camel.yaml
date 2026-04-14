@@ -15,25 +15,22 @@
             library: jackson
       - choice:
           when:
-            - expression:
-                simple:
-                  expression: "${body[payload][op]} == 'c'"
+            - simple: "${body[payload][op]} == 'c'"
               steps:
                 - setBody:
-                    expression:
-                      simple:
-                        expression: '{"from":{"name":"CDC Pipeline","email":"cdc@neuralbank.io"},"to":[{"name":"Admin","email":"admin@neuralbank.io"}],"subject":"New Customer Created","text":"Customer ${body[payload][after][first_name]} ${body[payload][after][last_name]} created."}'
+                    constant: '{"from":{"name":"CDC Pipeline","email":"cdc@neuralbank.io"},"to":[{"name":"Admin","email":"admin@neuralbank.io"}],"subject":"New Customer Created","text":"New customer created via CDC"}'
           otherwise:
             steps:
               - setBody:
-                  expression:
-                    simple:
-                      expression: '{"from":{"name":"CDC Pipeline","email":"cdc@neuralbank.io"},"to":[{"name":"Admin","email":"admin@neuralbank.io"}],"subject":"Customer Record Changed","text":"Change detected. Operation: ${body[payload][op]}"}'
+                  constant: '{"from":{"name":"CDC Pipeline","email":"cdc@neuralbank.io"},"to":[{"name":"Admin","email":"admin@neuralbank.io"}],"subject":"Customer Record Changed","text":"Customer record change detected"}'
+      - setHeader:
+          name: Content-Type
+          constant: application/json
       - marshal:
           json:
             library: jackson
       - to:
-          uri: http:n8n-mailpit.openshift-lightspeed.svc:8025/api/v1/send
+          uri: http:cdc-email-transformer.kafka-cdc.svc:8080
           parameters:
             httpMethod: POST
       - log:

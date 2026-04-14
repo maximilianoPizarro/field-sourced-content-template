@@ -624,3 +624,43 @@ spec:
   tls:
     termination: edge
     insecureEdgeTerminationPolicy: Redirect
+---
+# CronJob — Periodic workflow trigger for Management Console demo data
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sonataflow-demo-trigger
+  namespace: kogito-bpm
+  annotations:
+    argocd.argoproj.io/sync-wave: "11"
+spec:
+  schedule: "*/10 * * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  concurrencyPolicy: Replace
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 60
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+          - name: trigger
+            image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+            command: ["sh", "-c"]
+            args:
+            - |
+              NAMES="Ana Luis Sofia Diego Elena Pablo"
+              TIERS="5000 25000 75000"
+              NAME=$(echo $NAMES | tr ' ' '\n' | shuf -n1 2>/dev/null || echo "Demo")
+              AMOUNT=$(echo $TIERS | tr ' ' '\n' | shuf -n1 2>/dev/null || echo "25000")
+              ID=$((RANDOM + 10000))
+              curl -s -X POST http://customer-onboarding.kogito-bpm.svc:8080/ \
+                -H "Content-Type: application/json" \
+                -H "ce-specversion: 1.0" \
+                -H "ce-type: cdc.public.customers" \
+                -H "ce-source: debezium/cdc" \
+                -H "ce-id: cron-${ID}" \
+                -d "{\"payload\":{\"after\":{\"id\":${ID},\"first_name\":\"${NAME}\",\"last_name\":\"CronDemo\",\"email\":\"${NAME,,}.demo@neuralbank.io\",\"amount\":${AMOUNT}},\"op\":\"c\",\"source\":{\"table\":\"customers\"}}}"
+              echo " -> triggered ${NAME} amount=${AMOUNT}"

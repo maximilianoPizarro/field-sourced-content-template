@@ -358,14 +358,16 @@ spec:
         - mountPath: /ui-config
           name: ui-config
       - name: psql-installer
-        image: "registry.access.redhat.com/ubi9/ubi:latest"
+        image: "registry.redhat.io/rhel9/postgresql-16:latest"
         command: ["bash", "-c"]
         args:
           - |
-            dnf install -y --setopt=install_weak_deps=False postgresql >/dev/null 2>&1
-            cp /usr/bin/psql /psql-bin/psql
-            ldd /usr/bin/psql | grep '=>' | awk '{print $3}' | xargs -I{} cp -n {} /psql-bin/ 2>/dev/null || true
-            echo "psql installed to shared volume"
+            cp /usr/bin/psql /psql-bin/psql && chmod +x /psql-bin/psql
+            for lib in $(ldd /usr/bin/psql 2>/dev/null | grep '=>' | awk '{print $3}'); do
+              [ -f "$lib" ] && cp -n "$lib" /psql-bin/ 2>/dev/null
+            done
+            echo "psql $(psql --version 2>/dev/null || echo 'binary') copied to shared volume"
+            ls -la /psql-bin/
         volumeMounts:
         - name: psql-bin
           mountPath: /psql-bin

@@ -169,7 +169,7 @@ For CDC, coordinate database migrations (new columns, nullability) with schema r
 
 Apicurio Registry exposes a full REST API for programmatic interaction:
 
-[source,bash]
+[source,bash,subs=attributes+]
 ----
 # List artifacts
 curl -s https://apicurio-registry-kafka-cdc.{cluster_domain}/apis/registry/v2/groups/default/artifacts

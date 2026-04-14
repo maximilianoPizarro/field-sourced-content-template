@@ -151,7 +151,7 @@ commands:
 
 When a developer clicks *Open in Dev Spaces*, the operator creates a `DevWorkspace` CR in the user's namespace:
 
-[source,yaml]
+[source,yaml,subs=attributes+]
 ----
 apiVersion: workspace.devfile.io/v1alpha2
 kind: DevWorkspace

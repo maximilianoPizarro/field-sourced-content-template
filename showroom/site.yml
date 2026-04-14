@@ -15,29 +15,32 @@ ui:
     url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable
     snapshot: true
   supplemental_files:
-    - path: partials/header-content.hbs
+    - path: partials/header.hbs
       contents: |
-        <button class="navbar-burger" data-target="topbar-nav">
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-        <a class="navbar-item" href="{{or siteRootPath (or site.url '/')}}" style="display:flex;align-items:center;gap:8px">
-          <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAC8AAAAtCAYAAAA+7zKnAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAjPSURBVGhD1Zl7cBXVHcc/Z/fem3shCdEmaKAGeUgnYKmCBp+0OkymM6JWqI5jbTtOh7ZUsA870trXaGtrYSxjsZWx1s6gMiMCUUzVikAHsUAAg3JjfBUwvE0Qws3z3rv76x/7uPtKuAH/KN/MyZ797W9/93u+53fO2bNLbW2t1NfXSzqdlrMF6XRa6uvrhdra2rOKuIN0Oi0sXrw4aD9roNLptEyePJkzRe7jt8jtbSK3fzf5ox9gZjqQXC+IoBIptNJKYuddRGz0xSTGXU58bF0wxJChstmsxOPxoL0oGMcP0rt9JX07VmFmOiyjrqMwAAFlHQBEQKk4ppFHAWpYBalpc0hdfit61Vhf3GKhRMQOXzzMnk56NjxGz5vLAdAScZTKoukuV7uisMIri719FFMhxJB8HoDU5bcxfOZ8tPLz3N8oBkMm39e8lszaB5G+DFoctLigNJsbBaW9ig94LgoxrcYQK6Hsxl+SqrvNdjg1hkS+q/Ehet5cjpZMouu9KD1Mzk/Sq7jXHvATEK0EyfaTmjaHsq//3nYaHEWT73x2Af3p19ASQiwlEeSsYyFNrPuCZAeyiwAmmAaUTLyGirueBKXZTtEoivzJZ+fTl15HLAVaiaAkmNthMtH28BgQERTK9RMDxITEhKuo+M4/7JujMXjTgK5XFtnEBT1pAoIocdlJoRk+FDyC1vDRimEXzRpD2Y/+Q6bhV+6dURiUfP87r9Cz6e/EUgo9BSiF8hVQSoHCrluies+HfXkB+jmjbbv/nnA8u+hWxvQ2raR3+/NBWi4GJC/ZHjJrH0AriaOn7HnbHV2C8+c/x6dqYspskjMWUHbnM8THTPdo7FXesXjiOT0Qi5NZ+1vMk5+4vLwYkHz3hr9idh8nlsyGVHYVsyUO9oTVAwq9YjQAWsVoht/0MOXfeprybz9N6c0Pkxg7PRDP24tO/Bzk++le/1iQHgw0YM2uY3Q8dDV6EuKlRkFMCuL7zlEoTSCmkLxA3hqAsTHTKfvG0wXnIaCveQ1dDT9H8oKI4nP3/gu98kKfT6TyfTueB4RYyvQoYiWzowpK0ZODl9K9/G3bScwRQuJcIXE+JGqEkrGCPnx/MHTRSF46m3N/sgGlK4DI3I8m/9Yq9KSOFrPmc28uip3fr7/fw08bjvFqaw+72rIsWnWSjk8NW3lB8kJiyoJg6CFBqxhNcuotoCl6d64OXg6Tzx99H/P4fvRE3j+LYPXAu0dy/OG1Thre7nE6A4C2T/P8ubGLE50CpiIx5YfExs3xxT4dxC6sQ2mCdB8nt3e771qY/L7toAQt7h8K/YawYkcXf9l0kgMn8t60d3GoM8+yVzOoqjriXzoz1QHMEwfp39WAUtavZQPkQwO264Wfkd39EomyLNgD8p2DWVbu7OZYl+l19UHcf7BoeSOjJ10V8BgcZuYA/c0vgAj5j5vI7t1mr8T2dSNOYuK1jPjm4+49IeWNjo9AM9xZd3VzD49vygxIPDD5MOPGO4omLt0H6N+xkO6GCfSu/wpG+6P0bllKdt82x6Mw1sws+aMf+e4PkY/XTEXTTA6eMFm8rpPX3+u1Lnjy2wvPoopSMGPW7UGXSOR2L6X3pesw9qxBGQpMhRaDxAQhPkoi1xUz0+6LESI/rP5+Oqb8gN+9fII97dZmoRgIUDvtGmqnXRO8FIJxZBvZ5kcRw5qVxBCw60oX9CpBr/b2qa1+1hbSRog8wIQbfsSSF3dRVV0TvDRoD8yee1/QHIlc81KUqVCGso7eun2MjYRYtTPbFdYWL0LkP9y1BYCq6hruX7aWGbPuCLpEomjVD23D3L/VVVzsNcHbC85aoVeaxC6w1xYRVDzpixUiH4/pbr2quoZb5t7H7LkLfT4Q7oHv/jr6+SOI3PalEKW2W7DGgD0O9AprxQaFVlblixUif2z/B77zquoaZs9dyJIXd0UqW1Vdwy+WraVqVESKBWAc3Iaxf6ub4xiefHePFK7bPaCNEOKjNGIjJ/jiheb5lo0rmXzdwJvg9sNtdBxqo/WtN6mdenVkgwZC/7qF5N9bU1i5NRAF6LaMEUU0y88U0CrvZNj1v3Hjhch/8t9djBx/idf0mSGz5CJQ1k7JaQBOI2ySEtEAlNXIksuWEb9ophsvlDYjx1/Cnne2Bs1njN5XF1oMooo9BgjOQI7dUCjiPuJEkQc4fuC9oOmMkd29xn5HU9hkW8WxCTj5bs9AztwveVClU4Mho8lPvOx62g+1Bc2njScemE9floDa3nO7blLoAVtx8tYMVDLt3mDYaPJlI2s4/H5T0HxaaD/UxqbGFWRzJqYpmIZYRxOrbnjqplV8839OYMR09FFFKg8wsW4mx46c/k7IwRMPzrcqwTx31B6sGBpKdFJfXRIMC4ORTw6vYG/Ty0HzkLCpcQWtOzcDkNQ1O9elkOeefHfHgF0382DmBe2Ld4cWJwcDkge47KbvsWVN4fl5KGjdudlSXUFZUkNXwZyPUNouYijEAFV1BakZ9wRDuxiUPMCVs+fR1Dj4a7cg2g+38dC8m9zz80p1j+rW+0iv6qbdG6YhruKkRlF6ijcPpyQPUDfrLpr+WVwD2g+38eOb/YtczYiYpag4uQ4iyiIfUlyhhn+e8nn/9sWIQlHkAepuuIu31z8XNPvQunNziDjA+HPi1pOhKbbqgWKAkdMw86CqLqb87o2hx98ohB4PToWtq5cy4aqvUVl9gWtrP9xGw5OL2NS4ouBoR03EFH+cWYlmcxF7x+U8HohpPTGiNFLXzmPY9QPneBBDJg9wsv0gzRtW8cbG9bTu2GxvFOxvUA7sqFeMKeH2SWU2a0tpJ20cx8S4Ospv/RNa+UhPgFPjjD6oHWjdzvpnHmHL5jfIdDtbNOXZvsE9V1TYaWNds5QGpSeIj7+Ssln3h17jFYvP7FNmev1ztG5dx74P3+XokcN82tnN2BEa359WDnoMpSfQSivRz/8CyUtvoWSS/yHrtHA2f0TWnnrqKVpaWoJt+r9HS0sL/wPduHqmVbEhWgAAAABJRU5ErkJggg==" alt="Logo" style="height:28px;width:auto;border-radius:6px">
-          Event-Driven Architecture Live
-        </a>
-        <div id="user-info" style="margin-left:auto;display:flex;align-items:center;gap:12px;font-size:12px;color:#ccc;font-weight:400"></div>
+        <header class="navbar" style="background:#151515;border-bottom:3px solid #c00;padding:0 16px">
+          <div class="navbar-brand" style="display:flex;align-items:center;width:100%;gap:8px">
+            <a class="navbar-item" href="{{or siteRootPath (or site.url '/')}}" style="display:flex;align-items:center;gap:8px;color:#fff;font-weight:700;font-size:.9rem;text-decoration:none;padding:8px 0">
+              <img src="data:image/png;base64,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" alt="Logo" style="height:26px;width:auto;border-radius:4px">
+              Event-Driven Architecture Live
+            </a>
+            <span id="user-info" style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0"></span>
+          </div>
+        </header>
         <script>
-        (function(){
+        document.addEventListener('DOMContentLoaded', function(){
           var p = new URLSearchParams(window.location.search);
           var u = p.get('USER_NAME');
           var c = p.get('CLUSTER_DOMAIN');
           if (!u) { try { var pp = new URLSearchParams(window.parent.location.search); u = pp.get('USER_NAME'); c = pp.get('CLUSTER_DOMAIN'); } catch(e){} }
           var el = document.getElementById('user-info');
           if (el && (u || c)) {
-            el.innerHTML = (u ? '<span style="background:#c00;color:#fff;padding:2px 8px;border-radius:3px;font-weight:600;font-size:11px">'+u+'</span>' : '') + (c ? '<span style="color:#aaa;font-size:10px">'+c+'</span>' : '');
+            var html = '';
+            if (u) html += '<span style="background:#c00;color:#fff;padding:2px 8px;border-radius:3px;font-weight:600;font-size:11px">'+u+'</span>';
+            if (u) html += '<span style="color:#aaa;font-size:9px">Pass: Welcome123! &middot; IDP: workshop-users</span>';
+            if (c) html += '<span style="color:#666;font-size:9px">'+c+'</span>';
+            el.innerHTML = html;
           }
-        })();
+        });
         </script>
     - path: partials/toolbar.hbs
       contents: ""

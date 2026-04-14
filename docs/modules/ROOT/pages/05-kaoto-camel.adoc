@@ -92,7 +92,7 @@ La ruta de integración consume eventos CDC de Kafka y envía notificaciones por
 
 == Usando Kaoto en DevSpaces
 
-. Abrí DevSpaces: `https://devspaces.YOUR_CLUSTER_DOMAIN`
+. Abrí DevSpaces: `https://devspaces.{cluster_domain}`
 . Crea un workspace nuevo o abrí uno existente
 . La extensión *Kaoto* está pre-instalada automáticamente
 . Abrí cualquier archivo `.camel.yaml` — Kaoto muestra la vista visual

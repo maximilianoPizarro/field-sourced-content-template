@@ -264,4 +264,4 @@ oc exec -it cdc-cluster-kafka-0 -n kafka-cdc -- bin/kafka-console-consumer.sh \
   --from-beginning --max-messages 1
 ----
 
-También podes ver el email en Mailpit: `https://n8n-mailpit-openshift-lightspeed.YOUR_CLUSTER_DOMAIN`
+También podes ver el email en Mailpit: `https://n8n-mailpit-openshift-lightspeed.{cluster_domain}`

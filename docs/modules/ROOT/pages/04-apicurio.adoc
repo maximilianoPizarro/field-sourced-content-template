@@ -79,7 +79,7 @@ El storage `kafkasql` usa Kafka como backend de persistencia — no requiere bas
 
 La interfaz web de Apicurio Registry está disponible en:
 
-`https://apicurio-registry-kafka-cdc.YOUR_CLUSTER_DOMAIN`
+`https://apicurio-registry-kafka-cdc.{cluster_domain}`
 
 Desde ahí podes:
 

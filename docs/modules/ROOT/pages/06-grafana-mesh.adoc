@@ -53,7 +53,7 @@ El pipeline completo está instrumentado con métricas Prometheus, dashboards Gr
 
 == Dashboard Grafana — Kafka CDC Pipeline
 
-Acceso: `https://grafana-observability.YOUR_CLUSTER_DOMAIN`
+Acceso: `https://grafana-observability.{cluster_domain}`
 
 El dashboard se asocia a la instancia de Grafana mediante `instanceSelector`. El label debe coincidir con el de la instancia `Grafana` CR:
 
@@ -137,7 +137,7 @@ metadata:
 
 === Tráfico visible en Kiali
 
-Acceso: `https://kiali-openshift-cluster-observability-operator.YOUR_CLUSTER_DOMAIN`
+Acceso: `https://kiali-openshift-cluster-observability-operator.{cluster_domain}`
 
 En Kiali se puede ver el grafo de servicios del namespace `kafka-cdc`:
 

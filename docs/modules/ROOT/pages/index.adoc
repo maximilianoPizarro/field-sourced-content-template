@@ -71,9 +71,9 @@ Explore a complete *Change Data Capture (CDC)* pipeline running on Red Hat OpenS
 
 === Acceso al entorno
 
-* *Kafka Console*: `https://kafka-console-kafka-cdc.YOUR_CLUSTER_DOMAIN`
-* *Apicurio Registry*: `https://apicurio-registry-kafka-cdc.YOUR_CLUSTER_DOMAIN`
-* *Kafka Bridge (REST)*: `https://kafka-bridge-kafka-cdc.YOUR_CLUSTER_DOMAIN`
-* *Grafana*: `https://grafana-observability.YOUR_CLUSTER_DOMAIN`
-* *Developer Hub*: `https://backstage-developer-hub-developer-hub.YOUR_CLUSTER_DOMAIN`
-* *DevSpaces (Kaoto)*: `https://devspaces.YOUR_CLUSTER_DOMAIN`
+* *Kafka Console*: `https://kafka-console-kafka-cdc.{cluster_domain}`
+* *Apicurio Registry*: `https://apicurio-registry-kafka-cdc.{cluster_domain}`
+* *Kafka Bridge (REST)*: `https://kafka-bridge-kafka-cdc.{cluster_domain}`
+* *Grafana*: `https://grafana-observability.{cluster_domain}`
+* *Developer Hub*: `https://backstage-developer-hub-developer-hub.{cluster_domain}`
+* *DevSpaces (Kaoto)*: `https://devspaces.{cluster_domain}`

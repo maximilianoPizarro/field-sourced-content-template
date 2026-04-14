@@ -62,7 +62,7 @@ Esto hace que Developer Hub muestre los offsets y lag del consumer group `camel-
 
 Además del plugin de Developer Hub, la *Streams Console* (StreamsHub) proporciona una UI dedicada para gestión de Kafka:
 
-Acceso: `https://kafka-console-kafka-cdc.YOUR_CLUSTER_DOMAIN`
+Acceso: `https://kafka-console-kafka-cdc.{cluster_domain}`
 
 === Features de la Streams Console
 
@@ -90,7 +90,7 @@ Acceso: `https://kafka-console-kafka-cdc.YOUR_CLUSTER_DOMAIN`
 
 Para verificar que el plugin de Kafka funciona:
 
-. Accede a Developer Hub: `https://backstage-developer-hub-developer-hub.YOUR_CLUSTER_DOMAIN`
+. Accede a Developer Hub: `https://backstage-developer-hub-developer-hub.{cluster_domain}`
 . Navega a un componente que tenga la anotación `kafka.apache.org/consumer-groups`
 . En la pestaña *Overview*, deberías ver el card de Kafka con offsets y lag
 . Clickea en el consumer group para ver el detalle por partición

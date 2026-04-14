@@ -85,7 +85,6 @@
               <goal>build</goal>
               <goal>generate-code</goal>
               <goal>generate-code-tests</goal>
-              <goal>native-sources</goal>
             </goals>
           </execution>
         </executions>

@@ -179,16 +179,8 @@ data:
     <title>Event-Driven Architecture Live | Red Hat Demo Platform</title>
     <style>
     *{margin:0;padding:0;box-sizing:border-box}
-    html,body{height:100%;overflow:hidden;font-family:RedHatDisplay,Helvetica,sans-serif;display:flex;flex-direction:column;background:#151515}
-    .hdr{display:flex;align-items:center;background:#151515;border-bottom:3px solid #c00;padding:0 16px;height:44px;flex-shrink:0}
-    .hdr a.logo{display:flex;align-items:center;text-decoration:none}
-    .hdr .t{color:#fff;font-size:13px;font-weight:500;margin-left:12px;border-left:1px solid #555;padding-left:12px}
-    .hdr .r{margin-left:auto;display:flex;align-items:center;gap:4px}
-    .hdr .r a{color:#73bcf7;font-size:10px;text-decoration:none;padding:3px 5px;border-radius:3px;position:relative}
-    .hdr .r a:hover{background:rgba(255,255,255,.1)}
-    .hdr .r a .tip{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);background:#1a1a1a;border:1px solid #333;border-radius:4px;padding:6px 10px;white-space:nowrap;font-size:10px;color:#ccc;margin-top:4px;z-index:100;pointer-events:none}
-    .hdr .r a:hover .tip{display:block}
-    iframe{flex:1;min-height:0;border:0;width:100%}
+    html,body{height:100%;overflow:hidden;background:#151515}
+    iframe{width:100%;height:100%;border:0}
     </style>
     <script>
     (function(){
@@ -212,33 +204,37 @@ data:
     </script>
     </head>
     <body>
-    <div class="hdr">
-      <a class="logo" href="https://demo.redhat.com" target="_blank">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 613 145" height="24">
-          <path d="M127.5 110.5c-2.8 3-6.4 5.3-10.3 6.7-9.8 3.6-20.4 2.8-29.6-2.2-6.1-3.2-11.1-8.1-14.4-14.1-1.4-2.5-2.5-5.2-3.3-7.9-.5-1.9-1-3.9-1.3-5.9-.3-2-.5-4-.6-6.1-.1-2.1 0-4.1.2-6.2.2-2 .5-4 1-6 .5-1.9 1.1-3.8 1.8-5.7 1.6-4.2 3.8-8.1 6.6-11.5 3.6-4.3 8.2-7.6 13.3-9.6 9.8-3.9 20.7-3.3 30 1.7 3.2 1.7 6 4 8.3 6.7l-9.5 9.2c-3.2-3.8-7.8-6.2-12.8-6.8-5-.5-10 .8-14 3.8-2.7 2-4.8 4.6-6.2 7.6-1.5 3.2-2.3 6.6-2.3 10.1-.1 3.7.6 7.3 2 10.7 1.2 2.9 3.1 5.5 5.5 7.5 4.5 3.8 10.5 5.3 16.3 4.1 3.7-.7 7-2.6 9.5-5.3l9.8 8.3z" fill="#e00"/>
-          <path d="M62.3 72.5c0-25.3-12.2-42.2-32.6-50.3C25.1 20.2 19.2 19 12.8 19c-3 0-5.2.4-7 .8v103.4c1.8.4 4 .8 7 .8 6.4 0 12.3-1.2 16.9-3.2 20.4-8.1 32.6-25 32.6-48.3z" fill="#e00"/>
-          <path d="M0 0v145h62.3V131c-2.8 1-6.2 1.6-10.4 1.6-1.6 0-3.2-.1-4.7-.3V12.7c1.5-.2 3.1-.3 4.7-.3 4.2 0 7.6.6 10.4 1.6V0H0z" fill="#e00"/>
-        </svg>
-      </a>
-      <span class="t">Event-Driven Architecture Live</span>
-      <div class="r">
-        <a href="https://console-openshift-console.{{ .Values.deployer.domain }}" target="_blank">Console<span class="tip">OpenShift Console &mdash; Administracion del cluster</span></a>
-        <a href="https://gitea-gitea.{{ .Values.deployer.domain }}" target="_blank">Gitea<span class="tip">Gitea &mdash; Servidor Git para repositorios del demo</span></a>
-        <a href="https://devspaces.{{ .Values.deployer.domain }}" target="_blank">DevSpaces<span class="tip">Red Hat DevSpaces &mdash; IDE cloud con Kaoto pre-instalado</span></a>
-        <a href="https://backstage-developer-hub-developer-hub.{{ .Values.deployer.domain }}" target="_blank">Developer Hub<span class="tip">Red Hat Developer Hub &mdash; Portal de desarrollo self-service</span></a>
-        <a href="https://kafka-console-kafka-cdc.{{ .Values.deployer.domain }}" target="_blank">Kafka Console<span class="tip">Streams Console &mdash; Monitoreo de topics y consumer groups</span></a>
-        <a href="https://grafana-observability.{{ .Values.deployer.domain }}" target="_blank">Grafana<span class="tip">Grafana &mdash; Dashboards de metricas del pipeline CDC</span></a>
-        <a href="#" onclick="sessionStorage.clear();window.location.href='https://workshop-registration.{{ .Values.deployer.domain }}/';return false" style="border-left:1px solid #555;padding-left:8px;margin-left:4px;color:#ee0">Registro<span class="tip">Volver al registro &mdash; cambiar usuario o email</span></a>
-      </div>
-    </div>
-    <iframe id="showroom" src="/index.html" allow="clipboard-write clipboard-read"></iframe>
+    <iframe id="sf" src="/index.html" allow="clipboard-write clipboard-read"></iframe>
     <script>
-    document.getElementById('showroom').addEventListener('load', function(){
+    document.getElementById('sf').addEventListener('load', function(){
       try {
         var d = this.contentDocument || this.contentWindow.document;
-        var s = d.createElement('style');
-        s.textContent = '.topbar, header.header, .navbar, .header { display:none !important; } .body { margin-top:0 !important; padding-top:0 !important; }';
-        d.head.appendChild(s);
+        var hdr = d.querySelector('.topbar, header, .navbar, [class*="toolbar"]');
+        if (!hdr) return;
+        var pp = new URLSearchParams(window.location.search);
+        var u = pp.get('USER_NAME') || '';
+        var domain = '{{ .Values.deployer.domain }}';
+        var box = d.createElement('div');
+        box.style.cssText = 'margin-left:auto;display:flex;align-items:center;gap:10px;padding-right:12px;';
+        if (u) {
+          var badge = d.createElement('span');
+          badge.style.cssText = 'background:#c00;color:#fff;padding:2px 10px;border-radius:3px;font-weight:600;font-size:12px;';
+          badge.textContent = u;
+          box.appendChild(badge);
+          var creds = d.createElement('span');
+          creds.style.cssText = 'color:#aaa;font-size:10px;';
+          creds.textContent = 'Pass: Welcome123!';
+          box.appendChild(creds);
+        }
+        var reg = d.createElement('a');
+        reg.href = '#';
+        reg.textContent = 'Registro';
+        reg.style.cssText = 'color:#ee0;font-size:11px;text-decoration:none;border-left:1px solid #555;padding-left:10px;margin-left:4px;font-weight:500;';
+        reg.onclick = function(){ sessionStorage.clear(); window.location.href='https://workshop-registration.'+domain+'/'; return false; };
+        box.appendChild(reg);
+        var brand = hdr.querySelector('.navbar-brand, [class*="brand"], [class*="title"]');
+        if (brand) { brand.style.width='auto'; brand.appendChild(box); }
+        else { hdr.appendChild(box); }
       } catch(e){}
     });
     </script>

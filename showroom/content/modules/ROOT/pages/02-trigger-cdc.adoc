@@ -1,5 +1,30 @@
 = Step 1: Trigger a CDC Event
 
+++++
+<div id="scene-debezium" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-debezium', {height:380, camY:10, camZ:20});
+  if(!ctx) return;
+  var db = ThreeHelper.createNode(ctx.scene,'PostgreSQL',0x336791,-8,0,0);
+  var slot = ThreeHelper.createNode(ctx.scene,'Replication Slot',0x7B1FA2,-4,0,0,{width:3,height:0.8});
+  var conn = ThreeHelper.createNode(ctx.scene,'Debezium',0xE53935,2,0,0);
+  var kcon = ThreeHelper.createNode(ctx.scene,'KafkaConnect',0xFF6F00,2,3,0,{width:3,height:0.8});
+  var topic = ThreeHelper.createNode(ctx.scene,'CDC Topics',0x231F20,8,0,0,{width:2.5,height:0.8});
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,db,slot,0x336791,{speed:0.01}),
+    ThreeHelper.createEdge(ctx.scene,slot,conn,0x7B1FA2,{speed:0.012}),
+    ThreeHelper.createEdge(ctx.scene,conn,topic,0xE53935,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,kcon,conn,0xFF6F00,{speed:0.004})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
 == Action
 
 Run this SQL `INSERT` from a shell with network access to the cluster (embedded showroom terminal, or your workstation with `oc`/`kubectl` port-forward as needed):

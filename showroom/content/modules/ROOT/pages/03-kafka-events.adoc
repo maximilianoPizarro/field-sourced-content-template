@@ -1,5 +1,33 @@
 = Step 2: Kafka & Partitions
 
+++++
+<div id="scene-kafka" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-kafka', {height:380, camY:12, camZ:22});
+  if(!ctx) return;
+  var b0 = ThreeHelper.createNode(ctx.scene,'Broker 0',0xD32F2F,-5,0,0);
+  var b1 = ThreeHelper.createNode(ctx.scene,'Broker 1',0xD32F2F,0,0,-4);
+  var b2 = ThreeHelper.createNode(ctx.scene,'Broker 2',0xD32F2F,5,0,0);
+  var kraft = ThreeHelper.createNode(ctx.scene,'KRaft',0xFF9800,0,3,0,{width:2,height:0.8});
+  var cg = ThreeHelper.createNode(ctx.scene,'Consumer Group',0x4CAF50,0,-3,5,{width:3.5,height:0.8});
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,b0,b1,0x666666,{speed:0.003}),
+    ThreeHelper.createEdge(ctx.scene,b1,b2,0x666666,{speed:0.003}),
+    ThreeHelper.createEdge(ctx.scene,b2,b0,0x666666,{speed:0.003}),
+    ThreeHelper.createEdge(ctx.scene,kraft,b0,0xFF9800,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,kraft,b1,0xFF9800,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,kraft,b2,0xFF9800,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,b1,cg,0x4CAF50,{speed:0.008})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
 == Viewing topics in Kafka Console
 
 Open link:https://kafka-console-kafka-cdc.{cluster_domain}[Kafka Console^] and go to *Topics*.

@@ -1,5 +1,30 @@
 = Operations
 
+++++
+<div id="scene-ops" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-ops', {height:380, camY:10, camZ:20});
+  if(!ctx) return;
+  var jmx = ThreeHelper.createNode(ctx.scene,'JMX Exporter',0xE6522C,-6,0,0,{width:2.8});
+  var prom = ThreeHelper.createNode(ctx.scene,'Prometheus',0xE6522C,0,0,0,{width:2.5});
+  var graf = ThreeHelper.createNode(ctx.scene,'Grafana',0xF46800,6,0,0,{width:2.5});
+  var alerts = ThreeHelper.createNode(ctx.scene,'Alerts',0xE53935,6,3,0,{width:2,height:0.8});
+  var logs = ThreeHelper.createNode(ctx.scene,'Logs',0x4CAF50,-6,3,0,{width:2,height:0.8});
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,jmx,prom,0xE6522C,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,prom,graf,0xF46800,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,prom,alerts,0xE53935,{speed:0.01}),
+    ThreeHelper.createEdge(ctx.scene,jmx,logs,0x4CAF50,{speed:0.005})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
 Day-2 operations guide for managing the CDC pipeline.
 
 == Native Metrics

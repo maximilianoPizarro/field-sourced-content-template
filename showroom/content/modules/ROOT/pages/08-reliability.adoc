@@ -1,5 +1,37 @@
 = Reliability & DRP
 
+++++
+<div id="scene-reliability" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-reliability', {height:380, camY:14, camZ:24});
+  if(!ctx) return;
+  var b0 = ThreeHelper.createNode(ctx.scene,'Broker 0',0xD32F2F,-6,0,-4);
+  var b1 = ThreeHelper.createNode(ctx.scene,'Broker 1',0xD32F2F,0,0,-4);
+  var b2 = ThreeHelper.createNode(ctx.scene,'Broker 2',0xD32F2F,6,0,-4);
+  var p0 = ThreeHelper.createNode(ctx.scene,'P0 (leader)',0x4CAF50,-6,0,2,{width:2.2,height:0.7});
+  var p1 = ThreeHelper.createNode(ctx.scene,'P1 (leader)',0x4CAF50,0,0,2,{width:2.2,height:0.7});
+  var p2 = ThreeHelper.createNode(ctx.scene,'P2 (leader)',0x4CAF50,6,0,2,{width:2.2,height:0.7});
+  var cg = ThreeHelper.createNode(ctx.scene,'Consumer Group',0xFF9800,0,4,4,{width:3.5,height:0.8});
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,b0,p0,0x4CAF50,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,b1,p1,0x4CAF50,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,b2,p2,0x4CAF50,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,p0,b1,0x888888,{speed:0.003}),
+    ThreeHelper.createEdge(ctx.scene,p1,b2,0x888888,{speed:0.003}),
+    ThreeHelper.createEdge(ctx.scene,p2,b0,0x888888,{speed:0.003}),
+    ThreeHelper.createEdge(ctx.scene,p0,cg,0xFF9800,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,p1,cg,0xFF9800,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,p2,cg,0xFF9800,{speed:0.008})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
 This section covers high availability, fault tolerance, recovery procedures, and disaster recovery patterns.
 
 == High Availability

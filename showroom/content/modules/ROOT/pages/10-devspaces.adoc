@@ -1,5 +1,31 @@
 = Step 9: Self-Service IDE
 
+++++
+<div id="scene-devspaces" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-devspaces', {height:380, camY:10, camZ:20});
+  if(!ctx) return;
+  var hub = ThreeHelper.createNode(ctx.scene,'Developer Hub',0x9BF0E1,-6,0,0,{width:3});
+  var tmpl = ThreeHelper.createNode(ctx.scene,'Templates',0xFF9800,0,0,-3,{width:2.5});
+  var devs = ThreeHelper.createNode(ctx.scene,'DevSpaces',0x0066CC,0,0,3,{width:2.5});
+  var gitea = ThreeHelper.createNode(ctx.scene,'Gitea',0x4CAF50,6,0,0,{width:2});
+  var kaoto = ThreeHelper.createNode(ctx.scene,'Kaoto',0xF57C00,6,3,3,{width:2});
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,hub,tmpl,0xFF9800,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,hub,devs,0x0066CC,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,tmpl,gitea,0x4CAF50,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,devs,kaoto,0xF57C00,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,devs,gitea,0x4CAF50,{speed:0.005})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
 == Developer Hub
 
 Open link:https://backstage-developer-hub-developer-hub.{cluster_domain}[Red Hat Developer Hub^] for software templates, documentation, and golden paths into this demo stack.

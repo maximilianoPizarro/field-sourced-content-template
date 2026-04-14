@@ -1,5 +1,32 @@
 = Security & Governance
 
+++++
+<div id="scene-security" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-security', {height:380, camX:0, camY:10, camZ:22, bgColor:0x0a0a1a});
+  if(!ctx) return;
+  var keycloak = ThreeHelper.createNode(ctx.scene,'Keycloak',0xCC0000,-8,0,0);
+  var oauth = ThreeHelper.createNode(ctx.scene,'OAuth/OIDC',0xFF6600,-3,0,0);
+  var kafka = ThreeHelper.createNode(ctx.scene,'Kafka SCRAM',0x231F20,3,0,0);
+  var tls = ThreeHelper.createNode(ctx.scene,'TLS/mTLS',0x00AA44,8,0,0);
+  var apicurio = ThreeHelper.createNode(ctx.scene,'Schema Gov',0x1A73E8,0,3,4);
+  var routes = ThreeHelper.createNode(ctx.scene,'OCP Routes',0x0066CC,0,-2,-3);
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,keycloak,oauth,0xCC0000,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,oauth,kafka,0xFF6600,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,kafka,tls,0x231F20,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,kafka,apicurio,0x1A73E8,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,oauth,routes,0x0066CC,{speed:0.009})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
 This section covers authentication, encryption, network isolation, and governance controls for the CDC pipeline.
 
 == Authentication

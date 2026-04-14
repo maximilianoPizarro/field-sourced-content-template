@@ -1,4 +1,35 @@
 = Event-Driven Architecture Live
+
+++++
+<div id="scene-index" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-index', {height:420, camX:0, camY:12, camZ:25});
+  if(!ctx) return;
+  var pg = ThreeHelper.createNode(ctx.scene,'PostgreSQL',0x336791,-10,0,0);
+  var deb = ThreeHelper.createNode(ctx.scene,'Debezium',0xE53935,-5,0,0);
+  var kf = ThreeHelper.createNode(ctx.scene,'Kafka',0x231F20,0,0,0);
+  var cam = ThreeHelper.createNode(ctx.scene,'Camel',0xF57C00,5,0,-3);
+  var mail = ThreeHelper.createNode(ctx.scene,'Mailpit',0x42A5F5,10,0,-3);
+  var sf = ThreeHelper.createNode(ctx.scene,'SonataFlow',0x0066CC,5,0,3);
+  var api = ThreeHelper.createNode(ctx.scene,'Apicurio',0x1A73E8,0,3,4);
+  var graf = ThreeHelper.createNode(ctx.scene,'Grafana',0xF46800,-5,3,4);
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,pg,deb,0x336791,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,deb,kf,0xE53935,{speed:0.01}),
+    ThreeHelper.createEdge(ctx.scene,kf,cam,0xF57C00,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,cam,mail,0x42A5F5,{speed:0.009}),
+    ThreeHelper.createEdge(ctx.scene,kf,sf,0x0066CC,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,kf,api,0x1A73E8,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,kf,graf,0xF46800,{speed:0.004})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
 :page-layout: home
 
 Welcome to *Event-Driven Architecture Live* — a hands-on, real-time Change Data Capture (CDC) pipeline running on Red Hat OpenShift.

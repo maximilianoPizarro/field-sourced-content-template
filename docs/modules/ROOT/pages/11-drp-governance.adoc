@@ -289,5 +289,5 @@ Para topics con `compact`, los tombstone records (key + null value) permiten eli
 * https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka/2.9/html/deploying_and_managing_amq_streams_on_openshift/assembly-mirrormaker-str[MirrorMaker 2 — Cross-cluster Replication^] — Replicación para DR
 * https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka[Red Hat Streams for Apache Kafka^] — Backup, retención y políticas de datos
 * https://docs.redhat.com/en/documentation/red_hat_build_of_apicurio_registry[Apicurio Registry^] — Gobierno de esquemas y compatibilidad
-* https://docs.redhat.com/en/documentation/openshift_container_platform/4.17/html/backup_and_restore/index[OpenShift Backup and Restore^] — Estrategias de backup para OpenShift
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/backup_and_restore/index[OpenShift Backup and Restore^] — Estrategias de backup para OpenShift
 * https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/configuring_and_using_database_servers/using-postgresql_configuring-and-using-database-servers[PostgreSQL on RHEL^] — Backup y recuperación de PostgreSQL

@@ -166,6 +166,6 @@ Las herramientas MCP registradas en `mcp-system` que son relevantes para el pipe
 == Documentación Oficial
 
 * https://docs.redhat.com/en/documentation/red_hat_openshift_lightspeed[Red Hat OpenShift Lightspeed^] — Asistente IA para OpenShift
-* https://docs.redhat.com/en/documentation/openshift_container_platform/4.17/html/cli_tools/oc-cli-getting-started[OpenShift CLI (oc)^] — Herramienta de línea de comandos para OpenShift
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cli_tools/oc-cli-getting-started[OpenShift CLI (oc)^] — Herramienta de línea de comandos para OpenShift
 * https://spec.modelcontextprotocol.io/[Model Context Protocol (MCP) Specification^] — Estándar abierto para conectar modelos de IA con herramientas
 * https://docs.redhat.com/en/documentation/red_hat_openshift_gitops[Red Hat OpenShift GitOps^] — Argo CD para OpenShift

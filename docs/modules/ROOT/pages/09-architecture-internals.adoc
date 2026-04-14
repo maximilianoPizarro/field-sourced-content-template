@@ -347,4 +347,4 @@ spec:
 * https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka/2.9/html/deploying_and_managing_amq_streams_on_openshift/config-topics-str[Configuring Kafka Topics^] — Gestión de topics con Strimzi
 * https://strimzi.io/docs/operators/latest/configuring.html[Strimzi Configuration Guide^] — Configuración avanzada de operadores y CRs
 * https://kafka.apache.org/documentation/#consumerconfigs[Kafka Consumer Configurations^] — Parámetros de consumer groups y offsets
-* https://docs.redhat.com/en/documentation/openshift_container_platform/4.17/html/nodes/controlling-pod-placement-onto-nodes-scheduling[Pod Scheduling and Disruption Budgets^] — PDBs y scheduling en OpenShift
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/nodes/controlling-pod-placement-onto-nodes-scheduling[Pod Scheduling and Disruption Budgets^] — PDBs y scheduling en OpenShift

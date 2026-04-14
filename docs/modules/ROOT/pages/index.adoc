@@ -103,16 +103,16 @@ Explore a complete *Change Data Capture (CDC)* pipeline running on Red Hat OpenS
 * *Developer Hub*: `https://backstage-developer-hub-developer-hub.{cluster_domain}`
 * *DevSpaces (Kaoto)*: `https://devspaces.{cluster_domain}`
 
-== Documentación Oficial Red Hat
+== Suscripciones Red Hat requeridas
 
 [cols="1,2",options="header"]
 |===
-| Producto | Documentación
+| Producto / Suscripción | Documentación
 
-| image:redhat-openshift-logo.svg[OpenShift,20] *Red Hat OpenShift*
-| https://docs.redhat.com/en/documentation/openshift_container_platform/4.17[OpenShift Container Platform 4.17^]
+| image:redhat-openshift-logo.svg[OpenShift,20] *Red Hat OpenShift Container Platform*
+| https://docs.redhat.com/en/documentation/openshift_container_platform/4.20[OpenShift Container Platform 4.20^]
 
-| image:kafka-icon.svg[Kafka,20] *Streams for Apache Kafka*
+| image:kafka-icon.svg[Kafka,20] *Red Hat Streams for Apache Kafka*
 | https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka[Streams for Apache Kafka^]
 
 | image:debezium-icon.svg[Debezium,20] *Red Hat build of Debezium*
@@ -141,4 +141,22 @@ Explore a complete *Change Data Capture (CDC)* pipeline running on Red Hat OpenS
 
 | *Red Hat build of Keycloak*
 | https://docs.redhat.com/en/documentation/red_hat_build_of_keycloak[Red Hat build of Keycloak^]
+
+| *Red Hat OpenShift GitOps*
+| https://docs.redhat.com/en/documentation/red_hat_openshift_gitops[OpenShift GitOps (ArgoCD)^]
+
+| *Red Hat OpenShift Pipelines*
+| https://docs.redhat.com/en/documentation/red_hat_openshift_pipelines[OpenShift Pipelines (Tekton)^]
+
+| *Red Hat OpenShift Serverless*
+| https://docs.redhat.com/en/documentation/red_hat_openshift_serverless[OpenShift Serverless (Knative)^]
+
+| *Cluster Observability Operator*
+| https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cluster_observability_operator/index[Cluster Observability Operator^]
+
+| *Red Hat OpenShift distributed tracing*
+| https://docs.redhat.com/en/documentation/red_hat_openshift_distributed_tracing_platform[OpenShift distributed tracing (OpenTelemetry)^]
+
+| *Grafana Operator*
+| https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cluster_observability_operator/index[Grafana via Cluster Observability^]
 |===

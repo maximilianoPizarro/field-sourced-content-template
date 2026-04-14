@@ -91,6 +91,9 @@ spec:
     links:
       - title: Repository
         url: ${{ steps['publish'].output.remoteUrl }}
+      - title: Open in DevSpaces
+        icon: chat
+        url: "https://devspaces.${{ parameters.clusterDomain }}/#https://gitea-gitea.${{ parameters.clusterDomain }}/ws-${{ parameters.owner }}/${{ parameters.name }}"
       - title: View in Catalog
         icon: catalog
         entityRef: ${{ steps['register'].output.entityRef }}

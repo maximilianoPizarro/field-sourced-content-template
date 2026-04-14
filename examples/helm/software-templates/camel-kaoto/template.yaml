@@ -61,6 +61,7 @@ spec:
         url: ./skeleton
         values:
           name: ${{ parameters.name }}
+          uniqueName: "${{ parameters.owner }}-${{ parameters.name }}"
           owner: ${{ parameters.owner }}
           description: ${{ parameters.description }}
           kafkaBootstrap: ${{ parameters.kafkaBootstrap }}

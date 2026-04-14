@@ -219,3 +219,11 @@ Extensión del `PrometheusRule` del workshop para sensores:
   annotations:
     summary: "Sin datos de sensores — posible desconexion SCADA"
 ----
+
+== Documentación Oficial
+
+* https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka[Red Hat Streams for Apache Kafka^] — Streaming de datos de sensores en tiempo real
+* https://docs.redhat.com/en/documentation/red_hat_build_of_debezium[Red Hat build of Debezium^] — CDC para captura de cambios en sistemas SCADA
+* https://docs.redhat.com/en/documentation/red_hat_build_of_apache_camel[Red Hat build of Apache Camel^] — Integración con sistemas legacy y IoT
+* https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation[Red Hat OpenShift Data Foundation^] — Almacenamiento persistente para data lakes
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.17[Red Hat OpenShift Container Platform^] — Plataforma de despliegue edge y cloud

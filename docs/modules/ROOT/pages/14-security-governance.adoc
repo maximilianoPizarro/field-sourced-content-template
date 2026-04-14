@@ -141,3 +141,12 @@ Apicurio Registry enforza contratos de esquema. Las reglas globales previenen ca
 * Schema Registry mantiene historial de versiones de cada esquema
 
 Explorar esquemas registrados en link:https://apicurio-registry-kafka-cdc.{cluster_domain}[Apicurio Registry^].
+
+== Documentación Oficial
+
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.17/html/authentication_and_authorization/index[OpenShift Authentication and Authorization^] — OAuth, OIDC y RBAC en OpenShift
+* https://docs.redhat.com/en/documentation/red_hat_build_of_keycloak[Red Hat build of Keycloak^] — Identity and Access Management
+* https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka/2.9/html/deploying_and_managing_amq_streams_on_openshift/assembly-security-str[Kafka Security with Strimzi^] — TLS, SCRAM-SHA-512 y ACLs en Kafka
+* https://docs.redhat.com/en/documentation/red_hat_build_of_apicurio_registry[Apicurio Registry — Schema Governance^] — Reglas de compatibilidad y validación de esquemas
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.17/html/networking/network-policy[OpenShift Network Policies^] — Seguridad de red a nivel de namespace
+* https://docs.redhat.com/en/documentation/openshift_service_mesh[OpenShift Service Mesh — mTLS^] — Encriptación automática entre servicios

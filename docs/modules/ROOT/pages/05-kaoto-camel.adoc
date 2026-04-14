@@ -130,3 +130,13 @@ curl -s http://camel-cdc-processor.kafka-cdc.svc:8080/q/metrics | grep camel
 ----
 
 Estas métricas son recogidas por el PodMonitor y visualizadas en el dashboard de Grafana "Kafka CDC Pipeline".
+
+== Documentación Oficial
+
+* https://docs.redhat.com/en/documentation/red_hat_build_of_apache_camel[Red Hat build of Apache Camel^] — Distribución soportada de Apache Camel
+* https://docs.redhat.com/en/documentation/red_hat_build_of_apache_camel/4.8/html/getting_started_with_camel_quarkus/index[Getting Started with Camel Quarkus^] — Guía de inicio rápido con Camel for Quarkus
+* https://camel.apache.org/components/4.x/[Apache Camel Components^] — Catálogo completo de componentes (Kafka, HTTP, JSON, etc.)
+* https://camel.apache.org/camel-quarkus/next/index.html[Camel Quarkus Documentation^] — Camel sobre Quarkus (upstream)
+* https://kaoto.io/docs/[Kaoto Documentation^] — Diseñador visual de rutas Camel
+* https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces[Red Hat OpenShift Dev Spaces^] — IDE cloud-native con Kaoto pre-instalado
+* https://camel.apache.org/camel-quarkus/next/reference/extensions/kafka.html[Camel Kafka Component^] — Referencia del componente Kafka en Camel

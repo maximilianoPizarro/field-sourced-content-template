@@ -410,6 +410,15 @@ Los workflows SonataFlow se pueden diseñar visualmente usando la extensión **K
 
 Esta integración permite que analistas de negocio y desarrolladores colaboren en la definición de procesos usando la misma herramienta.
 
+== Documentación Oficial
+
+* https://docs.redhat.com/en/documentation/red_hat_openshift_serverless[Red Hat OpenShift Serverless^] — Plataforma serverless que incluye Serverless Logic
+* https://sonataflow.org/serverlessworkflow/latest/index.html[SonataFlow Documentation^] — Motor de workflows cloud-native
+* https://serverlessworkflow.io/[Serverless Workflow Specification^] — Estándar abierto para definición de workflows
+* https://kogito.kie.org/[Kogito^] — Plataforma de automatización de procesos cloud-native
+* https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces[Red Hat OpenShift Dev Spaces^] — IDE cloud-native para desarrollo de workflows con Kaoto
+* https://kaoto.io/docs/[Kaoto Documentation^] — Diseñador visual para workflows y rutas Camel
+
 == Comparación: Kogito vs RHPAM vs SonataFlow
 
 [cols="1,1,1,1",options="header"]

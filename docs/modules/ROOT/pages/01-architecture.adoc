@@ -162,3 +162,11 @@ spec:
 ----
 
 Con 3 particiones por topic y 2 consumidores, cada réplica procesa ~1.5 particiones en promedio.
+
+== Documentación Oficial
+
+* https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka[Red Hat Streams for Apache Kafka^] — Despliegue y configuración de clusters Kafka en OpenShift
+* https://docs.redhat.com/en/documentation/red_hat_build_of_debezium[Red Hat build of Debezium^] — Configuración de CDC connectors
+* https://docs.redhat.com/en/documentation/red_hat_build_of_apache_camel[Red Hat build of Apache Camel^] — Integración y rutas de procesamiento
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.17/html/networking/service-mesh[OpenShift Service Mesh^] — mTLS y observabilidad de tráfico
+* https://strimzi.io/documentation/[Strimzi Documentation^] — Proyecto upstream de Streams for Apache Kafka

@@ -265,3 +265,11 @@ oc exec -it cdc-cluster-kafka-0 -n kafka-cdc -- bin/kafka-console-consumer.sh \
 ----
 
 También podes ver el email en Mailpit: `https://n8n-mailpit-openshift-lightspeed.{cluster_domain}`
+
+== Documentación Oficial
+
+* https://docs.redhat.com/en/documentation/red_hat_build_of_debezium[Red Hat build of Debezium^] — Guía de despliegue y configuración de conectores CDC
+* https://debezium.io/documentation/reference/stable/[Debezium Reference Documentation^] — Documentación completa del proyecto upstream
+* https://debezium.io/documentation/reference/stable/connectors/postgresql.html[Debezium PostgreSQL Connector^] — Configuración específica para PostgreSQL (WAL, slots, publicaciones)
+* https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka/2.9/html/deploying_and_managing_amq_streams_on_openshift/kafka-connect-str[KafkaConnect on OpenShift^] — Despliegue de KafkaConnect con Strimzi
+* https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/configuring_and_using_database_servers/using-postgresql_configuring-and-using-database-servers[PostgreSQL on RHEL 9^] — Configuración de PostgreSQL en Red Hat Enterprise Linux

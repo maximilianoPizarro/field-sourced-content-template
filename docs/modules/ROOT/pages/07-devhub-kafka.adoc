@@ -94,3 +94,11 @@ Para verificar que el plugin de Kafka funciona:
 . Navega a un componente que tenga la anotación `kafka.apache.org/consumer-groups`
 . En la pestaña *Overview*, deberías ver el card de Kafka con offsets y lag
 . Clickea en el consumer group para ver el detalle por partición
+
+== Documentación Oficial
+
+* https://docs.redhat.com/en/documentation/red_hat_developer_hub[Red Hat Developer Hub^] — Portal de desarrollo self-service basado en Backstage
+* https://docs.redhat.com/en/documentation/red_hat_developer_hub/1.4/html/configuring_plugins_in_red_hat_developer_hub/index[Configuring Plugins in Developer Hub^] — Habilitación y configuración de plugins dinámicos
+* https://backstage.io/docs/overview/what-is-backstage[Backstage Documentation^] — Proyecto upstream de Developer Hub
+* https://github.com/backstage/community-plugins/tree/main/workspaces/kafka[Backstage Kafka Plugin^] — Plugin community para visualizar Kafka en Backstage
+* https://github.com/streamshub/console[StreamsHub Console^] — Consola web para Streams for Apache Kafka

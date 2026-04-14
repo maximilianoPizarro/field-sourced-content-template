@@ -129,3 +129,12 @@ curl -X POST https://apicurio-registry-kafka-cdc.apps.<domain>/apis/registry/v2/
     "required": ["id", "first_name", "last_name", "email"]
   }'
 ----
+
+== Documentación Oficial
+
+* https://docs.redhat.com/en/documentation/red_hat_build_of_apicurio_registry[Red Hat build of Apicurio Registry^] — Instalación, configuración y operación del Schema Registry
+* https://www.apicur.io/registry/docs/[Apicurio Registry Documentation^] — Documentación del proyecto upstream
+* https://www.apicur.io/registry/docs/apicurio-registry/3.x/index.html[Apicurio Registry 3.x Guide^] — Guía de referencia de la última versión
+* https://docs.redhat.com/en/documentation/red_hat_build_of_apicurio_registry/2.6/html/installing_and_deploying_apicurio_registry_on_openshift/index[Deploying Apicurio on OpenShift^] — Despliegue con operador en OpenShift
+* https://json-schema.org/specification[JSON Schema Specification^] — Especificación oficial de JSON Schema
+* https://avro.apache.org/docs/current/specification/[Apache Avro Specification^] — Especificación oficial de Avro

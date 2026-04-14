@@ -416,3 +416,11 @@ El flujo completo es:
 3. Kafka → Almacena con 3 replicas y compaction
 4. HTTP Sink → Envía el evento a Mailpit
 5. Mailpit → Muestra la notificación en el inbox
+
+== Documentación Oficial
+
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.17/html/cli_tools/oc-cli-getting-started[OpenShift CLI (oc)^] — Comandos para verificación operativa
+* https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka[Red Hat Streams for Apache Kafka^] — Operación y monitoreo de clusters Kafka
+* https://docs.redhat.com/en/documentation/red_hat_build_of_debezium[Red Hat build of Debezium^] — Troubleshooting de connectors CDC
+* https://docs.redhat.com/en/documentation/red_hat_build_of_apicurio_registry[Apicurio Registry^] — Verificación del Schema Registry
+* https://strimzi.io/docs/operators/latest/deploying.html[Strimzi Deploying Guide^] — Verificación de operadores y recursos Strimzi

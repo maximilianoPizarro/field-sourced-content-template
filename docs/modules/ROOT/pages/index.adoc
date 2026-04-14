@@ -77,3 +77,43 @@ Explore a complete *Change Data Capture (CDC)* pipeline running on Red Hat OpenS
 * *Grafana*: `https://grafana-observability.{cluster_domain}`
 * *Developer Hub*: `https://backstage-developer-hub-developer-hub.{cluster_domain}`
 * *DevSpaces (Kaoto)*: `https://devspaces.{cluster_domain}`
+
+== Documentación Oficial Red Hat
+
+[cols="1,2",options="header"]
+|===
+| Producto | Documentación
+
+| image:redhat-openshift-logo.svg[OpenShift,20] *Red Hat OpenShift*
+| https://docs.redhat.com/en/documentation/openshift_container_platform/4.17[OpenShift Container Platform 4.17^]
+
+| image:kafka-icon.svg[Kafka,20] *Streams for Apache Kafka*
+| https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka[Streams for Apache Kafka^]
+
+| image:debezium-icon.svg[Debezium,20] *Red Hat build of Debezium*
+| https://docs.redhat.com/en/documentation/red_hat_build_of_debezium[Red Hat build of Debezium^]
+
+| image:apicurio-icon.svg[Apicurio,20] *Red Hat build of Apicurio Registry*
+| https://docs.redhat.com/en/documentation/red_hat_build_of_apicurio_registry[Apicurio Registry^]
+
+| image:camel-icon.svg[Camel,20] *Red Hat build of Apache Camel*
+| https://docs.redhat.com/en/documentation/red_hat_build_of_apache_camel[Apache Camel^]
+
+| *Red Hat Developer Hub*
+| https://docs.redhat.com/en/documentation/red_hat_developer_hub[Developer Hub^]
+
+| *Red Hat OpenShift Dev Spaces*
+| https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces[OpenShift Dev Spaces^]
+
+| *Red Hat OpenShift Service Mesh*
+| https://docs.redhat.com/en/documentation/openshift_service_mesh[OpenShift Service Mesh^]
+
+| *Red Hat OpenShift Lightspeed*
+| https://docs.redhat.com/en/documentation/red_hat_openshift_lightspeed[OpenShift Lightspeed^]
+
+| *Red Hat OpenShift Serverless Logic*
+| https://docs.redhat.com/en/documentation/red_hat_openshift_serverless[OpenShift Serverless^]
+
+| *Red Hat build of Keycloak*
+| https://docs.redhat.com/en/documentation/red_hat_build_of_keycloak[Red Hat build of Keycloak^]
+|===

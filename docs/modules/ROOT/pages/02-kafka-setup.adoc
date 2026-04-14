@@ -357,3 +357,11 @@ Las credenciales se inyectan como variables de entorno desde el Secret generado 
 | *Mirror Maker 2* | Replicación cross-cluster
 | *Kroxylicious* | Kafka Proxy — encryption at rest, schema validation
 |===
+
+== Documentación Oficial
+
+* https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka[Red Hat Streams for Apache Kafka^] — Guía de instalación, configuración y operación
+* https://strimzi.io/documentation/[Strimzi Documentation^] — Proyecto upstream, operadores y CRDs
+* https://strimzi.io/blog/[Strimzi Blog^] — Novedades, KRaft migration y mejores prácticas
+* https://kafka.apache.org/documentation/[Apache Kafka Documentation^] — Referencia oficial del proyecto Kafka
+* https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka/2.9/html/using_the_streams_for_apache_kafka_bridge/index[Kafka Bridge^] — HTTP REST proxy para Kafka

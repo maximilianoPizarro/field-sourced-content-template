@@ -308,3 +308,11 @@ spec:
 
 * `kafka-brokers-pdb` — siempre hay al menos 2 brokers de los 3 disponibles
 * `kafka-connect-pdb` — siempre hay al menos 1 worker de Connect de los 2 disponibles
+
+== Documentación Oficial
+
+* https://kafka.apache.org/documentation/#design[Apache Kafka Design^] — Arquitectura interna de Kafka (particiones, replicación, almacenamiento)
+* https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka/2.9/html/deploying_and_managing_amq_streams_on_openshift/config-topics-str[Configuring Kafka Topics^] — Gestión de topics con Strimzi
+* https://strimzi.io/docs/operators/latest/configuring.html[Strimzi Configuration Guide^] — Configuración avanzada de operadores y CRs
+* https://kafka.apache.org/documentation/#consumerconfigs[Kafka Consumer Configurations^] — Parámetros de consumer groups y offsets
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.17/html/nodes/controlling-pod-placement-onto-nodes-scheduling[Pod Scheduling and Disruption Budgets^] — PDBs y scheduling en OpenShift

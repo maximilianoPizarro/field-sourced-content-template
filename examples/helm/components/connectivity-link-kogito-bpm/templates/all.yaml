@@ -57,9 +57,6 @@ spec:
       - name: cdcCustomerEvent
         type: cdc.public.customers
         source: debezium/cdc
-      - name: approvalCompleted
-        type: approval.completed
-        source: internal
     functions:
       - name: classifyCustomer
         type: expression
@@ -140,28 +137,24 @@ spec:
           transition: ProvisionAccount
 
       - name: RequestManagerApproval
-        type: callback
-        action:
-          name: requestApproval
-          functionRef:
-            refName: buildApprovalPayload
-        eventRef: approvalCompleted
-        eventDataFilter:
-          data: ".approved"
-          toStateData: ".approval_result"
-        timeouts:
-          eventTimeout: PT24H
+        type: operation
+        actions:
+          - name: requestApproval
+            functionRef:
+              refName: buildApprovalPayload
+          - name: logApprovalRequest
+            functionRef:
+              refName: logEvent
+              arguments:
+                message: "Manager approval requested for premium customer"
         transition: EvaluateApproval
 
       - name: EvaluateApproval
         type: switch
         dataConditions:
-          - condition: ".approval_result == true"
+          - condition: '.approval_request.tier == "premium"'
             name: Approved
             transition: ProvisionAccount
-          - condition: ".approval_result != true"
-            name: Rejected
-            transition: NotifyRejection
         defaultCondition:
           transition: NotifyRejection
 
@@ -179,21 +172,16 @@ spec:
         end: true
 
       - name: ProvisionAccount
-        type: parallel
-        branches:
-          - name: CreateAccount
-            actions:
-              - name: logProvisioning
-                functionRef:
-                  refName: logEvent
-                  arguments:
-                    message: "Provisioning account"
-          - name: PrepareWelcome
-            actions:
-              - name: buildWelcome
-                functionRef:
-                  refName: buildWelcomePayload
-        completionType: allOf
+        type: operation
+        actions:
+          - name: logProvisioning
+            functionRef:
+              refName: logEvent
+              arguments:
+                message: "Provisioning account"
+          - name: buildWelcome
+            functionRef:
+              refName: buildWelcomePayload
         transition: EmitOnboardingMetric
 
       - name: EmitOnboardingMetric

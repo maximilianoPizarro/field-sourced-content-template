@@ -362,12 +362,18 @@ spec:
         command: ["bash", "-c"]
         args:
           - |
-            cp /usr/bin/psql /psql-bin/psql && chmod +x /psql-bin/psql
+            mkdir -p /psql-bin/lib
+            cp /usr/bin/psql /psql-bin/psql.real && chmod +x /psql-bin/psql.real
             for lib in $(ldd /usr/bin/psql 2>/dev/null | grep '=>' | awk '{print $3}'); do
-              [ -f "$lib" ] && cp -n "$lib" /psql-bin/ 2>/dev/null
+              base=$(basename "$lib")
+              case "$base" in libpq*|libreadline*|libtinfo*) cp -n "$lib" /psql-bin/lib/ 2>/dev/null ;; esac
             done
-            echo "psql $(psql --version 2>/dev/null || echo 'binary') copied to shared volume"
-            ls -la /psql-bin/
+            cat > /psql-bin/psql <<'WRAPPER'
+            #!/bin/bash
+            exec env LD_LIBRARY_PATH=/opt/psql/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH} /opt/psql/psql.real "$@"
+            WRAPPER
+            chmod +x /psql-bin/psql
+            echo "psql installed: $(/psql-bin/psql.real --version 2>/dev/null)"
         volumeMounts:
         - name: psql-bin
           mountPath: /psql-bin
@@ -443,8 +449,6 @@ spec:
               fieldPath: metadata.namespace
         - name: PATH
           value: "/opt/psql:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-        - name: LD_LIBRARY_PATH
-          value: "/opt/psql"
         volumeMounts:
         - name: terminal-lab-user-home
           mountPath: /home/lab-user

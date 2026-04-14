@@ -149,6 +149,15 @@ spec:
   renderer.setClearColor(0x0a0a0a);
   container.appendChild(renderer.domElement);
 
+  var fsBtn = document.createElement('button');
+  fsBtn.className = 'fullscreen-btn';
+  fsBtn.textContent = '\u26F6 Fullscreen';
+  fsBtn.onclick = function() {
+    if (container.requestFullscreen) container.requestFullscreen();
+    else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
+  };
+  container.appendChild(fsBtn);
+
   const brokers = [];
   const angleStep = (2 * Math.PI) / 3;
   const radius = 3;

@@ -30,6 +30,9 @@ components:
       memoryLimit: 2Gi
       cpuLimit: "1"
       mountSources: true
+      env:
+        - name: DEFAULT_EXTENSIONS
+          value: "/home/user/.vsix-cache/kaoto.vsix;/home/user/.vsix-cache/camel.vsix"
       volumeMounts:
         - name: m2
           path: /home/user/.m2
@@ -37,6 +40,15 @@ components:
     volume:
       size: 1Gi
 commands:
+  - id: install-vsix-extensions
+    exec:
+      component: tools
+      commandLine: |
+        mkdir -p /home/user/.vsix-cache
+        [ -f /home/user/.vsix-cache/kaoto.vsix ] || \
+          curl -sL "https://redhat.gallerycdn.vsassets.io/extensions/redhat/vscode-kaoto/2.10.2/1775215869920/Microsoft.VisualStudio.Services.VSIXPackage" -o /home/user/.vsix-cache/kaoto.vsix
+        [ -f /home/user/.vsix-cache/camel.vsix ] || \
+          curl -sL "https://redhat.gallerycdn.vsassets.io/extensions/redhat/vscode-apache-camel/1.14.0/1758543062217/Microsoft.VisualStudio.Services.VSIXPackage" -o /home/user/.vsix-cache/camel.vsix
   - id: build
     exec:
       component: tools
@@ -47,3 +59,6 @@ commands:
       component: tools
       commandLine: "mvn quarkus:dev"
       workingDir: ${PROJECT_SOURCE}
+events:
+  postStart:
+    - install-vsix-extensions

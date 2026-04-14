@@ -53,6 +53,11 @@ data:
       server {
         listen 8080;
         absolute_redirect off;
+        location = /ui-config.yml {
+          alias /etc/showroom/ui-config.yml;
+          default_type text/yaml;
+          expires off;
+        }
         location / {
           proxy_pass http://127.0.0.1:8000;
           expires off;
@@ -232,6 +237,9 @@ spec:
         - mountPath: /etc/nginx/nginx.conf
           name: nginx-config
           subPath: nginx.conf
+        - mountPath: /etc/showroom/ui-config.yml
+          name: ui-config
+          subPath: ui-config.yml
         - mountPath: /var/cache/nginx
           name: nginx-cache
         - mountPath: /var/run

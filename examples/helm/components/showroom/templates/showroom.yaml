@@ -105,6 +105,35 @@ data:
     postgresql_user: cdcuser
     postgresql_db: cdcdb
 ---
+# Showroom UI Config for Nookbag
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.showroom.name }}-ui-config
+  namespace: {{ .Values.showroom.namespace }}
+data:
+  ui-config.yml: |
+    ---
+    type: showroom
+    default_width: 35
+    persist_url_state: true
+    view_switcher:
+      enabled: true
+      default_mode: split
+    tabs:
+      - name: Console
+        url: 'https://console-openshift-console.{{ .Values.deployer.domain }}'
+      - name: DevSpaces
+        url: 'https://devspaces.{{ .Values.deployer.domain }}'
+      - name: Gitea
+        url: 'https://gitea-gitea.{{ .Values.deployer.domain }}'
+      - name: Developer Hub
+        url: 'https://backstage-developer-hub-developer-hub.{{ .Values.deployer.domain }}'
+      - name: Kafka Console
+        url: 'https://kafka-console-kafka-cdc.{{ .Values.deployer.domain }}'
+      - name: Grafana
+        url: 'https://grafana-observability.{{ .Values.deployer.domain }}'
+---
 # Showroom PVC
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -186,6 +215,15 @@ spec:
         - mountPath: /showroom/www
           name: showroom-files
           subPath: www
+      - name: ui-config-copier
+        image: "registry.access.redhat.com/ubi9/ubi-minimal:latest"
+        command: ["sh", "-c", "cp /ui-config/ui-config.yml /showroom/www/ui-config.yml && echo 'ui-config.yml copied to www root'"]
+        volumeMounts:
+        - mountPath: /showroom/www
+          name: showroom-files
+          subPath: www
+        - mountPath: /ui-config
+          name: ui-config
       containers:
       - name: nginx
         image: "quay.io/rhpds/nginx:1.25"
@@ -270,6 +308,9 @@ spec:
       - name: user-data
         configMap:
           name: {{ .Values.showroom.name }}-userdata
+      - name: ui-config
+        configMap:
+          name: {{ .Values.showroom.name }}-ui-config
       - name: nginx-config
         configMap:
           defaultMode: 420

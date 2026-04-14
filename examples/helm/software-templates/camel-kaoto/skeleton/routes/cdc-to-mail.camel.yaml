@@ -15,31 +15,25 @@
             library: jackson
       - choice:
           when:
-            - simple: "${body[payload][op]} == 'c'"
+            - expression:
+                simple:
+                  expression: "${body[payload][op]} == 'c'"
               steps:
                 - setBody:
-                    simple: >
-                      {
-                        "from": {"name": "CDC Pipeline", "email": "cdc@neuralbank.io"},
-                        "to": [{"name": "Admin", "email": "admin@neuralbank.io"}],
-                        "subject": "New Customer Created",
-                        "text": "Customer ${body[payload][after][first_name]} ${body[payload][after][last_name]} created."
-                      }
+                    expression:
+                      simple:
+                        expression: '{"from":{"name":"CDC Pipeline","email":"cdc@neuralbank.io"},"to":[{"name":"Admin","email":"admin@neuralbank.io"}],"subject":"New Customer Created","text":"Customer ${body[payload][after][first_name]} ${body[payload][after][last_name]} created."}'
           otherwise:
             steps:
               - setBody:
-                  simple: >
-                    {
-                      "from": {"name": "CDC Pipeline", "email": "cdc@neuralbank.io"},
-                      "to": [{"name": "Admin", "email": "admin@neuralbank.io"}],
-                      "subject": "Customer Record Changed",
-                      "text": "Change detected. Operation: ${body[payload][op]}"
-                    }
+                  expression:
+                    simple:
+                      expression: '{"from":{"name":"CDC Pipeline","email":"cdc@neuralbank.io"},"to":[{"name":"Admin","email":"admin@neuralbank.io"}],"subject":"Customer Record Changed","text":"Change detected. Operation: ${body[payload][op]}"}'
       - marshal:
           json:
             library: jackson
       - to:
-          uri: http://n8n-mailpit.openshift-lightspeed.svc:8025/api/v1/send
+          uri: http:n8n-mailpit.openshift-lightspeed.svc:8025/api/v1/send
           parameters:
             httpMethod: POST
       - log:

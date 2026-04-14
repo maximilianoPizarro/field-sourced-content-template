@@ -108,9 +108,7 @@ ui:
           color: #fff !important;
           background: rgba(204,0,0,0.08);
         }
-        .nav-panel-explore { background: var(--color-brand-dark) !important; border-bottom: 1px solid #333; }
-        .nav-panel-explore .context .title { color: #fff !important; }
-        .nav-panel-explore .context .version { color: #aaa !important; }
+        .nav-panel-explore { display: none !important; }
         .body .content {
           flex: 1;
           max-width: none !important;

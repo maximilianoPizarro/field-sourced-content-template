@@ -40,6 +40,7 @@ ui:
           color: #fff !important;
           font-weight: 700;
         }
+        .nav-panel-explore { display: none !important; }
         .nav-panel-menu .nav-link.is-current-page {
           border-left: 3px solid var(--color-brand-red);
           font-weight: 700;

@@ -1,3 +1,155 @@
 = Operations
 
-Day-2 operations for this stack include monitoring connector task state, lag on consumer groups, and broker health via Grafana and the Kafka Console. Argo CD (when used) surfaces sync status for the Helm charts under `examples/helm/components/connectivity-link-kafka` and `connectivity-link-cdc-demo`. Use the embedded showroom terminal (`/terminal/`) to follow logs, describe workloads, and validate routes during live sessions.
+Day-2 operations guide for managing the CDC pipeline.
+
+== Native Metrics
+
+Kafka brokers expose JMX metrics via the Prometheus JMX Exporter on port 9404:
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: cdc-cluster
+spec:
+  kafka:
+    metricsConfig:
+      type: jmxPrometheusExporter
+      valueFrom:
+        configMapKeyRef:
+          name: kafka-metrics-config
+          key: kafka-metrics-config.yml
+  kafkaExporter:
+    topicRegex: ".*"
+    groupRegex: ".*"
+----
+
+The Kafka Exporter pod exposes consumer group lag, topic offsets, and broker info on port 9404.
+
+== Logs & Traces
+
+=== Broker Logs
+
+[source,bash]
+----
+oc logs -n kafka-cdc cdc-cluster-broker-0 -c kafka --tail=50
+----
+
+=== KafkaConnect / Debezium Logs
+
+[source,bash]
+----
+oc logs -n kafka-cdc cdc-connect-connect-0 -c cdc-connect-connect --tail=50
+----
+
+=== Check Connector Status
+
+[source,bash]
+----
+oc exec -n kafka-cdc cdc-connect-connect-0 -- curl -s http://localhost:8083/connectors/debezium-postgresql-source/status | python3 -m json.tool
+----
+
+== Alerts
+
+PrometheusRule definitions fire alerts when issues are detected:
+
+[source,yaml]
+----
+apiVersion: monitoring.rhobs/v1
+kind: PrometheusRule
+metadata:
+  name: kafka-cdc-alerts
+  labels:
+    openshift.io/user-monitoring: "true"
+spec:
+  groups:
+    - name: kafka-cdc
+      rules:
+        - alert: KafkaConsumerLagHigh
+          expr: kafka_consumergroup_lag > 1000
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Consumer lag high"
+        - alert: DebeziumDisconnected
+          expr: debezium_postgres_Connected == 0
+          for: 2m
+          labels:
+            severity: critical
+        - alert: KafkaConnectTaskFailed
+          expr: kafka_connect_worker_connector_failed_task_count > 0
+          for: 1m
+          labels:
+            severity: critical
+----
+
+== Runbooks
+
+=== Restart a Failed Connector
+
+[source,bash]
+----
+oc exec -n kafka-cdc cdc-connect-connect-0 -- \
+  curl -s -X POST http://localhost:8083/connectors/debezium-postgresql-source/restart
+----
+
+=== Scale Connect Replicas
+
+[source,bash]
+----
+oc scale kafkaconnect cdc-connect -n kafka-cdc --replicas=3
+----
+
+=== List Topics
+
+[source,bash]
+----
+oc exec -n kafka-cdc cdc-cluster-broker-0 -- \
+  bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+----
+
+=== Describe a Topic
+
+[source,bash]
+----
+oc exec -n kafka-cdc cdc-cluster-broker-0 -- \
+  bin/kafka-topics.sh --bootstrap-server localhost:9092 \
+  --describe --topic cdc.public.customers
+----
+
+== Upgrades
+
+Strimzi performs rolling updates automatically when you update the `Kafka` CR version field. Brokers are restarted one at a time, maintaining availability.
+
+[source,yaml]
+----
+spec:
+  kafka:
+    version: 3.8.0  # bump from 3.7.0
+----
+
+The operator handles:
+
+* Rolling restart of brokers (one at a time)
+* Inter-broker protocol negotiation
+* Zero-downtime for producers and consumers
+
+== Self-Service
+
+Developers use link:https://backstage-developer-hub-developer-hub.{cluster_domain}[Developer Hub^] to scaffold new projects:
+
+* **Camel CDC Route (Kaoto)** — Visual integration routes
+* **SonataFlow BPM Workflow** — Serverless workflow editor
+* **Kafka CDC MCP Server** — MCP tools for Kafka operations
+* **Kubernetes Operations MCP** — MCP tools for cluster management
+
+== Portal & Administration
+
+All components are accessible from the OpenShift Console via *Application Menu → Event-Driven Architecture Live*:
+
+* link:https://kafka-console-kafka-cdc.{cluster_domain}[Kafka Console^]
+* link:https://grafana-observability.{cluster_domain}[Grafana Dashboards^]
+* link:https://apicurio-registry-kafka-cdc.{cluster_domain}[Apicurio Registry^]
+* link:https://workshop-registration.{cluster_domain}[Demo Registration^]

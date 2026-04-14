@@ -1,3 +1,114 @@
 = Security & Governance
 
-This demo runs on OpenShift with platform-level controls (namespaces, NetworkPolicies, Routes with TLS) and workload identity for Kafka (SCRAM users, TLS to brokers). Use this section in workshops to discuss least privilege for connectors, secret rotation, schema compatibility policies in Apicurio, and audit requirements — aligned with how the Helm-managed stack is deployed in `kafka-cdc` and adjacent namespaces.
+This section covers authentication, encryption, network isolation, and governance controls for the CDC pipeline.
+
+== Authentication
+
+All UIs and APIs are protected by OpenShift OAuth (Keycloak). Kafka clients authenticate via SCRAM-SHA-512.
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: cdc-consumer
+  labels:
+    strimzi.io/cluster: cdc-cluster
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+      - resource:
+          type: topic
+          name: cdc.public.*
+          patternType: prefix
+        operations: [Read, Describe]
+        host: "*"
+      - resource:
+          type: group
+          name: cdc-consumer-group
+        operations: [Read]
+----
+
+The `KafkaUser` CR provisions credentials automatically via Strimzi. ACLs restrict which topics and consumer groups a client can access.
+
+== Encryption
+
+=== TLS on Kafka Listeners
+
+Production listeners use TLS for encryption in transit:
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: cdc-cluster
+spec:
+  kafka:
+    listeners:
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+        authentication:
+          type: tls
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+----
+
+=== mTLS Between Brokers
+
+Inter-broker communication uses mutual TLS by default when TLS listeners are configured. Strimzi manages the CA certificates and broker keystores automatically.
+
+== Private Endpoints
+
+All services are internal to the OpenShift cluster. External access is provided only via OpenShift Routes with edge TLS termination:
+
+[source,yaml]
+----
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: kafka-console
+spec:
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  to:
+    kind: Service
+    name: kafka-console-console-service
+----
+
+No Kafka broker ports are exposed outside the cluster. Consumers and producers connect via internal `ClusterIP` services.
+
+== Governance & Compliance
+
+=== Schema Registry Rules
+
+Apicurio Registry enforces schema contracts. Configure global rules to prevent breaking changes:
+
+[source,json]
+----
+{
+  "rules": {
+    "VALIDITY": "FULL",
+    "COMPATIBILITY": "BACKWARD"
+  }
+}
+----
+
+* **VALIDITY: FULL** — schemas must be syntactically valid
+* **COMPATIBILITY: BACKWARD** — new schemas must be readable by consumers using the previous version
+
+Explore registered schemas in link:https://apicurio-registry-kafka-cdc.{cluster_domain}[Apicurio Registry^].
+
+=== Audit Trail
+
+* Kafka retains all events for the configured retention period (7 days default)
+* Debezium captures the full before/after state of every database change
+* OpenShift audit logs track API access to the cluster

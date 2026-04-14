@@ -1,3 +1,124 @@
-= Reliability & Disaster Recovery
+= Reliability & DRP
 
-Kafka brokers and ZooKeeper/KRaft components in this environment use persistent storage and replication settings tuned for fault tolerance (for example `min.insync.replicas` and topic replication factors). PodDisruptionBudgets and multiple Connect replicas allow rolling maintenance. For disaster recovery discussions, pair this demo with backup/restore strategies for persistent volumes, metadata stores, and off-cluster replication of critical topics.
+This section covers high availability, fault tolerance, recovery procedures, and disaster recovery patterns.
+
+== High Availability
+
+The pipeline runs with redundancy at every layer:
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: cdc-cluster
+spec:
+  kafka:
+    replicas: 3
+    config:
+      default.replication.factor: 3
+      min.insync.replicas: 2
+      offsets.topic.replication.factor: 3
+    storage:
+      type: persistent-claim
+      size: 10Gi
+      deleteClaim: false
+----
+
+* **3 brokers** with persistent storage survive pod restarts
+* **replication.factor: 3** — every message stored on 3 brokers
+* **min.insync.replicas: 2** — writes require acknowledgment from at least 2 replicas
+
+== Fault Tolerance
+
+=== Partition Leader Election
+
+When a broker fails, Kafka automatically elects a new leader from the In-Sync Replica (ISR) set. No data loss occurs as long as `min.insync.replicas` is met.
+
+=== Consumer Rebalancing
+
+If a KafkaConnect replica goes down, the surviving replica absorbs all connector tasks within seconds.
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnect
+metadata:
+  name: cdc-connect
+spec:
+  replicas: 2
+  config:
+    group.id: cdc-connect-cluster
+    rebalance.timeout.ms: "60000"
+----
+
+== Recovery
+
+=== Checking Consumer Group Offsets
+
+Use the embedded terminal to inspect where consumers are in the log:
+
+[source,bash]
+----
+oc exec -n kafka-cdc cdc-cluster-broker-0 -- bin/kafka-consumer-groups.sh \
+  --bootstrap-server localhost:9092 \
+  --group connect-mailpit-http-sink \
+  --describe
+----
+
+=== Resetting Offsets
+
+To reprocess events from the beginning:
+
+[source,bash]
+----
+oc exec -n kafka-cdc cdc-cluster-broker-0 -- bin/kafka-consumer-groups.sh \
+  --bootstrap-server localhost:9092 \
+  --group connect-mailpit-http-sink \
+  --reset-offsets --to-earliest \
+  --topic cdc.public.customers \
+  --execute
+----
+
+== DLQ / Dead Letter Queue
+
+Failed messages are routed to Dead Letter Queue topics instead of blocking the pipeline:
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: dlq.cdc-errors
+  labels:
+    strimzi.io/cluster: cdc-cluster
+spec:
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: "2592000000"
+    cleanup.policy: delete
+----
+
+HTTP Sink connector error handling:
+
+[source,yaml]
+----
+config:
+  errors.tolerance: all
+  errors.deadletterqueue.topic.name: dlq.cdc-errors
+  errors.deadletterqueue.topic.replication.factor: 3
+  errors.deadletterqueue.context.headers.enable: true
+----
+
+== Lag Monitoring
+
+Consumer group lag is tracked in the link:https://grafana-observability.{cluster_domain}[Grafana^] dashboard under *Consumer Group Lag*. Alerts fire when lag exceeds 1000 messages for more than 5 minutes.
+
+== DRP/BCP
+
+* **Data persistence**: PVCs survive pod/node failures
+* **Topic replication**: 3-way replication across brokers on different nodes
+* **Connector state**: Stored in Kafka internal topics, survives Connect restarts
+* **Database WAL**: Debezium resumes from last committed LSN position
+* **Backup**: PVC snapshots + topic data can be exported with MirrorMaker 2

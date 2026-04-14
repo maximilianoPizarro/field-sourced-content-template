@@ -1,0 +1,143 @@
+= Seguridad y Gobierno
+:experimental:
+
+++++
+<div id="scene-security" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-security', {height:380, camX:0, camY:10, camZ:22, bgColor:0x0a0a1a});
+  if(!ctx) return;
+  var keycloak = ThreeHelper.createNode(ctx.scene,'Keycloak',0xCC0000,-8,0,0);
+  var oauth = ThreeHelper.createNode(ctx.scene,'OAuth/OIDC',0xFF6600,-3,0,0);
+  var kafka = ThreeHelper.createNode(ctx.scene,'Kafka SCRAM',0x231F20,3,0,0);
+  var tls = ThreeHelper.createNode(ctx.scene,'TLS/mTLS',0x00AA44,8,0,0);
+  var apicurio = ThreeHelper.createNode(ctx.scene,'Schema Gov',0x1A73E8,0,3,4);
+  var routes = ThreeHelper.createNode(ctx.scene,'OCP Routes',0x0066CC,0,-2,-3);
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,keycloak,oauth,0xCC0000,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,oauth,kafka,0xFF6600,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,kafka,tls,0x231F20,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,kafka,apicurio,0x1A73E8,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,oauth,routes,0x0066CC,{speed:0.009})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
+== Autenticación
+
+Todos los componentes del pipeline se protegen con autenticación a nivel de plataforma (OpenShift OAuth vía Keycloak) y a nivel de workload (SCRAM-SHA-512 para clientes Kafka).
+
+=== KafkaUser con ACLs
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: cdc-consumer
+  labels:
+    strimzi.io/cluster: cdc-cluster
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+      - resource:
+          type: topic
+          name: cdc.public.*
+          patternType: prefix
+        operations: [Read, Describe]
+        host: "*"
+      - resource:
+          type: group
+          name: cdc-consumer-group
+        operations: [Read]
+----
+
+* `scram-sha-512` — autenticación basada en credenciales gestionadas por Strimzi
+* ACLs restringen qué topics y consumer groups puede acceder cada cliente
+* Strimzi provisiona automáticamente los Secrets de Kubernetes con las credenciales
+
+== Encriptación
+
+=== TLS en Listeners de Kafka
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: cdc-cluster
+spec:
+  kafka:
+    listeners:
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+        authentication:
+          type: tls
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+----
+
+=== mTLS entre Brokers
+
+La comunicación inter-broker usa TLS mutuo automáticamente cuando se configuran listeners TLS. Strimzi gestiona los certificados CA y los keystores.
+
+== Private Endpoints
+
+Todos los servicios son internos al cluster OpenShift. El acceso externo se provee únicamente mediante OpenShift Routes con terminación TLS edge:
+
+[source,yaml]
+----
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: kafka-console
+spec:
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  to:
+    kind: Service
+    name: kafka-console-console-service
+----
+
+Ningún puerto de Kafka broker se expone fuera del cluster.
+
+== Gobierno y Compliance
+
+=== Schema Registry — Reglas de Validación
+
+Apicurio Registry enforza contratos de esquema. Las reglas globales previenen cambios breaking:
+
+[source,json]
+----
+{
+  "rules": {
+    "VALIDITY": "FULL",
+    "COMPATIBILITY": "BACKWARD"
+  }
+}
+----
+
+* **VALIDITY: FULL** — los esquemas deben ser sintácticamente válidos
+* **COMPATIBILITY: BACKWARD** — los esquemas nuevos deben ser legibles por consumidores con la versión anterior
+
+=== Audit Trail
+
+* Kafka retiene todos los eventos por el periodo de retención configurado (7 días por defecto)
+* Debezium captura el estado completo before/after de cada cambio en la base de datos
+* Los audit logs de OpenShift rastrean el acceso API al cluster
+* Schema Registry mantiene historial de versiones de cada esquema
+
+Explorar esquemas registrados en link:https://apicurio-registry-kafka-cdc.{cluster_domain}[Apicurio Registry^].

@@ -188,6 +188,179 @@ Workspaces launched from these templates typically bundle editor extensions such
 
 The exact set is defined in the Dev Spaces `DevWorkspace` / devfile for each template; verify in the workspace *Extensions* view after launch.
 
+== Workshop: extend the SonataFlow workflow
+
+The *SonataFlow BPM* template scaffolds a minimal workflow so you can extend it as a hands-on exercise.
+
+=== 1. Scaffold the component
+
+In Developer Hub click *Create* and select the **SonataFlow BPM** template. Fill in the project name (e.g. `my-sonataflow-workflow`) and namespace. The template publishes a Gitea repo and registers the component in the catalog.
+
+=== 2. Open in DevSpaces
+
+From the component page click *Open in Dev Spaces*. The IDE opens with the project cloned and Quarkus tooling ready.
+
+=== 3. View the simple workflow
+
+Open `workflows/customer-onboarding.sw.yaml`. The built-in SonataFlow editor shows a minimal diagram with just a few states.
+
+=== 4. Replace with the full workflow
+
+Replace the content of `customer-onboarding.sw.yaml` with the following complete definition. The visual editor updates automatically.
+
+[source,yaml]
+----
+id: customer-onboarding
+version: "1.0.0"
+specVersion: "0.8"
+name: Customer Onboarding
+description: Customer onboarding workflow triggered by CDC events
+start: ReceiveCDCEvent
+events:
+  - name: cdcCustomerEvent
+    source: cdc.public.customers
+    type: cdc.customer.created
+states:
+  - name: ReceiveCDCEvent
+    type: event
+    onEvents:
+      - eventRefs:
+          - cdcCustomerEvent
+        eventDataFilter:
+          data: "${ .customer }"
+    transition: ValidateCustomerData
+
+  - name: ValidateCustomerData
+    type: operation
+    actions:
+      - name: validateFields
+        functionRef:
+          refName: validateCustomer
+          arguments:
+            customer: "${ .customer }"
+    transition: CheckValidation
+
+  - name: CheckValidation
+    type: switch
+    dataConditions:
+      - condition: "${ .validationResult.valid == true }"
+        transition: CheckApprovalRequired
+      - condition: "${ .validationResult.valid == false }"
+        transition: HandleInvalidData
+    defaultCondition:
+      transition: HandleInvalidData
+
+  - name: HandleInvalidData
+    type: operation
+    actions:
+      - name: notifyInvalid
+        functionRef:
+          refName: sendNotification
+          arguments:
+            type: validation_failed
+            customer: "${ .customer }"
+            errors: "${ .validationResult.errors }"
+    end: true
+
+  - name: CheckApprovalRequired
+    type: switch
+    dataConditions:
+      - condition: "${ .customer.creditLimit > 10000 }"
+        transition: RequestManagerApproval
+    defaultCondition:
+      transition: ProvisionAccount
+
+  - name: RequestManagerApproval
+    type: operation
+    actions:
+      - name: autoApprove
+        functionRef:
+          refName: evaluateApproval
+          arguments:
+            customer: "${ .customer }"
+    transition: EvaluateApproval
+
+  - name: EvaluateApproval
+    type: switch
+    dataConditions:
+      - condition: "${ .approvalResult.approved == true }"
+        transition: ProvisionAccount
+      - condition: "${ .approvalResult.approved == false }"
+        transition: NotifyRejection
+    defaultCondition:
+      transition: NotifyRejection
+
+  - name: NotifyRejection
+    type: operation
+    actions:
+      - name: sendRejection
+        functionRef:
+          refName: sendNotification
+          arguments:
+            type: rejected
+            customer: "${ .customer }"
+            reason: "${ .approvalResult.reason }"
+    end: true
+
+  - name: ProvisionAccount
+    type: operation
+    actions:
+      - name: createAccount
+        functionRef:
+          refName: provisionBankAccount
+          arguments:
+            customer: "${ .customer }"
+      - name: setupOnlineBanking
+        functionRef:
+          refName: provisionOnlineBanking
+          arguments:
+            customer: "${ .customer }"
+    transition: EmitOnboardingMetric
+
+  - name: EmitOnboardingMetric
+    type: operation
+    actions:
+      - name: emitMetric
+        functionRef:
+          refName: sendNotification
+          arguments:
+            type: onboarding_complete
+            customer: "${ .customer }"
+    end: true
+
+functions:
+  - name: validateCustomer
+    operation: specs/customer-service.yaml#validateCustomer
+    type: rest
+  - name: evaluateApproval
+    operation: specs/customer-service.yaml#evaluateApproval
+    type: rest
+  - name: provisionBankAccount
+    operation: specs/customer-service.yaml#provisionBankAccount
+    type: rest
+  - name: provisionOnlineBanking
+    operation: specs/customer-service.yaml#provisionOnlineBanking
+    type: rest
+  - name: sendNotification
+    operation: specs/notification-service.yaml#sendNotification
+    type: rest
+----
+
+=== 5. Run locally
+
+In the Dev Spaces terminal run:
+
+[source,bash]
+----
+mvn quarkus:dev
+----
+
+This starts the Quarkus dev mode. The SonataFlow engine loads the workflow and exposes it at `http://localhost:8080/customer-onboarding`.
+
+=== 6. Commit and push
+
+Once satisfied with the changes, commit and push back to Gitea. ArgoCD or the CI pipeline picks up the changes for deployment to the cluster.
+
 == Resource governance
 
 Dev Spaces workspaces run inside the OpenShift cluster and are subject to resource quotas:

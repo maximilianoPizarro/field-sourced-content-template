@@ -60,7 +60,8 @@ data:
         }
         location = / {
           default_type text/html;
-          alias /etc/showroom/wrapper.html;
+          root /etc/showroom;
+          try_files /wrapper.html =404;
         }
         location = /runner/api/config {
           default_type application/json;

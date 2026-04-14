@@ -94,9 +94,9 @@ spec:
   applicationMenu:
     imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzAwNjZDQyI+PHBhdGggZD0iTTE0IDEyYy0xLjEgMC0yLS45LTItMnMuOS0yIDItMiAyIC45IDIgMi0uOSAyLTIgMnptLTIgNmMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6bTAtMTRjLTQuNDIgMC04IDMuNTgtOCA4czMuNTggOCA4IDggOC0zLjU4IDgtOC0zLjU4LTgtOC04eiIvPjwvc3ZnPg=="
     section: "Event-Driven Architecture Live"
-  href: "https://customer-onboarding-kogito-bpm.{{ $domain }}/q/dev-ui"
+  href: "https://swagger-ui-onboarding-kogito-bpm.{{ $domain }}"
   location: ApplicationMenu
-  text: "SonataFlow Dev UI"
+  text: "SonataFlow Swagger UI"
 ---
 apiVersion: console.openshift.io/v1
 kind: ConsoleLink

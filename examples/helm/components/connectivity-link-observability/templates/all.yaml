@@ -1278,7 +1278,7 @@ spec:
           "targets": [
             {
               "expr": "sum(rate(kafka_server_brokertopicmetrics_messagesin_total[5m])) by (topic)",
-              "legendFormat": "{{topic}}"
+              "legendFormat": "{{`{{topic}}`}}"
             }
           ],
           "fieldConfig": {
@@ -1310,7 +1310,7 @@ spec:
           "targets": [
             {
               "expr": "kafka_consumergroup_lag > 0",
-              "legendFormat": "{{consumergroup}} / {{topic}} [{{partition}}]"
+              "legendFormat": "{{`{{consumergroup}}`}} / {{`{{topic}}`}} [{{`{{partition}}`}}]"
             }
           ],
           "fieldConfig": {
@@ -1350,7 +1350,7 @@ spec:
           "targets": [
             {
               "expr": "sum(rate(kafka_connect_task_sink_record_send_total[5m])) by (connector)",
-              "legendFormat": "{{connector}}"
+              "legendFormat": "{{`{{connector}}`}}"
             }
           ],
           "fieldConfig": {
@@ -1385,8 +1385,8 @@ spec:
           labels:
             severity: warning
           annotations:
-            summary: "Consumer lag alto en {{ $labels.consumergroup }}"
-            description: "El consumer group {{ $labels.consumergroup }} tiene lag > 1000 en el topic {{ $labels.topic }} particion {{ $labels.partition }}"
+            summary: "Consumer lag alto en {{`{{ $labels.consumergroup }}`}}"
+            description: "El consumer group {{`{{ $labels.consumergroup }}`}} tiene lag > 1000 en el topic {{`{{ $labels.topic }}`}} particion {{`{{ $labels.partition }}`}}"
         - alert: DebeziumDisconnected
           expr: debezium_postgres_Connected == 0
           for: 2m
@@ -1402,7 +1402,7 @@ spec:
             severity: critical
           annotations:
             summary: "KafkaConnect connector en estado FAILED"
-            description: "Hay {{ $value }} tasks en estado FAILED en KafkaConnect"
+            description: "Hay {{`{{ $value }}`}} tasks en estado FAILED en KafkaConnect"
 ---
 apiVersion: monitoring.rhobs/v1
 kind: PodMonitor

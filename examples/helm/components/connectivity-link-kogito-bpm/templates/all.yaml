@@ -24,7 +24,6 @@ metadata:
     sonataflow.org/version: "1.0.0"
     argocd.argoproj.io/sync-wave: "9"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-    sonataflow.org/profile: dev
   labels:
     app: customer-onboarding
     app.kubernetes.io/part-of: kogito-bpm
@@ -308,6 +307,83 @@ spec:
   to:
     kind: Service
     name: customer-onboarding
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: swagger-ui-onboarding
+  namespace: kogito-bpm
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+  labels:
+    app: swagger-ui-onboarding
+    app.kubernetes.io/part-of: kogito-bpm
+    app.openshift.io/runtime: swagger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: swagger-ui-onboarding
+  template:
+    metadata:
+      labels:
+        app: swagger-ui-onboarding
+    spec:
+      containers:
+      - name: swagger-ui
+        image: swaggerapi/swagger-ui:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SWAGGER_JSON_URL
+          value: "https://customer-onboarding-kogito-bpm.{{ .Values.clusterDomain }}/q/openapi"
+        - name: DOC_EXPANSION
+          value: "list"
+        - name: DEEP_LINKING
+          value: "true"
+        - name: DISPLAY_REQUEST_DURATION
+          value: "true"
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: swagger-ui-onboarding
+  namespace: kogito-bpm
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+  labels:
+    app: swagger-ui-onboarding
+spec:
+  selector:
+    app: swagger-ui-onboarding
+  ports:
+  - port: 8080
+    targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: swagger-ui-onboarding
+  namespace: kogito-bpm
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+spec:
+  host: swagger-ui-onboarding-kogito-bpm.{{ .Values.clusterDomain }}
+  to:
+    kind: Service
+    name: swagger-ui-onboarding
   port:
     targetPort: 8080
   tls:

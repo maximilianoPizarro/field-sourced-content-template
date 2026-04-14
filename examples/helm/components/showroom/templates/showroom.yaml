@@ -122,6 +122,9 @@ data:
     type: showroom
     default_width: 35
     persist_url_state: true
+    antora:
+      name: "event-driven-demo"
+      version: "1.0"
     view_switcher:
       enabled: true
       default_mode: split

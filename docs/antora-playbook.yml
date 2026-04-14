@@ -75,6 +75,46 @@ ui:
           border-radius: 8px;
           margin: 1.5rem 0;
           background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+          position: relative;
+        }
+        .fullscreen-btn {
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          z-index: 100;
+          background: rgba(0,0,0,0.7);
+          color: #fff;
+          border: 1px solid #555;
+          border-radius: 4px;
+          padding: 4px 10px;
+          cursor: pointer;
+          font-size: 13px;
+          transition: background 0.2s;
+        }
+        .fullscreen-btn:hover { background: rgba(80,80,80,0.9); }
+        .doc .imageblock img { cursor: pointer; transition: transform 0.2s; }
+        .doc .imageblock img:hover { transform: scale(1.02); }
+        .img-overlay {
+          position: fixed;
+          top: 0; left: 0; width: 100vw; height: 100vh;
+          background: rgba(0,0,0,0.92);
+          z-index: 9999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: zoom-out;
+        }
+        .img-overlay img {
+          max-width: 95vw;
+          max-height: 95vh;
+          border-radius: 8px;
+          box-shadow: 0 0 40px rgba(0,102,204,0.3);
+        }
+        [id^="scene-"]:fullscreen,
+        .three-container:fullscreen {
+          background: #0a0a1a;
+          width: 100vw !important;
+          height: 100vh !important;
         }
         @media (max-width: 768px) {
           .nav-container { display: none; }
@@ -136,11 +176,21 @@ ui:
             gridHelper.position.y = -2;
             scene.add(gridHelper);
 
+            var fsBtn = document.createElement('button');
+            fsBtn.className = 'fullscreen-btn';
+            fsBtn.textContent = '\u26F6 Fullscreen';
+            fsBtn.onclick = function() {
+              if (container.requestFullscreen) container.requestFullscreen();
+              else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
+            };
+            container.appendChild(fsBtn);
+
             window.addEventListener('resize', function() {
               var nw = container.clientWidth;
-              camera.aspect = nw / h;
+              var nh = document.fullscreenElement === container ? window.innerHeight : h;
+              camera.aspect = nw / nh;
               camera.updateProjectionMatrix();
-              renderer.setSize(nw, h);
+              renderer.setSize(nw, nh);
             });
 
             return { scene: scene, camera: camera, renderer: renderer, controls: controls };
@@ -233,6 +283,19 @@ ui:
             loop();
           }
         };
+
+        document.addEventListener('DOMContentLoaded', function() {
+          document.querySelectorAll('.doc .imageblock img').forEach(function(img) {
+            img.addEventListener('click', function() {
+              var overlay = document.createElement('div');
+              overlay.className = 'img-overlay';
+              var clone = img.cloneNode();
+              overlay.appendChild(clone);
+              overlay.addEventListener('click', function() { overlay.remove(); });
+              document.body.appendChild(overlay);
+            });
+          });
+        });
 
 output:
   dir: ./build/site

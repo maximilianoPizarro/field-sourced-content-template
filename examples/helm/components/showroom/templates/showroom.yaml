@@ -88,6 +88,8 @@ metadata:
 data:
   user_data.yml: |
     cluster_domain: {{ .Values.deployer.domain }}
+    openshift_console_url: https://console-openshift-console.{{ .Values.deployer.domain }}
+    openshift_cluster_ingress_domain: {{ .Values.deployer.domain }}
     user_name: '%USER_NAME%'
     user_password: '%USER_PASSWORD%'
     kafka_bootstrap: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092
@@ -98,6 +100,7 @@ data:
     sonataflow_url: https://customer-onboarding-kogito-bpm.{{ .Values.deployer.domain }}
     devhub_url: https://backstage-developer-hub-developer-hub.{{ .Values.deployer.domain }}
     devspaces_url: https://devspaces.{{ .Values.deployer.domain }}
+    gitea_url: https://gitea-gitea.{{ .Values.deployer.domain }}
     postgresql_host: cdc-postgresql.kafka-cdc.svc
     postgresql_user: cdcuser
     postgresql_db: cdcdb

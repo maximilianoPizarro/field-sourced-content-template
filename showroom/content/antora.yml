@@ -3,3 +3,14 @@ title: "Event-Driven Architecture Live"
 version: "1.0"
 nav:
   - modules/ROOT/nav.adoc
+
+asciidoc:
+  attributes:
+    page-pagination: true
+    page-links:
+      - url: https://kafka-console-kafka-cdc.{cluster_domain}
+        text: Kafka Console
+      - url: https://grafana-observability.{cluster_domain}
+        text: Grafana
+      - url: https://apicurio-registry-kafka-cdc.{cluster_domain}
+        text: Apicurio

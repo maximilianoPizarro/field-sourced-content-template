@@ -15,7 +15,7 @@ metadata:
   name: {{ .Values.showroom.name }}
   namespace: {{ .Values.showroom.namespace }}
 ---
-# Showroom RoleBinding
+# Showroom RoleBinding (own namespace)
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -25,6 +25,51 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: edit
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.showroom.name }}
+  namespace: {{ .Values.showroom.namespace }}
+---
+# Showroom RoleBinding — kafka-cdc namespace (pods, kafkaconnectors, etc.)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: showroom-view-kafka-cdc
+  namespace: kafka-cdc
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.showroom.name }}
+  namespace: {{ .Values.showroom.namespace }}
+---
+# Showroom RoleBinding — kogito-bpm namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: showroom-view-kogito-bpm
+  namespace: kogito-bpm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.showroom.name }}
+  namespace: {{ .Values.showroom.namespace }}
+---
+# Showroom RoleBinding — observability namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: showroom-view-observability
+  namespace: observability
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
 subjects:
 - kind: ServiceAccount
   name: {{ .Values.showroom.name }}
@@ -312,6 +357,18 @@ spec:
           subPath: www
         - mountPath: /ui-config
           name: ui-config
+      - name: psql-installer
+        image: "registry.access.redhat.com/ubi9/ubi:latest"
+        command: ["bash", "-c"]
+        args:
+          - |
+            dnf install -y --setopt=install_weak_deps=False postgresql >/dev/null 2>&1
+            cp /usr/bin/psql /psql-bin/psql
+            ldd /usr/bin/psql | grep '=>' | awk '{print $3}' | xargs -I{} cp -n {} /psql-bin/ 2>/dev/null || true
+            echo "psql installed to shared volume"
+        volumeMounts:
+        - name: psql-bin
+          mountPath: /psql-bin
       containers:
       - name: nginx
         image: "quay.io/rhpds/nginx:1.25"
@@ -382,9 +439,15 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: PATH
+          value: "/opt/psql:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+        - name: LD_LIBRARY_PATH
+          value: "/opt/psql"
         volumeMounts:
         - name: terminal-lab-user-home
           mountPath: /home/lab-user
+        - name: psql-bin
+          mountPath: /opt/psql
         ports:
         - containerPort: 7681
           protocol: TCP
@@ -412,6 +475,8 @@ spec:
       - name: nginx-pid
         emptyDir: {}
       - name: nginx-cache
+        emptyDir: {}
+      - name: psql-bin
         emptyDir: {}
       - name: terminal-lab-user-home
         persistentVolumeClaim:

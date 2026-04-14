@@ -228,6 +228,36 @@ spec:
 </script>
 ++++
 
+== How it Works
+
+=== KRaft Consensus (sin Zookeeper)
+
+A partir de Kafka 3.x, el metadata del cluster se gestiona internamente usando el protocolo *KRaft* (Kafka Raft):
+
+. Cada broker tiene un rol: *controller* (gestión de metadata) o *broker* (almacenamiento y serving de datos), o ambos en clusters pequeños (combined mode).
+. Los controllers forman un _quorum_ usando Raft. Un controller es elegido como *active controller* — es el único que escribe metadata.
+. Cuando un topic se crea o una partición se reasigna, el active controller escribe el cambio en un log interno (`__cluster_metadata`), que se replica a los otros controllers.
+. Los brokers obtienen el metadata suscribiéndose al log del controller — no hay polling, es push-based.
+. Si el active controller cae, los controllers restantes eligen un nuevo líder via Raft en *milisegundos*, eliminando el delay de minutos que ocurría con Zookeeper.
+
+=== Ciclo de vida de un mensaje
+
+. Un *producer* envía un batch de registros al broker *leader* de la partición destino.
+. El leader escribe el batch en su log local (append-only en disco, sequential I/O).
+. Los *followers* (réplicas) fetch el batch del leader y lo escriben en sus propios logs.
+. Cuando `min.insync.replicas` réplicas (incluyendo el leader) confirman el write, el leader envía un *ACK* al producer.
+. El offset del batch se asigna secuencialmente — es inmutable y monotónicamente creciente.
+. Un *consumer* con un _consumer group_ asignado hace `poll()` al leader de cada partición asignada, recibiendo batches desde su último offset committed.
+
+=== Strimzi Reconciliation Loop
+
+El Cluster Operator de Strimzi opera como un _Kubernetes controller_ clásico:
+
+. Observa los cambios en los CRs `Kafka`, `KafkaConnect`, `KafkaTopic` y `KafkaUser`.
+. Calcula la diferencia entre el estado deseado (CR) y el estado actual (StatefulSets, ConfigMaps, Secrets).
+. Aplica los cambios de forma *rolling* — nunca detiene todos los brokers simultáneamente.
+. Los Topic y User Operators corren como sidecars en el _Entity Operator_ pod y reconcilian sus respectivos CRs contra el API de Kafka directamente (no Kubernetes resources).
+
 == Kafka Bridge (HTTP REST)
 
 El Kafka Bridge permite producir y consumir mensajes via HTTP REST — ideal para demos y testing sin cliente Kafka nativo:

@@ -243,6 +243,38 @@ config:
 
 Esto significa que el cluster puede tolerar la pérdida de *1 broker* sin perder datos ni disponibilidad.
 
+== How it Works
+
+=== Escritura en Kafka: de producer a disco
+
+Cuando Debezium (o cualquier producer) envía un mensaje a Kafka, internamente ocurre:
+
+. El producer serializa el key y value, calcula `hash(key) % numPartitions` para determinar la partición destino.
+. El producer agrupa mensajes en *batches* por partición (configurable via `batch.size` y `linger.ms`) para optimizar I/O.
+. El batch se envía al broker *leader* de la partición via TCP.
+. El leader escribe el batch en un *segment file* en disco — un append-only log. Los segments se rotan al llegar a 1GB (configurable).
+. Cada mensaje recibe un *offset* secuencial: un entero de 64 bits, monotónicamente creciente, único dentro de la partición.
+. Los *followers* fetch el batch del leader, lo escriben en sus propios segments, y envían un ACK al leader.
+. Con `acks=all` (default en Strimzi) y `min.insync.replicas=2`, el leader solo confirma al producer cuando al menos 2 réplicas persisten el dato.
+
+=== Lectura en Kafka: consumer groups
+
+. Cada consumer del grupo se conecta al *group coordinator* (un broker elegido para gestionar el grupo).
+. El coordinator ejecuta un *partition assignment protocol* (range o round-robin) distribuyendo las particiones entre los consumers.
+. Cada consumer hace `poll()` periódicamente al leader de sus particiones asignadas, recibiendo batches de mensajes desde su último offset.
+. El consumer procesa los mensajes y luego *commitea* el offset al topic interno `__consumer_offsets`.
+. Si un consumer se desconecta (no envía heartbeat en `session.timeout.ms`), el coordinator dispara un *rebalance*: las particiones huérfanas se reasignan a los consumers restantes.
+
+=== Compactación: cleanup.policy=compact
+
+Para topics CDC con `cleanup.policy: compact`:
+
+. Kafka ejecuta periódicamente un *log cleaner* que escanea los segments cerrados.
+. Para cada key, retiene solo el mensaje con el *mayor offset* (el más reciente).
+. Los mensajes con key duplicada y offset menor se eliminan físicamente del disco.
+. Un mensaje con value `null` (tombstone) marca el key para eliminación completa después del periodo `delete.retention.ms`.
+. Resultado: el topic contiene exactamente *un mensaje por key* — el estado actual de cada registro de la base de datos.
+
 == Network Policies
 
 El namespace `kafka-cdc` está protegido con `NetworkPolicy` que restringe el tráfico de ingress:

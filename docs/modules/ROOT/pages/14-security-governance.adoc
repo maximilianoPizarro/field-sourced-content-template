@@ -114,6 +114,34 @@ spec:
 
 Ningún puerto de Kafka broker se expone fuera del cluster.
 
+== How it Works
+
+=== Autenticación SCRAM-SHA-512 en Kafka
+
+SCRAM (Salted Challenge Response Authentication Mechanism) funciona como un handshake de 4 pasos entre el cliente y el broker:
+
+. El cliente envía su *username* al broker.
+. El broker responde con un *salt* aleatorio y el *iteration count* almacenado para ese usuario.
+. El cliente genera un *salted password* usando PBKDF2 con SHA-512, calcula una *client proof* criptográfica, y la envía al broker.
+. El broker verifica la proof contra las credenciales almacenadas y envía una *server signature* que el cliente valida.
+
+En ningún momento la contraseña viaja en texto plano. Strimzi automatiza todo el ciclo de vida: al crear un `KafkaUser` CR, el User Operator genera las credenciales SCRAM, las almacena en Kafka, y crea un `Secret` de Kubernetes con la contraseña para que los clientes la monten como variable de entorno.
+
+=== TLS: encriptación en tránsito
+
+* **Client → Broker**: el listener TLS (port 9093) termina TLS en el broker. Strimzi genera certificados automáticamente usando una CA interna (`cdc-cluster-cluster-ca-cert`).
+* **Broker → Broker**: la comunicación inter-broker usa TLS mutuo (mTLS). Cada broker tiene su propio certificado firmado por la CA del cluster.
+* **Service Mesh (mTLS ambient)**: Istio ambient mode agrega una *segunda capa* de mTLS a nivel L4 (ztunnel), encriptando todo el tráfico TCP entre pods del namespace `kafka-cdc` — incluso el tráfico al listener `plain` (9092) queda encriptado a nivel de red.
+
+=== ACLs: autorización granular
+
+Las ACLs de Kafka operan como *listas blancas* — todo está denegado por default:
+
+. Cada ACL define un *principal* (usuario SCRAM), un *recurso* (topic, group, cluster), un *pattern* (literal o prefix), y las *operaciones* permitidas.
+. El authorizer del broker evalúa las ACLs en cada request del cliente.
+. Pattern `prefix` permite reglas flexibles: `name: cdc, patternType: prefix` autoriza acceso a todos los topics que empiecen con `cdc` (incluyendo `cdc.public.customers`, `cdc.public.orders`).
+. Si ninguna ACL matchea, el request se *deniega* con un error de autorización.
+
 == Gobierno y Compliance
 
 === Schema Registry — Reglas de Validación

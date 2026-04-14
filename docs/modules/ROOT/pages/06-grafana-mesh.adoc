@@ -123,6 +123,29 @@ spec:
       strimzi.io/kind: Kafka
 ----
 
+== How it Works
+
+=== Pipeline de métricas: del JMX a Grafana
+
+Las métricas del pipeline CDC atraviesan cuatro capas antes de visualizarse:
+
+. **Exposición (JMX → Prometheus format)** — Cada broker Kafka y KafkaConnect expone métricas JMX internas. Un agente *JMX Prometheus Exporter* (configurado via `metricsConfig` en el CR de Strimzi) convierte las métricas JMX al formato de texto Prometheus en el puerto 9404. Camel usa *Micrometer* para exponer sus métricas nativamente en `/q/metrics`.
+
+. **Scraping (Prometheus)** — Los `PodMonitor` CRs le indican a Prometheus qué pods scrapear, en qué puerto y con qué frecuencia (`interval: 30s`). Prometheus almacena las series temporales con labels (topic, partition, consumer group, connector) que permiten queries granulares.
+
+. **Consulta (PromQL → paneles)** — Cada panel del dashboard Grafana ejecuta una query PromQL. Por ejemplo, `sum(rate(kafka_server_brokertopicmetrics_messagesin_total[5m])) by (topic)` calcula el throughput de mensajes por segundo agrupado por topic, usando una ventana de 5 minutos para suavizar picos.
+
+. **Alertas (PrometheusRule → Alertmanager)** — Las reglas de alerta se evalúan continuamente por Prometheus. Cuando una expresión se cumple por el periodo `for` definido (ej: `kafka_consumergroup_lag > 1000` durante 5 minutos), Prometheus dispara una alerta al Alertmanager, que puede notificar via email, Slack, PagerDuty, etc.
+
+=== Kafka Exporter: métricas de consumer lag
+
+El `kafkaExporter` desplegado por Strimzi es un proceso dedicado que:
+
+* Se conecta al cluster Kafka y consulta los offsets de todos los consumer groups
+* Calcula el *lag* por partición: `lag = highWaterMark - consumerOffset`
+* Expone la métrica `kafka_consumergroup_lag` que Prometheus scrapea
+* Esto permite detectar cuellos de botella: si el lag crece, los consumidores no procesan tan rápido como los productores producen
+
 == Service Mesh — Istio Ambient Mode
 
 El namespace `kafka-cdc` está enrollado en el Service Mesh usando *Istio ambient mode* (sin sidecars):

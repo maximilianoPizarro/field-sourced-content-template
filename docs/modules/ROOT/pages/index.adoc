@@ -49,24 +49,49 @@ Explore a complete *Change Data Capture (CDC)* pipeline running on Red Hat OpenS
 
 === Componentes del Pipeline
 
-[cols="1,3",options="header"]
+[cols="1,2,2",options="header"]
 |===
-| Componente | Descripción
+| Componente | Qué es | Para qué sirve en este demo
 
-| image:kafka-icon.svg[Kafka,24] *Streams for Apache Kafka*
-| Cluster Kafka en modo KRaft, topics, bridge HTTP y exporter de métricas
+| *Streams for Apache Kafka*
+| Distribución enterprise de Apache Kafka (basada en Strimzi) para streaming distribuido de eventos
+| Cluster KRaft de 3 brokers que almacena y distribuye los eventos CDC con replicación, topics, bridge HTTP y exporter de métricas
 
-| image:debezium-icon.svg[Debezium,24] *Debezium*
-| CDC connector que captura cambios de PostgreSQL en tiempo real
+| *Debezium*
+| Plataforma open source de Change Data Capture (CDC) que captura cambios de bases de datos
+| Conector PostgreSQL que lee el WAL y publica cada INSERT/UPDATE/DELETE como evento en topics Kafka en tiempo real
 
-| image:apicurio-icon.svg[Apicurio,24] *Apicurio Registry*
-| Schema Registry para validación de esquemas Avro/JSON/Protobuf
+| *Apicurio Registry*
+| Schema Registry open source que gestiona y valida esquemas de datos (Avro, JSON Schema, Protobuf)
+| Registra y versiona los esquemas de los eventos CDC, garantizando compatibilidad entre productores y consumidores
 
-| image:camel-icon.svg[Camel,24] *Apache Camel + Kaoto*
-| Rutas de integración diseñadas visualmente, consumiendo eventos CDC
+| *Apache Camel + Kaoto*
+| Framework de integración que implementa Enterprise Integration Patterns, con diseñador visual low-code
+| Consume eventos CDC de Kafka, aplica content-based routing, y envía notificaciones email via Mailpit
 
-| image:redhat-openshift-logo.svg[OpenShift,24] *Service Mesh + Grafana*
-| Observabilidad end-to-end con dashboards y trazas en Kiali
+| *SonataFlow*
+| Motor de workflows serverless (evolución de Kogito/jBPM) que ejecuta procesos de negocio cloud-native
+| Orquesta el onboarding de clientes: validación, clasificación, aprobaciones con SLA y provisión en paralelo
+
+| *Red Hat Developer Hub*
+| Portal de desarrollo self-service basado en Backstage, con catálogo de componentes y plugins
+| Plugin de Kafka para visualizar offsets y lag de consumer groups directamente en las entity pages
+
+| *Grafana + Service Mesh*
+| Stack de observabilidad: dashboards de métricas (Grafana), mTLS automático y traffic visualization (Kiali)
+| Dashboard "Kafka CDC Pipeline" con throughput, lag y latencia; Istio ambient mode para mTLS sin sidecars
+
+| *OpenShift DevSpaces*
+| IDE cloud-native basado en Eclipse Che, con workspaces efímeros y extensiones pre-configuradas
+| Workspace con Kaoto pre-instalado para diseñar visualmente rutas Apache Camel y workflows SonataFlow
+
+| *OpenShift Lightspeed*
+| Asistente IA integrado en la consola de OpenShift con herramientas MCP para diagnóstico
+| 55+ herramientas MCP para troubleshooting del pipeline: consultar estado de Kafka, Debezium, connectors y pods
+
+| *Keycloak*
+| Identity and Access Management (IAM) enterprise basado en estándares OAuth 2.0 / OIDC
+| Autenticación SSO para todos los servicios del demo (Console, Developer Hub, Grafana, etc.)
 |===
 
 === Acceso al entorno

@@ -150,6 +150,58 @@ spec:
 ----
 <1> En el chart Helm desplegado, las credenciales se inyectan desde `values.yaml` via templates: `{{ .Values.postgresql.username }}` y `{{ .Values.postgresql.password }}`. Los valores mostrados aquí son los defaults del demo.
 
+== How it Works
+
+=== Replicación Lógica de PostgreSQL
+
+Debezium no hace queries SQL para capturar cambios — usa el protocolo de *replicación lógica* nativo de PostgreSQL:
+
+. PostgreSQL escribe *cada transacción* en el Write-Ahead Log (WAL) antes de confirmarla a disco. Con `wal_level=logical`, el WAL incluye suficiente información para decodificar los cambios a nivel de fila.
+. Debezium crea un *replication slot* (`debezium_cdc`) que actúa como un cursor persistente en el WAL. PostgreSQL no elimina segmentos WAL que el slot aún no ha consumido — esto garantiza cero pérdida de eventos.
+. El plugin `pgoutput` decodifica los cambios binarios del WAL en mensajes lógicos estructurados (tabla, columnas, valores before/after).
+. La `PUBLICATION` (`cdc_publication`) filtra qué tablas se replican — solo `customers` y `orders` generan eventos.
+
+=== Estructura del evento CDC
+
+Cada evento Debezium tiene esta estructura:
+
+[source,json]
+----
+{
+  "schema": { ... },
+  "payload": {
+    "before": null,
+    "after": { "id": 1, "first_name": "Demo", "last_name": "User", "email": "demo@test.io" },
+    "source": {
+      "version": "2.7.3.Final",
+      "connector": "postgresql",
+      "db": "cdcdb",
+      "schema": "public",
+      "table": "customers",
+      "lsn": 234881048,
+      "txId": 550
+    },
+    "op": "c",
+    "ts_ms": 1710000000000
+  }
+}
+----
+
+* `op`: tipo de operación — `c` (create/INSERT), `u` (update), `d` (delete), `r` (read/snapshot)
+* `before`: estado previo de la fila (null en INSERT, populated en UPDATE/DELETE)
+* `after`: estado nuevo de la fila (null en DELETE)
+* `source.lsn`: Log Sequence Number — posición exacta en el WAL de PostgreSQL
+* `source.txId`: ID de la transacción — permite correlacionar múltiples cambios de la misma TX
+
+=== KafkaConnect Task Distribution
+
+KafkaConnect distribuye el trabajo mediante *tasks*:
+
+. Cada connector declara cuántas tasks necesita (`tasksMax`). El source connector de Debezium siempre usa 1 task (limitación de PostgreSQL: un solo replication slot por connector).
+. El HTTP sink puede usar múltiples tasks — una por partición del topic de entrada.
+. Si una réplica de Connect cae, el *group coordinator* reasigna las tasks a las réplicas restantes en ~30 segundos.
+. Los offsets de cada task se persisten en el topic `cdc-connect-offsets` (RF=3), permitiendo que otra réplica retome el trabajo desde el punto exacto.
+
 == KafkaConnector — HTTP Sink (Mailpit)
 
 Los eventos CDC también se envían como notificaciones por email a Mailpit:

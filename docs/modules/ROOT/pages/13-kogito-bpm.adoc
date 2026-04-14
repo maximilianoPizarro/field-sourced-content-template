@@ -371,6 +371,47 @@ El workflow SonataFlow se integra con los componentes existentes del pipeline CD
 |Prometheus scraping
 |===
 
+== How it Works
+
+=== Motor de ejecución SonataFlow
+
+SonataFlow ejecuta workflows definidos en la https://serverlessworkflow.io/[Serverless Workflow Specification] como microservicios Quarkus:
+
+. El operador recibe el CR `SonataFlow` y genera un *Quarkus application* con el runtime del workflow embebido.
+. Al recibir un evento CDC (CloudEvent via Kafka o HTTP), el motor crea una *instancia del workflow* con un ID único.
+. Cada instancia mantiene su propio *estado* (state data) — un JSON document que se transforma en cada transición.
+. El motor ejecuta las transiciones definidas en el workflow de forma *event-driven*: cada estado se evalúa y ejecuta en orden, usando el resultado del anterior como input.
+
+=== Callback pattern: aprobaciones asíncronas
+
+El estado `RequestManagerApproval` usa el *callback pattern* de la especificación:
+
+. El workflow ejecuta la *action* (enviar solicitud de aprobación al topic `bpm.approval.requests` via Kafka Bridge).
+. El motor *suspende* la instancia del workflow — no consume CPU ni memoria mientras espera.
+. La instancia queda persistida en el Data Index con estado `WAITING`.
+. Cuando llega el evento `approvalCompleted` (un mensaje en el topic con el `workflowInstanceId` correcto), el motor *resume* la instancia desde el punto exacto donde se suspendió.
+. Si el evento no llega en `PT24H` (24 horas), el timeout dispara y el workflow transiciona al siguiente estado con un flag de timeout.
+
+=== Ejecución paralela: branches
+
+El estado `ProvisionAccount` ejecuta *branches* en paralelo:
+
+. El motor lanza ambas ramas (`CreateAccount` y `SendWelcome`) simultáneamente como coroutines.
+. `completionType: allOf` indica que el workflow espera a que *ambas* ramas terminen antes de transicionar.
+. Si una rama falla, el workflow puede reintentar o manejar el error según la política definida.
+. Los resultados de ambas ramas se fusionan en el state data de la instancia.
+
+=== Data Index: consultas de estado
+
+El *Data Index Service* escucha eventos de estado del motor via CloudEvents e indexa toda la información de instancias en PostgreSQL. Expone un endpoint *GraphQL* que permite consultar:
+
+* Instancias activas, completadas y con error
+* El state data actual de cada instancia
+* Historial de transiciones (qué estados se ejecutaron y cuándo)
+* Variables del proceso (customer data, tier, approval status)
+
+La *Management Console* consume este GraphQL para mostrar dashboards operacionales.
+
 == Caso de Uso: Onboarding en Banca
 
 El flujo completo para un banco (NeuralBank):

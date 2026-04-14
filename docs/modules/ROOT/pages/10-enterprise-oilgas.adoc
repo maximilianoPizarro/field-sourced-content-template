@@ -173,6 +173,46 @@ Adaptación de la ruta Camel del workshop para procesar datos de sensores:
                   message: "Sensor ${body[sensor_id]} reading normal: ${body[value]}"
 ----
 
+== How it Works
+
+=== Del sensor al alerta: pipeline en tiempo real
+
+El flujo de datos desde un sensor de campo hasta una alerta operativa sigue esta cadena:
+
+. Un *sensor de presión/temperatura* conectado via Modbus/OPC-UA envía lecturas al sistema SCADA (ej: OSIsoft PI) cada 1-5 segundos.
+. El SCADA persiste las lecturas en su *Historian DB* (PostgreSQL o base propietaria). Cada INSERT es un nuevo datapoint con `sensor_id`, `value`, `timestamp` y `quality`.
+. *Debezium* captura el INSERT via WAL y lo publica al topic correspondiente (`oilgas.sensors.pressure`). Con 12 particiones, el sistema soporta miles de sensores concurrentes particionando por `sensor_id`.
+. *Apache Camel* consume el evento, deserializa el JSON, y aplica *content-based routing*: si `value > threshold`, genera un evento de alerta al topic `oilgas.alerts.critical`. Si no, loggea la lectura normal.
+. Los eventos de alerta disparan notificaciones via PagerDuty/OpsGenie para el equipo de guardia.
+. Paralelamente, todos los eventos (normales y anómalos) se persisten en un *Data Lake* (S3/ODF) para análisis histórico y entrenamiento de modelos ML.
+
+=== Diferencias clave vs. el workshop
+
+[cols="1,1,1",options="header"]
+|===
+| Aspecto | Workshop (CDC) | Enterprise (Oil & Gas)
+
+| Throughput
+| ~10 eventos/min (INSERTs manuales)
+| ~10,000 eventos/seg (sensores automáticos)
+
+| Particiones
+| 3 (suficiente para demo)
+| 12+ (paralelismo para alto throughput)
+
+| Retención
+| 7 días (demo)
+| 30-90 días (compliance regulatorio)
+
+| Acción
+| Email via Mailpit
+| PagerDuty + Data Lake + ML pipeline
+
+| Seguridad
+| SCRAM + TLS (demo)
+| SCRAM + TLS + ACLs por planta + encryption at rest
+|===
+
 == Consideraciones Enterprise
 
 [cols="1,2",options="header"]

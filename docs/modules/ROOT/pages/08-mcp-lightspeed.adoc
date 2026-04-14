@@ -99,6 +99,32 @@ En este cluster, Lightspeed tiene acceso a *55+ herramientas MCP* que cubren Kub
 | _"Get events in namespace kafka-cdc related to Console"_
 |===
 
+== How it Works
+
+=== Model Context Protocol (MCP)
+
+MCP es un protocolo abierto que conecta modelos de IA con herramientas externas:
+
+. Lightspeed recibe el prompt del usuario en la consola de OpenShift.
+. El modelo analiza la intención y selecciona las *herramientas MCP* relevantes de las 55+ disponibles.
+. Para cada herramienta seleccionada, MCP ejecuta una *function call* contra el API server de OpenShift (o ArgoCD, etc.) con los parámetros inferidos del prompt.
+. Los resultados (YAML de recursos, logs, eventos) se inyectan de vuelta en el contexto del modelo.
+. El modelo sintetiza una respuesta que combina la información obtenida con su conocimiento sobre la plataforma.
+
+=== Flujo de un prompt de troubleshooting
+
+Cuando un usuario pregunta _"Get the KafkaConnectors in namespace kafka-cdc and show their status"_:
+
+. Lightspeed identifica que necesita la herramienta `k8s_listResources` con `kind: KafkaConnector`, `namespace: kafka-cdc`.
+. MCP ejecuta el equivalente de `oc get kafkaconnectors -n kafka-cdc -o json`.
+. El JSON de respuesta contiene los CRs con sus `.status.conditions` (tipo, estado, mensaje).
+. El modelo interpreta las conditions y produce una respuesta legible: "El connector `debezium-postgresql-source` está en estado RUNNING con 1 task activa. El connector `mailpit-http-sink` está RUNNING con 1 task."
+. Si detecta un estado anormal (FAILED, PAUSED), sugiere acciones correctivas basadas en los mensajes de error.
+
+=== Seguridad y permisos
+
+Las herramientas MCP se ejecutan con los permisos del ServiceAccount configurado en el namespace `mcp-system`. El RBAC de OpenShift controla qué recursos puede leer o modificar — Lightspeed no tiene acceso irrestricto al cluster.
+
 == Workflow de diagnóstico rápido
 
 Para validar todo el pipeline CDC después de un deployment, ejecuta estos prompts en secuencia:

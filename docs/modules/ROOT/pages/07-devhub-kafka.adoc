@@ -58,6 +58,30 @@ metadata:
 
 Esto hace que Developer Hub muestre los offsets y lag del consumer group `camel-cdc-consumer` directamente en la vista del componente.
 
+== How it Works
+
+=== Plugin backend: conexión al cluster Kafka
+
+El plugin de Kafka en Developer Hub no usa APIs REST de terceros — se conecta *directamente* al cluster Kafka:
+
+. El backend del plugin (`plugin-kafka-backend-dynamic`) establece una conexión `AdminClient` al cluster usando los brokers configurados (`cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092`).
+. Usa la API `AdminClient.describeConsumerGroups()` para obtener el estado de los consumer groups.
+. Consulta `AdminClient.listConsumerGroupOffsets()` para los offsets actuales y `AdminClient.listOffsets(OffsetSpec.latest())` para los high watermarks.
+. Calcula el lag por partición y lo expone al frontend via la API interna de Backstage.
+
+=== Plugin frontend: entity-driven UI
+
+El frontend se monta condicionalmente en las entity pages:
+
+. Cuando un usuario navega a un componente en Developer Hub, el router verifica si la entity tiene la anotación `kafka.apache.org/consumer-groups`.
+. Si la anotación existe, el card `EntityKafkaContent` se renderiza en el `mountPoint` configurado (`entity.page.overview/cards`).
+. El card hace un fetch al backend del plugin, que devuelve los datos del consumer group en JSON.
+. El frontend muestra una tabla con: topic, partición, offset actual, high watermark, lag, y el estado del consumidor (active/idle).
+
+=== Software Templates: auto-anotación
+
+Los Software Templates de Developer Hub pueden inyectar automáticamente la anotación Kafka en el `catalog-info.yaml` generado, asegurando que cada nuevo componente que consume de Kafka tenga visibilidad de lag desde el primer commit.
+
 == Streams for Apache Kafka Console
 
 Además del plugin de Developer Hub, la *Streams Console* (StreamsHub) proporciona una UI dedicada para gestión de Kafka:

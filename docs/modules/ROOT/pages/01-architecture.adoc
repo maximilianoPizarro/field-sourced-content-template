@@ -100,6 +100,25 @@ graph LR
 . Camel transforma el evento y envía una notificación por email via Mailpit
 . Todo el pipeline es monitoreado en Grafana y visible en Kiali (Service Mesh)
 
+== How it Works
+
+El pipeline CDC opera como una cadena reactiva de cinco etapas, donde cada componente actúa de forma independiente y asíncrona:
+
+. **Capture** — PostgreSQL escribe cada transacción en el Write-Ahead Log (WAL) antes de confirmarla. Debezium abre un _replication slot_ y lee el WAL usando el protocolo de replicación lógica nativa de PostgreSQL, sin queries adicionales a las tablas.
+
+. **Serialize** — Debezium transforma cada cambio en un evento JSON estructurado que incluye: el valor `before` (estado previo del registro), `after` (estado nuevo), `op` (tipo de operación: `c`reate, `u`pdate, `d`elete, `r`ead), y `source` (metadata: tabla, schema, LSN, timestamp del WAL).
+
+. **Stream** — El evento se publica en el topic Kafka correspondiente (`cdc.public.<tabla>`). Kafka lo persiste en disco, lo replica a 3 brokers (RF=3), y confirma el write solo cuando al menos 2 réplicas persisten el dato (`min.insync.replicas=2`).
+
+. **Process** — Apache Camel consume del topic usando un _consumer group_. Cada partición se asigna a un solo consumidor (partition affinity), garantizando orden por primary key. Camel deserializa el JSON, aplica content-based routing (`$.payload.op`), y transforma el payload.
+
+. **React** — El procesador Camel ejecuta la acción correspondiente: HTTP POST a Mailpit para notificaciones, producción a topics de DLQ para errores, o emisión de métricas Prometheus. Todo ocurre sin bloqueo — si un destino falla, el mensaje va a la Dead Letter Queue.
+
+[NOTE]
+====
+La latencia end-to-end típica del pipeline es *sub-segundo* desde el commit en PostgreSQL hasta la notificación. El cuello de botella no es Kafka (que persiste en microsegundos) sino el HTTP POST a servicios externos.
+====
+
 == Namespace y recursos
 
 Todos los componentes del CDC pipeline se despliegan en el namespace `kafka-cdc`:

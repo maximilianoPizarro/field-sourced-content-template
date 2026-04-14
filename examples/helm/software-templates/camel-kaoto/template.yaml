@@ -20,25 +20,29 @@ spec:
         - owner
       properties:
         name:
-          title: Name
+          title: Application Name
           type: string
           description: Unique name for the Camel route project
           ui:autofocus: true
           default: "my-camel-cdc-route"
+          pattern: "^[a-z0-9-]+$"
         owner:
-          title: Owner
+          title: User (OpenShift username)
           type: string
-          description: Owner of the component
-          ui:field: OwnerPicker
-          ui:options:
-            allowedKinds:
-              - Group
-              - User
+          description: "Your OpenShift username. Defines the deploy namespace: <username>-neuralbank"
+          default: ${{ user.entity.metadata.name }}
+          pattern: "^user[0-9]+$"
+          ui:help: "E.g.: user1 → namespace user1-neuralbank"
         description:
           title: Description
           type: string
           description: Description of the Camel route
           default: "CDC event processing route using Apache Camel with Kaoto visual designer"
+        clusterDomain:
+          title: Cluster Domain
+          type: string
+          default: "apps.cluster-l9nhj.dynamic.redhatworkshops.io"
+          ui:widget: hidden
     - title: Kafka Configuration
       properties:
         kafkaBootstrap:
@@ -50,7 +54,7 @@ spec:
           type: string
           default: "cdc.public.customers"
   steps:
-    - id: fetch
+    - id: fetch-skeleton
       name: Fetch Skeleton
       action: fetch:template
       input:
@@ -61,12 +65,14 @@ spec:
           description: ${{ parameters.description }}
           kafkaBootstrap: ${{ parameters.kafkaBootstrap }}
           kafkaTopic: ${{ parameters.kafkaTopic }}
+          namespace: "${{ parameters.owner }}-neuralbank"
+          clusterDomain: ${{ parameters.clusterDomain }}
 
     - id: publish
       name: Publish to Gitea
       action: publish:gitea
       input:
-        repoUrl: gitea-gitea.${{ steps.fetch.output.clusterDomain || 'apps.cluster-l9nhj.dynamic.redhatworkshops.io' }}?repo=${{ parameters.name }}
+        repoUrl: "gitea-gitea.${{ parameters.clusterDomain }}?owner=ws-${{ parameters.owner }}&repo=${{ parameters.name }}"
         description: ${{ parameters.description }}
         defaultBranch: main
         repoVisibility: public
@@ -75,16 +81,16 @@ spec:
       name: Register in Catalog
       action: catalog:register
       input:
-        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
-        catalogInfoPath: /catalog-info.yaml
+        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
+        catalogInfoPath: /main/catalog-info.yaml
 
   output:
     links:
       - title: Repository
-        url: ${{ steps.publish.output.remoteUrl }}
+        url: ${{ steps['publish'].output.remoteUrl }}
       - title: Open in DevSpaces
+        icon: chat
+        url: "https://devspaces.${{ parameters.clusterDomain }}/#https://gitea-gitea.${{ parameters.clusterDomain }}/ws-${{ parameters.owner }}/${{ parameters.name }}"
+      - title: View in Catalog
         icon: catalog
-        url: "https://devspaces.${{ steps.fetch.output.clusterDomain || 'apps.cluster-l9nhj.dynamic.redhatworkshops.io' }}/#${{ steps.publish.output.remoteUrl }}"
-      - title: Open in catalog
-        icon: catalog
-        entityRef: ${{ steps.register.output.entityRef }}
+        entityRef: ${{ steps['register'].output.entityRef }}

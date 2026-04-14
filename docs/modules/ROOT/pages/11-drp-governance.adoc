@@ -138,6 +138,36 @@ spec:
 . Redirigir consumidores al cluster target
 . Actualizar DNS/Routes para apuntar al cluster target
 
+== How it Works
+
+=== MirrorMaker 2: replicación interna
+
+MirrorMaker 2 opera como un cluster de KafkaConnect dedicado a la replicación:
+
+. Se conecta al cluster *source* como consumer y al cluster *target* como producer.
+. Usa 3 connectors internos:
+** **MirrorSourceConnector** — consume mensajes del source y los produce al target. Los topics se renombran con el alias del source como prefijo (ej: `source.cdc.public.customers`).
+** **MirrorCheckpointConnector** — sincroniza los offsets de consumer groups entre clusters, permitiendo que un consumer pueda cambiar de cluster sin reprocesar mensajes.
+** **MirrorHeartbeatConnector** — produce heartbeats periódicos para monitorear la latencia de replicación.
+. El patrón `cdc\..*` filtra qué topics replicar — solo los topics CDC, excluyendo topics internos de Kafka y DLQs.
+. La replicación es *asíncrona*: hay un lag de segundos entre el source y el target. Esto define el RPO (Recovery Point Objective).
+
+=== Failover: cómo cambiar de cluster
+
+. **Detección**: Monitorear `kafka_mirror_maker_MirrorSourceConnector_replication_latency_ms` — si crece indefinidamente, el source está caído.
+. **Decisión**: Evaluar si es un fallo transitorio (esperar) o permanente (failover).
+. **Ejecución**: Redirigir DNS/Routes al cluster target. Los consumers con checkpoint sync pueden resumir desde el offset equivalente en el target.
+. **Vuelta**: Una vez restaurado el source, configurar MirrorMaker 2 en dirección inversa (target → source) para sincronizar los datos generados durante el failover.
+
+=== Tombstones y GDPR
+
+Para cumplir con "right to be forgotten":
+
+. Un DELETE en PostgreSQL genera un evento Debezium con `op: d` y `after: null`.
+. En topics con `cleanup.policy: compact`, Kafka genera un *tombstone* (key con value `null`).
+. Después de `delete.retention.ms` (default 24h), el log cleaner elimina físicamente el tombstone y cualquier registro anterior con el mismo key.
+. Resultado: el dato se elimina completamente de Kafka sin necesidad de recrear el topic.
+
 == Business Continuity Plan (BCP)
 
 === RPO y RTO

@@ -120,6 +120,38 @@ La ruta de integración consume eventos CDC de Kafka y envía notificaciones por
 | Exporta métricas Prometheus del procesamiento
 |===
 
+== How it Works
+
+=== Procesamiento de un evento CDC en Camel
+
+Cuando un nuevo evento CDC llega al topic `cdc.public.customers`, la ruta Camel ejecuta los siguientes pasos internos:
+
+. **Poll** — El componente `camel-kafka` hace `poll()` al broker líder de las particiones asignadas al consumer group `camel-cdc-consumer`. Kafka devuelve un batch de registros. Cada registro se procesa individualmente como un _Exchange_ de Camel.
+
+. **Unmarshal** — El body del Exchange (JSON string del evento Debezium) se deserializa a un `Map<String,Object>` usando Jackson. Esto permite acceder a campos como `payload.op`, `payload.after.first_name`, etc.
+
+. **Content-Based Routing** — El `choice()` evalúa `$.payload.op` mediante JSONPath:
+** Si `op == 'c'` (INSERT): genera un email de "New Customer Created"
+** Para cualquier otra operación (UPDATE, DELETE): genera un email genérico de cambio
+
+. **Marshal + HTTP POST** — El body transformado se serializa de vuelta a JSON y se envía via HTTP POST al API de Mailpit (`/api/v1/send`). El componente `camel-http` gestiona connection pooling, retries y timeouts.
+
+. **Error Handling** — Si cualquier paso falla, el `onException` captura la excepción:
+** Marca el error como `handled` (no propaga el fallo upstream)
+** Envía el mensaje original al topic DLQ `dlq.cdc-camel-errors`
+** Logea el error para diagnóstico
+** El offset de Kafka se commitea — el mensaje no se reprocesa
+
+=== Camel Exchange Model
+
+Cada mensaje procesado por Camel es un *Exchange* con:
+
+* **Body**: el contenido del mensaje (transformado en cada step)
+* **Headers**: metadata (topic, partition, offset, timestamp de Kafka, headers HTTP para el POST)
+* **Properties**: estado interno del Exchange (no visible para componentes externos)
+
+El Exchange fluye por la ruta como un *pipeline* — la salida de cada step es el input del siguiente. Esto permite encadenar transformaciones sin estado compartido.
+
 == Métricas del procesador Camel
 
 El procesador Camel expone métricas Prometheus en `/q/metrics`:

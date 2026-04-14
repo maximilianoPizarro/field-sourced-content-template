@@ -105,6 +105,44 @@ config:
 
 NOTE: En este demo usamos JSON converter por simplicidad, pero la integración con Avro via Apicurio está lista para habilitarse.
 
+== How it Works
+
+=== Ciclo de validación de schemas
+
+El Schema Registry actúa como un *contrato vivo* entre productores y consumidores:
+
+. Un *producer* (Debezium, Camel) serializa un mensaje y envía el schema al registry (si `auto-register=true`).
+. Apicurio valida el schema contra las *reglas globales* configuradas:
+** **VALIDITY** — el schema debe ser sintácticamente correcto (JSON Schema válido, Avro válido, etc.)
+** **COMPATIBILITY** — el schema debe ser compatible con la versión anterior según la política elegida
+. Si la validación pasa, Apicurio asigna un *globalId* numérico al schema y lo almacena.
+. El producer incluye el `globalId` en el header del mensaje Kafka (no el schema completo — esto ahorra bandwidth).
+. Un *consumer* recibe el mensaje, extrae el `globalId` del header, y obtiene el schema completo desde Apicurio para deserializar.
+. Si el producer intenta registrar un schema incompatible (ej: eliminar un campo requerido), Apicurio *rechaza* el registro con HTTP 409, previniendo el breaking change antes de que llegue a Kafka.
+
+=== Modos de compatibilidad
+
+[cols="1,2",options="header"]
+|===
+| Modo | Garantía
+
+| *BACKWARD*
+| Consumidores con schema nuevo pueden leer datos escritos con schema viejo. Permite agregar campos opcionales.
+
+| *FORWARD*
+| Consumidores con schema viejo pueden leer datos escritos con schema nuevo. Permite eliminar campos opcionales.
+
+| *FULL*
+| Combinación de BACKWARD + FORWARD. Solo permite agregar o eliminar campos opcionales.
+
+| *NONE*
+| Sin validación de compatibilidad — útil en desarrollo, riesgoso en producción.
+|===
+
+=== Persistencia KafkaSQL
+
+En esta demo, Apicurio usa `kafkasql` como backend: los schemas se almacenan como mensajes en topics internos de Kafka. Esto elimina la necesidad de una base de datos adicional y hereda la replicación y durabilidad de Kafka (RF=3).
+
 == API REST del Registry
 
 Apicurio Registry expone una API REST completa:

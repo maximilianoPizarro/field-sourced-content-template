@@ -1325,8 +1325,8 @@ spec:
           "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
           "targets": [
             {
-              "expr": "sum(rate(kafka_server_brokertopicmetrics_messagesinpersec_total{topic!=''}[5m])) by (topic)",
-              "legendFormat": "{{`{{topic}}`}}"
+              "expr": "sum(rate(kafka_server_brokertopicmetrics_messagesinpersec_total[5m])) by (pod)",
+              "legendFormat": "{{`{{pod}}`}}"
             }
           ],
           "fieldConfig": {

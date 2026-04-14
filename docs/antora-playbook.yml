@@ -43,6 +43,34 @@ ui:
           --color-brand-dark: #151515;
           --color-brand-blue: #0066CC;
         }
+        .body {
+          display: flex;
+        }
+        .body.has-toc .nav-container {
+          width: 220px;
+          min-width: 220px;
+          flex-shrink: 0;
+        }
+        .body .content {
+          flex: 1;
+          max-width: none !important;
+        }
+        .doc {
+          max-width: none !important;
+          margin: 0 !important;
+          padding: 1.5rem 2rem !important;
+        }
+        .article {
+          max-width: none !important;
+        }
+        .toolbar {
+          max-width: none !important;
+        }
+        .body.has-toc .toc-sidebar {
+          width: 200px;
+          min-width: 200px;
+          flex-shrink: 0;
+        }
         .navbar {
           background: var(--color-brand-dark) !important;
           border-bottom: 3px solid var(--color-brand-red);

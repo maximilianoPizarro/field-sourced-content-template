@@ -1,0 +1,21 @@
+= Step 2: View Kafka Events
+
+== Action
+
+Open the link:https://kafka-console-kafka-cdc.{cluster_domain}[Kafka Console^] and navigate to the *Topics* section.
+
+== Observable Event
+
+Browse these topics to see live CDC events:
+
+* `cdc.public.customers` — Debezium CDC events for the customers table
+* `cdc.public.orders` — Debezium CDC events for the orders table
+* `bpm.approval.requests` — BPM approval request events from SonataFlow
+* `bpm.onboarding.metrics` — Onboarding metrics from the BPM workflow
+
+Click on any message to inspect its JSON payload. Each CDC event contains:
+
+* `before` — the row state before the change (null for INSERTs)
+* `after` — the row state after the change
+* `op` — the operation type (`c` = create, `u` = update, `d` = delete)
+* `source` — metadata about the PostgreSQL source (database, table, LSN)

@@ -1,0 +1,46 @@
+- route:
+    id: cdc-customer-notification
+    from:
+      uri: kafka:${{ values.kafkaTopic }}
+      parameters:
+        brokers: ${{ values.kafkaBootstrap }}
+        groupId: camel-cdc-${{ values.name }}
+        autoOffsetReset: latest
+        valueDeserializer: org.apache.kafka.common.serialization.StringDeserializer
+    steps:
+      - log:
+          message: "CDC event received: ${body}"
+      - unmarshal:
+          json:
+            library: jackson
+      - choice:
+          when:
+            - simple: "${body[payload][op]} == 'c'"
+              steps:
+                - setBody:
+                    simple: >
+                      {
+                        "from": {"name": "CDC Pipeline", "email": "cdc@neuralbank.io"},
+                        "to": [{"name": "Admin", "email": "admin@neuralbank.io"}],
+                        "subject": "New Customer Created",
+                        "text": "Customer ${body[payload][after][first_name]} ${body[payload][after][last_name]} created."
+                      }
+          otherwise:
+            steps:
+              - setBody:
+                  simple: >
+                    {
+                      "from": {"name": "CDC Pipeline", "email": "cdc@neuralbank.io"},
+                      "to": [{"name": "Admin", "email": "admin@neuralbank.io"}],
+                      "subject": "Customer Record Changed",
+                      "text": "Change detected. Operation: ${body[payload][op]}"
+                    }
+      - marshal:
+          json:
+            library: jackson
+      - to:
+          uri: http://n8n-mailpit.openshift-lightspeed.svc:8025/api/v1/send
+          parameters:
+            httpMethod: POST
+      - log:
+          message: "Notification sent"

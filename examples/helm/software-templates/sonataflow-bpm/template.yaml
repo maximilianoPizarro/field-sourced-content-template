@@ -1,0 +1,78 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: sonataflow-bpm-workflow
+  title: "SonataFlow BPM Workflow"
+  description: "Create a SonataFlow serverless workflow with visual editor in DevSpaces"
+  tags:
+    - sonataflow
+    - bpm
+    - workflow
+    - kogito
+    - recommended
+spec:
+  owner: platform-engineering
+  type: service
+  parameters:
+    - title: Project Configuration
+      required:
+        - name
+        - owner
+      properties:
+        name:
+          title: Name
+          type: string
+          description: Unique name for the workflow project
+          ui:autofocus: true
+          default: "my-sonataflow-workflow"
+        owner:
+          title: Owner
+          type: string
+          description: Owner of the component
+          ui:field: OwnerPicker
+          ui:options:
+            allowedKinds:
+              - Group
+              - User
+        description:
+          title: Description
+          type: string
+          description: Description of the workflow
+          default: "Serverless workflow for business process automation with SonataFlow"
+  steps:
+    - id: fetch
+      name: Fetch Skeleton
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          owner: ${{ parameters.owner }}
+          description: ${{ parameters.description }}
+
+    - id: publish
+      name: Publish to Gitea
+      action: publish:gitea
+      input:
+        repoUrl: gitea-gitea.${{ steps.fetch.output.clusterDomain || 'apps.cluster-l9nhj.dynamic.redhatworkshops.io' }}?repo=${{ parameters.name }}
+        description: ${{ parameters.description }}
+        defaultBranch: main
+        repoVisibility: public
+
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: /catalog-info.yaml
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in DevSpaces
+        icon: catalog
+        url: "https://devspaces.${{ steps.fetch.output.clusterDomain || 'apps.cluster-l9nhj.dynamic.redhatworkshops.io' }}/#${{ steps.publish.output.remoteUrl }}"
+      - title: Open in catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}

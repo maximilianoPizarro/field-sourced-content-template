@@ -1,0 +1,15 @@
+site:
+  title: "Event-Driven Architecture Live"
+  start_page: event-driven-demo::index.adoc
+content:
+  sources:
+    - url: ./
+      start_path: content
+asciidoc:
+  attributes:
+    cluster_domain: "%cluster_domain%"
+    user: "%user%"
+ui:
+  bundle:
+    url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable
+    snapshot: true

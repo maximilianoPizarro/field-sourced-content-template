@@ -1,6 +1,31 @@
 = Schema Registry — Apicurio
 :navtitle: Schema Registry — Apicurio
 
+++++
+<div id="scene-apicurio" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.170.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.170.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-apicurio', {height:380, camY:10, camZ:20});
+  if(!ctx) return;
+  var reg = ThreeHelper.createNode(ctx.scene,'Apicurio Registry',0x1A73E8,0,3,0,{width:3.5});
+  var s1 = ThreeHelper.createNode(ctx.scene,'customers-value',0x4CAF50,-6,0,0,{width:3});
+  var s2 = ThreeHelper.createNode(ctx.scene,'orders-value',0x4CAF50,-2,0,-3,{width:3});
+  var s3 = ThreeHelper.createNode(ctx.scene,'approval-req',0xFF9800,2,0,-3,{width:3});
+  var s4 = ThreeHelper.createNode(ctx.scene,'onboard-metric',0xFF9800,6,0,0,{width:3});
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,reg,s1,0x4CAF50,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,reg,s2,0x4CAF50,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,reg,s3,0xFF9800,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,reg,s4,0xFF9800,{speed:0.006})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
 == ¿Qué es Apicurio Registry?
 
 https://www.apicur.io/registry/[Apicurio Registry] es un schema registry open source que almacena y gestiona esquemas de datos y APIs. Es parte del ecosistema de *Streams for Apache Kafka*.

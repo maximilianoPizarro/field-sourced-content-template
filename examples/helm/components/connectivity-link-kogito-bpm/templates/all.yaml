@@ -24,6 +24,7 @@ metadata:
     sonataflow.org/version: "1.0.0"
     argocd.argoproj.io/sync-wave: "9"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    sonataflow.org/profile: dev
   labels:
     app: customer-onboarding
     app.kubernetes.io/part-of: kogito-bpm

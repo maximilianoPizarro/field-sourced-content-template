@@ -922,7 +922,7 @@ data:
           - https://cdn.jsdelivr.net
     lightspeed:
       servers:
-        - id: qwen3-8b
+        - id: qwen25-7b-instruct
           url: http://openshift-mcp-server-helm-litellm.openshift-lightspeed.svc:4000/v1
           token: "${VLLM_API_KEY}"
       prompts:
@@ -947,7 +947,7 @@ stringData:
   VLLM_MAX_TOKENS: "4096"
   VLLM_TLS_VERIFY: "false"
   VALIDATION_PROVIDER: "vllm"
-  VALIDATION_MODEL_NAME: "qwen3-8b"
+  VALIDATION_MODEL_NAME: "qwen25-7b-instruct"
 ---
 apiVersion: rhdh.redhat.com/v1alpha3
 kind: Backstage

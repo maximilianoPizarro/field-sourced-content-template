@@ -1,0 +1,37 @@
+schemaVersion: 2.2.2
+metadata:
+  name: ${{ values.name }}
+  version: 1.0.0
+  displayName: Camel CDC Route
+  description: Apache Camel CDC route with Kaoto visual designer
+  language: yaml
+  projectType: camel
+  tags:
+    - Camel
+    - Kaoto
+    - CDC
+    - Kafka
+components:
+  - name: tools
+    container:
+      image: registry.redhat.io/devspaces/udi-rhel8:latest
+      memoryLimit: 2Gi
+      cpuLimit: "1"
+      mountSources: true
+      volumeMounts:
+        - name: m2
+          path: /home/user/.m2
+  - name: m2
+    volume:
+      size: 1Gi
+commands:
+  - id: build
+    exec:
+      component: tools
+      commandLine: "mvn package -DskipTests"
+      workingDir: ${PROJECT_SOURCE}
+  - id: run
+    exec:
+      component: tools
+      commandLine: "mvn quarkus:dev"
+      workingDir: ${PROJECT_SOURCE}

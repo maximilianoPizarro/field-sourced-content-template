@@ -89,7 +89,7 @@ metadata:
     app.kubernetes.io/part-of: cdc-demo
     app.openshift.io/runtime: camel
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: camel-cdc-processor

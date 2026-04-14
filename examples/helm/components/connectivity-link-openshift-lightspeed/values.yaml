@@ -1,4 +1,4 @@
 clusterDomain: ""
 llmApiKey: "sk-no-key"
-llmEndpoint: "https://qwen3-8b-my-first-model.apps.ocp.qvvqq.sandbox503.opentlc.com/v1"
-llmModel: "qwen3-8b"
+llmEndpoint: "https://qwen25-7b-instruct-my-first-model.apps.ocp.xbgvw.sandbox67.opentlc.com/v1"
+llmModel: "qwen25-7b-instruct"

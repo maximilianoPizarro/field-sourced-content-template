@@ -1,0 +1,48 @@
+id: customer-onboarding
+version: "1.0.0"
+specVersion: "0.8"
+name: Customer Onboarding
+description: Customer onboarding workflow triggered by CDC events
+start: ReceiveCDCEvent
+events:
+  - name: cdcCustomerEvent
+    type: cdc.public.customers
+    source: debezium/cdc
+functions:
+  - name: classifyCustomer
+    type: expression
+    operation: |
+      {tier: (if .customer.amount >= 50000 then "premium" elif .customer.amount >= 10000 then "standard" else "basic" end)}
+  - name: logEvent
+    type: custom
+    operation: sysout
+states:
+  - name: ReceiveCDCEvent
+    type: event
+    onEvents:
+      - eventRefs:
+          - cdcCustomerEvent
+        eventDataFilter:
+          data: ".payload.after"
+          toStateData: ".customer"
+    transition: ClassifyCustomer
+
+  - name: ClassifyCustomer
+    type: operation
+    actions:
+      - name: classify
+        functionRef:
+          refName: classifyCustomer
+        actionDataFilter:
+          toStateData: ".tier"
+    transition: LogResult
+
+  - name: LogResult
+    type: operation
+    actions:
+      - name: log
+        functionRef:
+          refName: logEvent
+          arguments:
+            message: "Customer classified"
+    end: true

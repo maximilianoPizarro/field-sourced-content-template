@@ -1,5 +1,36 @@
 = Streams for Apache Kafka — CDC Demo Workshop
 
+++++
+<div id="scene-index" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.170.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.170.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-index', {height:420, camX:0, camY:12, camZ:25});
+  if(!ctx) return;
+  var pg = ThreeHelper.createNode(ctx.scene,'PostgreSQL',0x336791,-10,0,0);
+  var deb = ThreeHelper.createNode(ctx.scene,'Debezium',0xE53935,-5,0,0);
+  var kf = ThreeHelper.createNode(ctx.scene,'Kafka',0x231F20,0,0,0);
+  var cam = ThreeHelper.createNode(ctx.scene,'Camel',0xF57C00,5,0,-3);
+  var mail = ThreeHelper.createNode(ctx.scene,'Mailpit',0x42A5F5,10,0,-3);
+  var sf = ThreeHelper.createNode(ctx.scene,'SonataFlow',0x0066CC,5,0,3);
+  var api = ThreeHelper.createNode(ctx.scene,'Apicurio',0x1A73E8,0,3,4);
+  var graf = ThreeHelper.createNode(ctx.scene,'Grafana',0xF46800,-5,3,4);
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,pg,deb,0x336791,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,deb,kf,0xE53935,{speed:0.01}),
+    ThreeHelper.createEdge(ctx.scene,kf,cam,0xF57C00,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,cam,mail,0x42A5F5,{speed:0.009}),
+    ThreeHelper.createEdge(ctx.scene,kf,sf,0x0066CC,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,kf,api,0x1A73E8,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,kf,graf,0xF46800,{speed:0.004})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
 image::redhat-openshift-logo.svg[Red Hat OpenShift,200,align=center]
 
 == Bienvenido al Workshop
@@ -15,110 +46,6 @@ En este workshop explorarás cómo implementar un pipeline de *Change Data Captu
 * Monitorear el pipeline con *Grafana dashboards* y *Service Mesh (Kiali)*
 * Gestionar Kafka desde *Developer Hub* con el plugin de Kafka
 * Usar *Lightspeed (MCP)* para troubleshooting del pipeline
-
-=== Arquitectura del Demo
-
-++++
-<div id="cdc-overview-3d" class="three-container"></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script>
-(function() {
-  const container = document.getElementById('cdc-overview-3d');
-  if (!container) return;
-
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setSize(container.clientWidth, container.clientHeight);
-  renderer.setClearColor(0x0a0a0a);
-  container.appendChild(renderer.domElement);
-
-  const components = [
-    { name: 'PostgreSQL', color: 0x336791, x: -6, y: 0 },
-    { name: 'Debezium', color: 0xCC0000, x: -3, y: 0 },
-    { name: 'Kafka', color: 0x231F20, x: 0, y: 0 },
-    { name: 'Camel', color: 0xF69923, x: 3, y: 0 },
-    { name: 'Mailpit', color: 0x0066CC, x: 6, y: 0 }
-  ];
-
-  const nodes = [];
-  components.forEach(c => {
-    const geo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
-    const mat = new THREE.MeshPhongMaterial({ color: c.color, transparent: true, opacity: 0.85 });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(c.x, c.y, 0);
-    scene.add(mesh);
-    nodes.push(mesh);
-
-    const canvas = document.createElement('canvas');
-    canvas.width = 256; canvas.height = 64;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 24px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(c.name, 128, 40);
-    const texture = new THREE.CanvasTexture(canvas);
-    const spriteMat = new THREE.SpriteMaterial({ map: texture });
-    const sprite = new THREE.Sprite(spriteMat);
-    sprite.position.set(c.x, -1.5, 0);
-    sprite.scale.set(3, 0.75, 1);
-    scene.add(sprite);
-  });
-
-  for (let i = 0; i < components.length - 1; i++) {
-    const points = [
-      new THREE.Vector3(components[i].x + 0.85, 0, 0),
-      new THREE.Vector3(components[i + 1].x - 0.85, 0, 0)
-    ];
-    const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
-    const lineMat = new THREE.LineBasicMaterial({ color: 0x00ff88, linewidth: 2 });
-    scene.add(new THREE.Line(lineGeo, lineMat));
-  }
-
-  const particles = [];
-  for (let i = 0; i < 30; i++) {
-    const pGeo = new THREE.SphereGeometry(0.08, 8, 8);
-    const pMat = new THREE.MeshBasicMaterial({ color: 0x00ff88 });
-    const p = new THREE.Mesh(pGeo, pMat);
-    p.position.set(-6 + Math.random() * 12, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3);
-    p.userData.speed = 0.02 + Math.random() * 0.03;
-    scene.add(p);
-    particles.push(p);
-  }
-
-  const ambientLight = new THREE.AmbientLight(0x404040, 2);
-  scene.add(ambientLight);
-  const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-  dirLight.position.set(5, 5, 5);
-  scene.add(dirLight);
-
-  camera.position.set(0, 2, 12);
-  camera.lookAt(0, 0, 0);
-
-  let time = 0;
-  function animate() {
-    requestAnimationFrame(animate);
-    time += 0.01;
-    nodes.forEach((n, i) => {
-      n.rotation.x = Math.sin(time + i) * 0.1;
-      n.rotation.y += 0.005;
-    });
-    particles.forEach(p => {
-      p.position.x += p.userData.speed;
-      if (p.position.x > 7) p.position.x = -7;
-    });
-    renderer.render(scene, camera);
-  }
-  animate();
-
-  window.addEventListener('resize', () => {
-    camera.aspect = container.clientWidth / container.clientHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(container.clientWidth, container.clientHeight);
-  });
-})();
-</script>
-++++
 
 === Componentes del Pipeline
 

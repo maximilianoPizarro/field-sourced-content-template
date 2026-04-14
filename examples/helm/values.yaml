@@ -294,6 +294,24 @@ connectivityLink:
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
+    # --- OpenShift Console Links ---
+    - id: connectivity-link-console-links
+      enabled: true
+      path: connectivity-link-console-links
+      destinationNamespace: openshift-gitops
+      syncWave: "10"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: false
+    # --- Automated Storage Cleanup ---
+    - id: connectivity-link-cleanup
+      enabled: true
+      path: connectivity-link-cleanup
+      destinationNamespace: kafka-cdc
+      syncWave: "9"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: false
 
 # ============================================================
 # Lightspeed / MCP — LLM provider config for OLS component
@@ -301,8 +319,8 @@ connectivityLink:
 # ============================================================
 lightspeed:
   llmApiKey: "sk-no-key"
-  llmEndpoint: "https://qwen3-8b-my-first-model.apps.ocp.qvvqq.sandbox503.opentlc.com/v1"
-  model: "qwen3-8b"
+  llmEndpoint: "https://qwen25-7b-instruct-my-first-model.apps.ocp.xbgvw.sandbox67.opentlc.com/v1"
+  model: "qwen25-7b-instruct"
 
 # ============================================================
 # LiteMaaS / MaaS (optional — injected by RHDP when enabled on order)
@@ -360,9 +378,9 @@ components:
     namespace: showroom
     name: showroom
     content:
-      repoUrl: "https://github.com/maximilianoPizarro/showroom-from-zero-to-hero.git"
+      repoUrl: "https://github.com/maximilianoPizarro/field-sourced-content-template.git"
       repoRef: "main"
-      antoraPlaybook: "site.yml"
+      antoraPlaybook: "showroom/site.yml"
       image: "quay.io/rhpds/showroom-content:v1.3.1"
     nookbag:
       enabled: true

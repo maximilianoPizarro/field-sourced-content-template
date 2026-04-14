@@ -1,0 +1,127 @@
+{{- $domain := .Values.clusterDomain -}}
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-showroom
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI0VFMDAwMCI+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMThjLTQuNDEgMC04LTMuNTktOC04czMuNTktOCA4LTggOCAzLjU5IDggOC0zLjU5IDgtOCA4em0tMi0xMmgydjZoLTJ6bTAtMmgydjJoLTJ6Ii8+PC9zdmc+"
+    section: "Event-Driven Architecture Live"
+  href: "https://showroom-showroom.{{ $domain }}"
+  location: ApplicationMenu
+  text: "Showroom Demo Guide"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-kafka-console
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4IiBmaWxsPSIjMjMxRjIwIj48cGF0aCBkPSJNNjQgMEMyOC43IDAgMCAyOC43IDAgNjRzMjguNyA2NCA2NCA2NCA2NC0yOC43IDY0LTY0UzkyLjMgMCA2NCAwem0wIDExNi4xYy0yOC43IDAtNTIuMS0yMy40LTUyLjEtNTIuMVMzNS4zIDExLjkgNjQgMTEuOXM1Mi4xIDIzLjQgNTIuMSA1Mi4xLTIzLjQgNTIuMS01Mi4xIDUyLjF6Ii8+PC9zdmc+"
+    section: "Event-Driven Architecture Live"
+  href: "https://kafka-console-kafka-cdc.{{ $domain }}"
+  location: ApplicationMenu
+  text: "Kafka Console"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-apicurio-registry
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzFBNzNFOCI+PHBhdGggZD0iTTE5LjM1IDEwLjA0QzE4LjY3IDYuNTkgMTUuNjQgNCA1LjI2IDRoLS4wNkMxMC45IDQgOC4yNiA1LjIyIDcgNy4yNiA0LjMgNyAyIDkuMyAyIDEyYzAgMi43NiAyLjI0IDUgNSA1aDEwYzIuMjEgMCA0LTEuNzkgNC00IDAtMi4wMy0xLjUzLTMuNzEtMy42NS0yLjk2eiIvPjwvc3ZnPg=="
+    section: "Event-Driven Architecture Live"
+  href: "https://apicurio-registry-kafka-cdc.{{ $domain }}"
+  location: ApplicationMenu
+  text: "Apicurio Registry"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-mailpit
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzQyQTVGNSI+PHBhdGggZD0iTTIwIDRINGMtMS4xIDAtMS45OS45LTEuOTkgMkwyIDEwYzAgMS4xLjkgMiAyIDJoMTZjMS4xIDAgMi0uOSAyLTJ2LTRjMC0xLjEtLjktMi0yLTJ6bTAgNEg0bDgtNSA4IDV6bTAgMTBINGMtMS4xIDAtMi0uOS0yLTJ2LThsOCA1IDgtNXY4YzAgMS4xLS45IDItMiAyeiIvPjwvc3ZnPg=="
+    section: "Event-Driven Architecture Live"
+  href: "https://n8n-mailpit-openshift-lightspeed.{{ $domain }}"
+  location: ApplicationMenu
+  text: "Mailpit (Email Testing)"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-grafana
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI0Y0NjgwMCI+PHBhdGggZD0iTTIyIDloLTR2LTJoNHYyem0tNi0ydi0ySDh2Mmg4em0tMTAgMHYtMkgzdjJoM3ptMTYgNGgtOHYtMmg4djJ6bS0xMCAwdi0ySDV2Mmg3em0tOSAwdi0ySDJ2Mmgxem0xNiA0SDR2LTJoMTV2MnptLTYgNEg2di0yaDd2MnptLTkgMEg0di0yaDR2MnoiLz48L3N2Zz4="
+    section: "Event-Driven Architecture Live"
+  href: "https://grafana-observability.{{ $domain }}"
+  location: ApplicationMenu
+  text: "Grafana Dashboards"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-sonataflow
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzAwNjZDQyI+PHBhdGggZD0iTTE0IDEyYy0xLjEgMC0yLS45LTItMnMuOS0yIDItMiAyIC45IDIgMi0uOSAyLTIgMnptLTIgNmMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6bTAtMTRjLTQuNDIgMC04IDMuNTgtOCA4czMuNTggOCA4IDggOC0zLjU4IDgtOC0zLjU4LTgtOC04eiIvPjwvc3ZnPg=="
+    section: "Event-Driven Architecture Live"
+  href: "https://customer-onboarding-kogito-bpm.{{ $domain }}"
+  location: ApplicationMenu
+  text: "SonataFlow Onboarding"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-sonataflow-devui
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzAwNjZDQyI+PHBhdGggZD0iTTE0IDEyYy0xLjEgMC0yLS45LTItMnMuOS0yIDItMiAyIC45IDIgMi0uOSAyLTIgMnptLTIgNmMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6bTAtMTRjLTQuNDIgMC04IDMuNTgtOCA4czMuNTggOCA4IDggOC0zLjU4IDgtOC0zLjU4LTgtOC04eiIvPjwvc3ZnPg=="
+    section: "Event-Driven Architecture Live"
+  href: "https://customer-onboarding-kogito-bpm.{{ $domain }}/q/dev-ui"
+  location: ApplicationMenu
+  text: "SonataFlow Dev UI"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-developer-hub
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzlCRjBFMSI+PHBhdGggZD0iTTEyIDJMMi41IDcuNWwxLjYgMS40TDEyIDE0LjRsMi41LTIuMUw5LjYgOC4xbDIuNC0yLjEgNS40IDUuMyA1LjEtNC44TDEyIDJ6bTcuOSA5LjRMMTIgMTguOGwtNy45LTcuNCAxLjYtMS40TDEyIDE1LjlsNi40LTZMMjAgMTEuNHoiLz48L3N2Zz4="
+    section: "Event-Driven Architecture Live"
+  href: "https://backstage-developer-hub-developer-hub.{{ $domain }}"
+  location: ApplicationMenu
+  text: "Developer Hub"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI0VGNzUyMSI+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMThjLTQuNDEgMC04LTMuNTktOC04czMuNTktOCA4LTggOCAzLjU5IDggOC0zLjU5IDgtOCA4em0wLTE0Yy0zLjMxIDAtNiAyLjY5LTYgNnMyLjY5IDYgNiA2IDYtMi42OSA2LTYtMi42OS02LTYtNnptMCA4Yy0xLjEgMC0yLS45LTItMnMuOS0yIDItMiAyIC45IDIgMi0uOSAyLTIgMnoiLz48L3N2Zz4="
+    section: "Event-Driven Architecture Live"
+  href: "https://openshift-gitops-server-openshift-gitops.{{ $domain }}"
+  location: ApplicationMenu
+  text: "ArgoCD"

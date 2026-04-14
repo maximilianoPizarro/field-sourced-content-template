@@ -313,3 +313,45 @@ spec:
     errors.deadletterqueue.topic.name: dlq.cdc-errors
     errors.deadletterqueue.topic.replication.factor: 3
     errors.deadletterqueue.context.headers.enable: true
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cdc-data-simulator
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+  labels:
+    app: cdc-data-simulator
+    app.kubernetes.io/part-of: cdc-demo
+spec:
+  schedule: "* * * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: cdc-data-simulator
+        spec:
+          containers:
+          - name: simulator
+            image: registry.redhat.io/rhel9/postgresql-16:latest
+            command: ["/bin/sh", "-c"]
+            args:
+            - |
+              PGPASSWORD={{ .Values.postgresql.password }} psql -h cdc-postgresql -U {{ .Values.postgresql.username }} -d {{ .Values.postgresql.database }} -c \
+              "INSERT INTO customers (first_name, last_name, email) VALUES (
+                'Demo-' || substr(md5(random()::text), 1, 6),
+                'User-' || to_char(now(), 'HH24MI'),
+                'demo-' || substr(md5(random()::text), 1, 8) || '@neuralbank.io'
+              );"
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                cpu: 50m
+                memory: 64Mi
+          restartPolicy: OnFailure

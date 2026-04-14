@@ -1,6 +1,31 @@
 = Kaoto + Apache Camel
 :navtitle: Kaoto + Apache Camel
 
+++++
+<div id="scene-camel" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.170.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.170.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-camel', {height:380, camY:8, camZ:18});
+  if(!ctx) return;
+  var src = ThreeHelper.createNode(ctx.scene,'from(kafka)',0x231F20,-8,0,0,{width:2.8});
+  var um = ThreeHelper.createNode(ctx.scene,'unmarshal',0x7B1FA2,-3,0,0,{width:2.2});
+  var tr = ThreeHelper.createNode(ctx.scene,'transform',0xF57C00,2,0,0,{width:2.2});
+  var dst = ThreeHelper.createNode(ctx.scene,'to(http)',0x42A5F5,7,0,0,{width:2.2});
+  var dlq = ThreeHelper.createNode(ctx.scene,'DLQ',0xE53935,2,3,3,{width:1.5,height:0.8});
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,src,um,0x231F20,{speed:0.01}),
+    ThreeHelper.createEdge(ctx.scene,um,tr,0x7B1FA2,{speed:0.01}),
+    ThreeHelper.createEdge(ctx.scene,tr,dst,0xF57C00,{speed:0.01}),
+    ThreeHelper.createEdge(ctx.scene,tr,dlq,0xE53935,{speed:0.004})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
 == ¿Qué es Apache Camel?
 
 https://camel.apache.org/[Apache Camel] es un framework de integración open source que implementa los Enterprise Integration Patterns (EIP). Permite conectar sistemas diversos usando una amplia biblioteca de componentes.

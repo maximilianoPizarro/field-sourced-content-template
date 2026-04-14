@@ -32,7 +32,4 @@ showroom:
 deployer:
   domain: ""
 
-# Used by userdata ConfigMap
-demo:
-  namespace: ""
-  appName: ""
+# Used by userdata ConfigMap (CDC demo variables are auto-derived from deployer.domain)

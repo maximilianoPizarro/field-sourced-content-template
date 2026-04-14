@@ -1,0 +1,7 @@
+* xref:index.adoc[Demo Overview]
+* xref:01-trigger-cdc.adoc[1. Trigger CDC Event]
+* xref:02-kafka-events.adoc[2. Kafka Events]
+* xref:03-bpm-workflow.adoc[3. BPM Workflow]
+* xref:04-schemas.adoc[4. Schema Registry]
+* xref:05-monitoring.adoc[5. Monitoring]
+* xref:06-devspaces.adoc[6. DevSpaces IDE]

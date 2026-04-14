@@ -1,0 +1,60 @@
+= Event-Driven Architecture Live
+:page-layout: home
+
+Welcome to the *Event-Driven Architecture Live* demo environment on Red Hat OpenShift.
+
+This demo showcases a complete Change Data Capture (CDC) pipeline running in real-time.
+
+== What's Running
+
+[cols="1,2,1", options="header"]
+|===
+| Component | Description | Access
+
+| PostgreSQL
+| Source database with customer data (auto-simulated every 60s)
+| Internal service
+
+| Debezium
+| CDC connector capturing WAL changes in real-time
+| link:https://kafka-console-kafka-cdc.{cluster_domain}[Kafka Console^]
+
+| Kafka (AMQ Streams)
+| 3-broker KRaft cluster with CDC topics
+| link:https://kafka-console-kafka-cdc.{cluster_domain}[Kafka Console^]
+
+| Camel CDC Processor
+| Apache Camel route transforming events to email notifications
+| Internal service
+
+| Mailpit
+| SMTP testing server receiving CDC notifications
+| link:https://n8n-mailpit-openshift-lightspeed.{cluster_domain}[Mailpit UI^]
+
+| SonataFlow
+| BPM workflow for customer onboarding
+| link:https://customer-onboarding-kogito-bpm.{cluster_domain}[Workflow API^]
+
+| Apicurio Registry
+| Schema registry with CDC event schemas
+| link:https://apicurio-registry-kafka-cdc.{cluster_domain}[Registry UI^]
+
+| Grafana
+| Observability dashboards for the CDC pipeline
+| link:https://grafana-observability.{cluster_domain}[Grafana^]
+
+| Developer Hub
+| Self-service portal with Software Templates
+| link:https://backstage-developer-hub-developer-hub.{cluster_domain}[Developer Hub^]
+|===
+
+== Demo Steps
+
+Follow each step in order. Each step has *one action* and *one observable event*.
+
+. xref:01-trigger-cdc.adoc[Trigger a CDC Event] — Insert a record, watch the pipeline react
+. xref:02-kafka-events.adoc[View Kafka Events] — See CDC messages in the Kafka Console
+. xref:03-bpm-workflow.adoc[BPM Workflow] — Observe the SonataFlow onboarding process
+. xref:04-schemas.adoc[Schema Registry] — Explore registered CDC schemas in Apicurio
+. xref:05-monitoring.adoc[Monitoring] — View the Grafana CDC pipeline dashboard
+. xref:06-devspaces.adoc[DevSpaces IDE] — Open Kaoto/SonataFlow in a cloud IDE

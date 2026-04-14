@@ -33,6 +33,12 @@ spec:
       - editor: che-incubator/che-code/latest
         plugins:
           - redhat.vscode-kaoto
+          - kie-group.swf-vscode-extension
+          - redhat.vscode-yaml
+          - redhat.vscode-xml
+          - redhat.java
+          - redhat.vscode-quarkus
+          - redhat.vscode-apache-camel
     storage:
       pvcStrategy: per-user
   gitServices: {}

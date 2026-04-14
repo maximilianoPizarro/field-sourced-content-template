@@ -1,0 +1,5 @@
+name: event-driven-demo
+title: "Event-Driven Architecture Live"
+version: "1.0"
+nav:
+  - modules/ROOT/nav.adoc

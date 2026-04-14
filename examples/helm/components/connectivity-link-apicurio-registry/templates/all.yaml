@@ -31,3 +31,120 @@ spec:
   tls:
     termination: edge
     insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: register-cdc-schemas
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      containers:
+      - name: schema-register
+        image: registry.access.redhat.com/ubi9/ubi:latest
+        command: ["/bin/bash", "-c"]
+        args:
+        - |
+          REGISTRY_URL="http://apicurio-registry-service.kafka-cdc.svc:8080/apis/registry/v2"
+
+          echo "Waiting for Apicurio Registry to be ready..."
+          for i in $(seq 1 30); do
+            if curl -sf "${REGISTRY_URL}/system/info" > /dev/null 2>&1; then
+              echo "Registry is ready"
+              break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 10
+          done
+
+          echo "=== Registering CDC schemas ==="
+
+          curl -X POST "${REGISTRY_URL}/groups/cdc/artifacts" \
+            -H "Content-Type: application/json; artifactType=JSON" \
+            -H "X-Registry-ArtifactId: cdc.public.customers-value" \
+            -d '{
+              "type": "record",
+              "name": "CustomerCDCEnvelope",
+              "doc": "Debezium CDC envelope for public.customers table",
+              "fields": [
+                {"name": "before", "type": ["null", {"type": "record", "name": "Customer", "fields": [
+                  {"name": "id", "type": "int"},
+                  {"name": "first_name", "type": "string"},
+                  {"name": "last_name", "type": "string"},
+                  {"name": "email", "type": "string"},
+                  {"name": "created_at", "type": ["null", "string"]}
+                ]}]},
+                {"name": "after", "type": ["null", "Customer"]},
+                {"name": "op", "type": "string", "doc": "c=create, u=update, d=delete"},
+                {"name": "ts_ms", "type": "long"},
+                {"name": "source", "type": {"type": "record", "name": "Source", "fields": [
+                  {"name": "db", "type": "string"},
+                  {"name": "schema", "type": "string"},
+                  {"name": "table", "type": "string"},
+                  {"name": "lsn", "type": "long"}
+                ]}}
+              ]
+            }' || true
+
+          curl -X POST "${REGISTRY_URL}/groups/cdc/artifacts" \
+            -H "Content-Type: application/json; artifactType=JSON" \
+            -H "X-Registry-ArtifactId: cdc.public.orders-value" \
+            -d '{
+              "type": "record",
+              "name": "OrderCDCEnvelope",
+              "doc": "Debezium CDC envelope for public.orders table",
+              "fields": [
+                {"name": "before", "type": ["null", {"type": "record", "name": "Order", "fields": [
+                  {"name": "id", "type": "int"},
+                  {"name": "customer_id", "type": "int"},
+                  {"name": "product", "type": "string"},
+                  {"name": "amount", "type": "string"},
+                  {"name": "status", "type": "string"},
+                  {"name": "created_at", "type": ["null", "string"]}
+                ]}]},
+                {"name": "after", "type": ["null", "Order"]},
+                {"name": "op", "type": "string"},
+                {"name": "ts_ms", "type": "long"},
+                {"name": "source", "type": "Source"}
+              ]
+            }' || true
+
+          curl -X POST "${REGISTRY_URL}/groups/bpm/artifacts" \
+            -H "Content-Type: application/json; artifactType=JSON" \
+            -H "X-Registry-ArtifactId: bpm.approval.requests-value" \
+            -d '{
+              "type": "record",
+              "name": "ApprovalRequest",
+              "doc": "BPM approval request from SonataFlow customer onboarding",
+              "fields": [
+                {"name": "customer_id", "type": "int"},
+                {"name": "name", "type": "string"},
+                {"name": "email", "type": "string"},
+                {"name": "tier", "type": "string", "doc": "premium|standard|basic"},
+                {"name": "status", "type": "string", "doc": "pending_approval|approved|rejected"}
+              ]
+            }' || true
+
+          curl -X POST "${REGISTRY_URL}/groups/bpm/artifacts" \
+            -H "Content-Type: application/json; artifactType=JSON" \
+            -H "X-Registry-ArtifactId: bpm.onboarding.metrics-value" \
+            -d '{
+              "type": "record",
+              "name": "OnboardingMetric",
+              "doc": "Onboarding completion metric from SonataFlow",
+              "fields": [
+                {"name": "event_type", "type": "string"},
+                {"name": "customer_id", "type": "int"},
+                {"name": "tier", "type": "string"},
+                {"name": "timestamp", "type": ["null", "long"]}
+              ]
+            }' || true
+
+          echo "=== Schema registration complete ==="
+      restartPolicy: OnFailure

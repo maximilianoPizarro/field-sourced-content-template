@@ -1403,3 +1403,25 @@ spec:
           annotations:
             summary: "KafkaConnect connector en estado FAILED"
             description: "Hay {{ $value }} tasks en estado FAILED en KafkaConnect"
+---
+apiVersion: monitoring.rhobs/v1
+kind: PodMonitor
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  labels:
+    k8s-app: sonataflow-metrics
+    openshift.io/user-monitoring: "true"
+  name: sonataflow-metrics
+  namespace: openshift-cluster-observability-operator
+spec:
+  namespaceSelector:
+    matchNames:
+    - kogito-bpm
+  podMetricsEndpoints:
+  - interval: 30s
+    path: /q/metrics
+    port: "8080"
+  selector:
+    matchLabels:
+      app: customer-onboarding

@@ -1,6 +1,36 @@
 = BPM con Kogito / SonataFlow
 :navtitle: BPM con Kogito
 
+++++
+<div id="scene-sonataflow" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.170.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.170.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-sonataflow', {height:400, camY:12, camZ:24});
+  if(!ctx) return;
+  var rcv = ThreeHelper.createNode(ctx.scene,'ReceiveCDC',0x231F20,-8,0,0,{width:2.8});
+  var val = ThreeHelper.createNode(ctx.scene,'Validate',0x7B1FA2,-4,0,0,{width:2.2});
+  var cls = ThreeHelper.createNode(ctx.scene,'Classify',0xF57C00,0,0,0,{width:2.2});
+  var chk = ThreeHelper.createNode(ctx.scene,'CheckApproval',0xFF9800,4,0,-2,{width:3});
+  var appr = ThreeHelper.createNode(ctx.scene,'Approval',0xE53935,8,0,-4,{width:2.2});
+  var prov = ThreeHelper.createNode(ctx.scene,'Provision',0x4CAF50,4,0,2,{width:2.2});
+  var emit = ThreeHelper.createNode(ctx.scene,'EmitMetric',0x0066CC,8,0,2,{width:2.5});
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,rcv,val,0x7B1FA2,{speed:0.01}),
+    ThreeHelper.createEdge(ctx.scene,val,cls,0xF57C00,{speed:0.01}),
+    ThreeHelper.createEdge(ctx.scene,cls,chk,0xFF9800,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,chk,appr,0xE53935,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,chk,prov,0x4CAF50,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,appr,prov,0x4CAF50,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,prov,emit,0x0066CC,{speed:0.008})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
 == Introducción
 
 https://kogito.kie.org/[Kogito] es la tecnología de automatización de procesos de negocio (BPM) cloud-native de Red Hat, basada en los proyectos Drools y jBPM. En OpenShift, la evolución moderna de Kogito es **SonataFlow** — un motor de workflows serverless que ejecuta procesos definidos en el estándar https://serverlessworkflow.io/[Serverless Workflow Specification].

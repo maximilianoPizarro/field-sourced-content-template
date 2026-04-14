@@ -1,0 +1,18 @@
+= Step 3: BPM Workflow (SonataFlow)
+
+== Action
+
+Open the link:https://customer-onboarding-kogito-bpm.{cluster_domain}/q/dev-ui[SonataFlow Dev UI^] to see the workflow management console.
+
+== Observable Event
+
+The *Customer Onboarding* workflow is triggered automatically when a CDC event arrives from Kafka:
+
+. *ReceiveCDCEvent* — Listens for `cdc.public.customers` CloudEvents
+. *ValidateCustomerData* — Validates required fields (email, name)
+. *ClassifyCustomer* — Assigns tier: Premium (≥50K), Standard (≥10K), Basic (<10K)
+. *CheckApprovalRequired* — Premium customers require manager approval (24h SLA)
+. *ProvisionAccount* — Parallel: creates account + sends welcome email
+. *EmitOnboardingMetric* — Publishes completion metrics
+
+You can see active and completed workflow instances in the Dev UI process list.

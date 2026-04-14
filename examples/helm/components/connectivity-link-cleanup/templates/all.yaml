@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: demo-cleanup-sa
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: demo-cleanup-role
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "delete"]
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["get", "list", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: demo-cleanup-binding
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: demo-cleanup-role
+subjects:
+- kind: ServiceAccount
+  name: demo-cleanup-sa
+  namespace: kafka-cdc
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: demo-storage-cleanup
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  labels:
+    app: demo-storage-cleanup
+    app.kubernetes.io/part-of: cdc-demo
+spec:
+  schedule: "0 0,15,19,22 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: demo-storage-cleanup
+        spec:
+          serviceAccountName: demo-cleanup-sa
+          containers:
+          - name: cleanup
+            image: registry.redhat.io/openshift4/ose-cli:latest
+            command: ["/bin/bash", "-c"]
+            args:
+            - |
+              echo "=== Demo Storage Cleanup - $(date) ==="
+
+              echo "--- Cleaning completed/failed pods in kafka-cdc ---"
+              oc delete pods --field-selector=status.phase==Succeeded -n kafka-cdc --ignore-not-found
+              oc delete pods --field-selector=status.phase==Failed -n kafka-cdc --ignore-not-found
+
+              echo "--- Cleaning completed/failed pods in kogito-bpm ---"
+              oc delete pods --field-selector=status.phase==Succeeded -n kogito-bpm --ignore-not-found
+              oc delete pods --field-selector=status.phase==Failed -n kogito-bpm --ignore-not-found
+
+              echo "--- Pruning completed simulator jobs ---"
+              oc delete jobs --field-selector=status.successful=1 -n kafka-cdc --ignore-not-found
+
+              echo "--- Pruning completed build jobs in kogito-bpm ---"
+              oc delete jobs --field-selector=status.successful=1 -n kogito-bpm --ignore-not-found
+
+              echo "=== Cleanup complete - $(date) ==="
+            resources:
+              requests:
+                cpu: 50m
+                memory: 64Mi
+              limits:
+                cpu: 100m
+                memory: 128Mi
+          restartPolicy: OnFailure

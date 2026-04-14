@@ -1,6 +1,33 @@
 = Observabilidad + Service Mesh
 :navtitle: Observabilidad + Service Mesh
 
+++++
+<div id="scene-grafana" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.170.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.170.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-grafana', {height:380, camY:12, camZ:22});
+  if(!ctx) return;
+  var graf = ThreeHelper.createNode(ctx.scene,'Grafana',0xF46800,0,4,0,{width:3});
+  var prom = ThreeHelper.createNode(ctx.scene,'Prometheus',0xE6522C,-5,0,0,{width:2.5});
+  var thanos = ThreeHelper.createNode(ctx.scene,'Thanos',0x6C63FF,5,0,0,{width:2.5});
+  var kf = ThreeHelper.createNode(ctx.scene,'Kafka Metrics',0x231F20,-5,-3,-3,{width:3});
+  var cam = ThreeHelper.createNode(ctx.scene,'Camel Metrics',0xF57C00,0,-3,-3,{width:3});
+  var mesh = ThreeHelper.createNode(ctx.scene,'Service Mesh',0x00BCD4,5,-3,-3,{width:3});
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,prom,graf,0xE6522C,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,thanos,graf,0x6C63FF,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,kf,prom,0x231F20,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,cam,prom,0xF57C00,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,mesh,thanos,0x00BCD4,{speed:0.008})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
 == Observabilidad del CDC Pipeline
 
 El pipeline completo está instrumentado con métricas Prometheus, dashboards Grafana y trazabilidad via Service Mesh.

@@ -214,6 +214,14 @@ spec:
     helm:
       valuesObject:
         clusterDomain: {{ $domain }}
+    {{- else if eq .path "connectivity-link-cleanup" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+    {{- else if eq .path "connectivity-link-console-links" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
     {{- else if eq .path "connectivity-link-neuralbank-stack" }}
     helm:
       valuesObject:

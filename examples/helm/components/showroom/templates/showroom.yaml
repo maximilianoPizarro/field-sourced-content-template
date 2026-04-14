@@ -90,8 +90,17 @@ data:
     cluster_domain: {{ .Values.deployer.domain }}
     user_name: '%USER_NAME%'
     user_password: '%USER_PASSWORD%'
-    demo_namespace: {{ .Values.demo.namespace }}
-    demo_app: {{ .Values.demo.appName }}
+    kafka_bootstrap: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092
+    kafka_console_url: https://kafka-console-kafka-cdc.{{ .Values.deployer.domain }}
+    apicurio_url: https://apicurio-registry-kafka-cdc.{{ .Values.deployer.domain }}
+    grafana_url: https://grafana-observability.{{ .Values.deployer.domain }}
+    mailpit_url: https://n8n-mailpit-openshift-lightspeed.{{ .Values.deployer.domain }}
+    sonataflow_url: https://customer-onboarding-kogito-bpm.{{ .Values.deployer.domain }}
+    devhub_url: https://backstage-developer-hub-developer-hub.{{ .Values.deployer.domain }}
+    devspaces_url: https://devspaces.{{ .Values.deployer.domain }}
+    postgresql_host: cdc-postgresql.kafka-cdc.svc
+    postgresql_user: cdcuser
+    postgresql_db: cdcdb
 ---
 # Showroom PVC
 apiVersion: v1

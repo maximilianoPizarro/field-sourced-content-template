@@ -1,0 +1,20 @@
+= Step 5: Monitoring (Grafana)
+
+== Action
+
+Open the link:https://grafana-observability.{cluster_domain}[Grafana^] dashboard (anonymous access enabled, Viewer role).
+
+Navigate to *Dashboards* → *Kafka CDC Pipeline*.
+
+== Observable Event
+
+The dashboard shows real-time metrics:
+
+* *Kafka Broker — Messages In/s* — Message ingestion rate by topic
+* *Bytes In/Out per Second* — Broker throughput
+* *Consumer Group Lag* — How far behind consumers are
+* *Debezium Streaming Duration* — Milliseconds since last CDC event
+* *KafkaConnect Task Status* — Number of active connectors
+* *Records Processed/s* — Sink connector processing rate
+
+All data updates automatically as the CDC simulator generates new events every 60 seconds.

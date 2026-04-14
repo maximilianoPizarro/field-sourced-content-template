@@ -9,3 +9,5 @@ spec:
     - ./neuralbank-backend/template.yaml
     - ./neuralbank-frontend/template.yaml
     - ./remove-component/template.yaml
+    - ./camel-kaoto/template.yaml
+    - ./sonataflow-bpm/template.yaml

@@ -1,0 +1,38 @@
+schemaVersion: 2.2.2
+metadata:
+  name: ${{ values.name }}
+  displayName: Kafka CDC MCP Server
+  description: MCP server for Kafka CDC pipeline with Kaoto visual designer
+  language: java
+  projectType: quarkus
+  tags: [Quarkus, MCP, Kafka, CDC]
+components:
+  - name: tools
+    container:
+      image: registry.redhat.io/devspaces/udi-rhel8:latest
+      memoryLimit: 4Gi
+      cpuLimit: 2000m
+      mountSources: true
+      volumeMounts:
+        - name: m2
+          path: /home/user/.m2
+  - name: m2
+    volume:
+      size: 2Gi
+commands:
+  - id: build
+    exec:
+      component: tools
+      commandLine: mvn clean package -DskipTests
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        kind: build
+        isDefault: true
+  - id: dev-mode
+    exec:
+      component: tools
+      commandLine: mvn quarkus:dev -Dquarkus.http.host=0.0.0.0
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        kind: run
+        isDefault: true

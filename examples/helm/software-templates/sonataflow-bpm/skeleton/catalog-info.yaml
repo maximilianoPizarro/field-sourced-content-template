@@ -7,6 +7,7 @@ metadata:
     backstage.io/kubernetes-id: ${{ values.uniqueName }}
     backstage.io/kubernetes-namespace: ${{ values.namespace }}
     backstage.io/techdocs-ref: dir:.
+    kafka.apache.org/consumer-groups: camel-k-enricher,connect-mailpit-http-sink
     janus-idp.io/tekton: ${{ values.uniqueName }}
     argocd/app-name: ${{ values.uniqueName }}
     argocd/app-namespace: openshift-gitops

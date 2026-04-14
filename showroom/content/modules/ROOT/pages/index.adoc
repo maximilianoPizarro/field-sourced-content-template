@@ -1,60 +1,102 @@
 = Event-Driven Architecture Live
 :page-layout: home
 
-Welcome to the *Event-Driven Architecture Live* demo environment on Red Hat OpenShift.
+Welcome to *Event-Driven Architecture Live* — a hands-on, real-time Change Data Capture (CDC) pipeline running on Red Hat OpenShift.
 
-This demo showcases a complete Change Data Capture (CDC) pipeline running in real-time.
+This environment wires a production-style event backbone: relational data changes are captured at the database, streamed through Apache Kafka, processed by integration and workflow services, and observed end-to-end. Use the steps below to follow the data from insert to notification and beyond.
 
-== What's Running
+== What's running
 
 [cols="1,2,1", options="header"]
 |===
-| Component | Description | Access
+| Component | Role | Access
 
 | PostgreSQL
-| Source database with customer data (auto-simulated every 60s)
-| Internal service
+| Source database with sample `customers` and `orders` data (simulated inserts on a schedule)
+| Cluster-internal service (`cdc-postgresql` in `kafka-cdc`)
 
 | Debezium
-| CDC connector capturing WAL changes in real-time
+| PostgreSQL CDC connector reading the logical replication stream (WAL) and publishing change events
+| Managed via Kafka Connect; inspect tasks in link:https://kafka-console-kafka-cdc.{cluster_domain}[Kafka Console^]
+
+| Kafka (AMQ Streams / Strimzi)
+| Durable log for CDC topics, DLQs, and Connect internal topics
 | link:https://kafka-console-kafka-cdc.{cluster_domain}[Kafka Console^]
 
-| Kafka (AMQ Streams)
-| 3-broker KRaft cluster with CDC topics
-| link:https://kafka-console-kafka-cdc.{cluster_domain}[Kafka Console^]
-
-| Camel CDC Processor
-| Apache Camel route transforming events to email notifications
-| Internal service
+| Apache Camel
+| Integration routes that transform and route events (e.g. notifications, side effects)
+| Routes run in the Camel CDC workload; topics visible in the console
 
 | Mailpit
-| SMTP testing server receiving CDC notifications
+| SMTP capture UI for HTTP sink notifications from the pipeline
 | link:https://n8n-mailpit-openshift-lightspeed.{cluster_domain}[Mailpit UI^]
 
-| SonataFlow
-| BPM workflow for customer onboarding
+| SonataFlow (Kogito BPM)
+| BPMN-driven workflow (e.g. customer onboarding) consuming pipeline events
 | link:https://customer-onboarding-kogito-bpm.{cluster_domain}[Workflow API^]
 
 | Apicurio Registry
-| Schema registry with CDC event schemas
+| Schema registry for JSON/Avro-style artifacts and API metadata
 | link:https://apicurio-registry-kafka-cdc.{cluster_domain}[Registry UI^]
 
 | Grafana
-| Observability dashboards for the CDC pipeline
+| Dashboards and metrics for brokers, Connect, and pipeline health
 | link:https://grafana-observability.{cluster_domain}[Grafana^]
 
-| Developer Hub
-| Self-service portal with Software Templates
+| Red Hat Developer Hub
+| Self-service portal, software templates, and golden paths
 | link:https://backstage-developer-hub-developer-hub.{cluster_domain}[Developer Hub^]
 |===
 
-== Demo Steps
+== Demo steps
 
-Follow each step in order. Each step has *one action* and *one observable event*.
+Work through the guides in order. Each page focuses on one slice of the platform so you can see cause and effect clearly.
 
-. xref:01-trigger-cdc.adoc[Trigger a CDC Event] — Insert a record, watch the pipeline react
-. xref:02-kafka-events.adoc[View Kafka Events] — See CDC messages in the Kafka Console
-. xref:03-bpm-workflow.adoc[BPM Workflow] — Observe the SonataFlow onboarding process
-. xref:04-schemas.adoc[Schema Registry] — Explore registered CDC schemas in Apicurio
-. xref:05-monitoring.adoc[Monitoring] — View the Grafana CDC pipeline dashboard
-. xref:06-devspaces.adoc[DevSpaces IDE] — Open Kaoto/SonataFlow in a cloud IDE
+. xref:01-architecture.adoc[Architecture & Components] — End-to-end flow, partitions, Connect, retention
+. xref:02-trigger-cdc.adoc[Trigger a CDC event] — Drive the database and watch the pipeline react
+. xref:03-kafka-events.adoc[Kafka & partitions] — Topics, ordering, and the Kafka Console
+. xref:04-schemas.adoc[Schema Registry] — Schemas and compatibility in Apicurio
+. xref:05-bpm-workflow.adoc[BPM workflow] — SonataFlow and business process automation
+. xref:06-monitoring.adoc[Observability] — Grafana and pipeline metrics
+. xref:07-security.adoc[Security & governance] — AuthN/Z and operational guardrails
+. xref:08-reliability.adoc[Reliability & DRP] — Resilience patterns and recovery
+. xref:09-operations.adoc[Operations] — Day-2 tasks for the demo stack
+. xref:10-devspaces.adoc[Self-service IDE] — Cloud IDE and developer experience
+
+== Terminal
+
+The showroom embeds a *terminal* panel so you can run `oc`, `kubectl`, and other CLI tools without leaving the guide.
+
+* Open the embedded terminal from the showroom chrome (path: `/terminal/`). It appears on the *right* side of the showroom layout.
+* Use it to inspect namespaces (for example `kafka-cdc`), follow pod logs, port-forward services, or verify routes — while keeping the documentation and UIs open beside you.
+
+== Kafka cluster (high level)
+
+The Strimzi `Kafka` custom resource defines the brokers, listeners, and replication settings used by this demo. The snippet below illustrates the shape of the cluster definition (version and storage may match your deployed release).
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: cdc-cluster
+  namespace: kafka-cdc
+spec:
+  kafka:
+    version: 3.7.0
+    replicas: 3
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+    storage:
+      type: persistent-claim
+      size: 10Gi
+      deleteClaim: false
+    config:
+      offsets.topic.replication.factor: 3
+      transaction.state.log.replication.factor: 3
+      default.replication.factor: 3
+      min.insync.replicas: 2
+----

@@ -1,0 +1,63 @@
+= Step 1: Trigger a CDC Event
+
+== Action
+
+Run this SQL `INSERT` from a shell with network access to the cluster (embedded showroom terminal, or your workstation with `oc`/`kubectl` port-forward as needed):
+
+[source,bash,subs=attributes+]
+----
+PGPASSWORD=cdc-demo-2024 psql -h cdc-postgresql.kafka-cdc.svc -U cdcuser -d cdcdb -c \
+"INSERT INTO customers (first_name, last_name, email) VALUES ('Demo', 'User', 'demo-test-$(date +%s)@neuralbank.io');"
+----
+
+TIP: A CronJob (`cdc-data-simulator`) already inserts new customers on a schedule. You can also wait and observe the pipeline without running the command.
+
+== How CDC Works
+
+Debezium runs as a Kafka Connect *source* connector. It reads PostgreSQL logical decoding (WAL) via `pgoutput`, serializes row changes, and publishes them to Kafka topics under a configurable prefix.
+
+The Strimzi `KafkaConnector` custom resource binds that connector class to your Connect cluster (`cdc-connect`):
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnector
+metadata:
+  name: debezium-postgresql-source
+  labels:
+    strimzi.io/cluster: cdc-connect
+spec:
+  class: io.debezium.connector.postgresql.PostgresConnector
+  tasksMax: 1
+  config:
+    database.hostname: cdc-postgresql
+    database.port: "5432"
+    database.user: cdcuser
+    database.password: cdc-demo-2024
+    database.dbname: cdcdb
+    topic.prefix: cdc
+    plugin.name: pgoutput
+    slot.name: debezium_slot
+    publication.name: dbz_publication
+    table.include.list: public.customers,public.orders
+----
+
+Check connector health and task state from the CLI:
+
+[source,bash]
+----
+oc get kafkaconnector debezium-postgresql-source -n kafka-cdc -o wide
+oc describe kafkaconnector debezium-postgresql-source -n kafka-cdc
+----
+
+Look for `RUNNING` tasks and no `FAILED` state. The `describe` output surfaces connector-level errors (for example DB auth, replication slot, or publication mismatches).
+
+== Observable Event
+
+Use these UIs together to follow one logical change end to end:
+
+* link:https://n8n-mailpit-openshift-lightspeed.{cluster_domain}[Mailpit^] — After the integration path runs, expect a notification message for the new customer (subject/body depends on the Camel HTTP sink configuration).
+* link:https://kafka-console-kafka-cdc.{cluster_domain}[Kafka Console^] — Open *Topics* → `cdc.public.customers` (and related topics). Inspect a record: Debezium envelopes include `before`, `after`, `op`, and `source` metadata.
+* *What to look for* — A fresh message whose `after` payload matches your insert (names, email), `op` reflecting create/update, and `source.table` pointing at `customers` (or `orders` when you change that table).
+
+The CDC pipeline typically: captures the WAL change → publishes to Kafka → downstream routes and workflows react (Camel, SonataFlow) — all visible in the console and Mailpit within seconds.

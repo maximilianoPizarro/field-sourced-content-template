@@ -125,3 +125,17 @@ spec:
   href: "https://openshift-gitops-server-openshift-gitops.{{ $domain }}"
   location: ApplicationMenu
   text: "ArgoCD"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-workshop-registration
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI0VFMDAwMCI+PHBhdGggZD0iTTE1IDEyYy0yLjIxIDAtNC0xLjc5LTQtNHMxLjc5LTQgNC00IDQgMS43OSA0IDQtMS43OSA0LTQgNHptLTktMmMtMS42NiAwLTMtMS4zNC0zLTNzMS4zNC0zIDMtMyAzIDEuMzQgMyAzLTEuMzQgMy0zIDN6bTkgNGMtMi42NyAwLTggMS4zNC04IDR2MmgxNnYtMmMwLTIuNjYtNS4zMy00LTgtNHptLTktMmMtMi4wNyAwLTYgMS4wMy02IDN2Mmgzdi0yYzAtLjkuMzMtMS43My44OS0yLjQzQzQuNDYgMTQuODkgMyAxNS4yMyAzIDE1LjV2Mmgzdi0yLjA5eiIvPjwvc3ZnPg=="
+    section: "Event-Driven Architecture Live"
+  href: "https://workshop-registration.{{ $domain }}"
+  location: ApplicationMenu
+  text: "Demo Registration"

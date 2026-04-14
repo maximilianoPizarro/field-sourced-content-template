@@ -1,20 +1,64 @@
-= Step 4: Schema Registry (Apicurio)
+= Step 3: Schema Registry
 
-== Action
+== Apicurio Registry UI
 
-Open the link:https://apicurio-registry-kafka-cdc.{cluster_domain}[Apicurio Registry^] and browse the registered artifacts.
+Open link:https://apicurio-registry-kafka-cdc.{cluster_domain}[Apicurio Registry^] to browse artifacts, versions, and compatibility settings.
 
-== Observable Event
+Registered artifacts in this demo typically include:
 
-You should see these registered schemas:
-
-* `cdc.public.customers-value` — Debezium envelope schema for customer CDC events
-* `cdc.public.orders-value` — Debezium envelope schema for order CDC events
-* `bpm.approval.requests-value` — BPM approval request schema
+* `cdc.public.customers-value` — Debezium envelope for customer table events
+* `cdc.public.orders-value` — Debezium envelope for order table events
+* `bpm.approval.requests-value` — BPM approval payload schema (when published)
 * `bpm.onboarding.metrics-value` — Onboarding metrics schema
 
-Each schema documents the exact structure of events flowing through the pipeline, enabling:
+Exact names may include group IDs or content-hash suffixes depending on SerDes configuration; search by artifact name or topic in the UI.
 
-* Schema validation at produce/consume time
-* Schema evolution with compatibility checks
-* Contract-first API development
+== Example customer CDC event (JSON Schema)
+
+Debezium emits a structured envelope. A simplified JSON Schema illustrating the *shape* of a customer change value (your registry may store Avro or JSON Schema variants):
+
+[source,yaml]
+----
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: CustomerCDCEnvelope
+type: object
+properties:
+  before:
+    type: ["object", "null"]
+    description: Row before change; null on insert
+  after:
+    type: ["object", "null"]
+    properties:
+      id: { type: integer }
+      first_name: { type: string }
+      last_name: { type: string }
+      email: { type: string, format: email }
+  op:
+    type: string
+    enum: [c, u, d, r]
+    description: c=create u=update d=delete r=read/snapshot
+  source:
+    type: object
+    properties:
+      version: { type: string }
+      connector: { type: string }
+      name: { type: string }
+      ts_ms: { type: integer }
+      db: { type: string }
+      schema: { type: string }
+      table: { type: string }
+      lsn: { type: integer }
+required: [op, source]
+----
+
+The live artifact in Apicurio will be more detailed (full Debezium field list, logical types, and optional tombstone handling).
+
+== Schema evolution and compatibility
+
+* *Backward compatibility* — New consumers read old data. Adding optional fields is usually safe.
+* *Forward compatibility* — Old consumers read new data. Avoid removing or retyping fields without a migration plan.
+* *Full compatibility* — Both directions; strongest guardrail for shared topics.
+
+In Apicurio, global or per-artifact compatibility policies (for example `BACKWARD`, `FORWARD`, `FULL`) reject incompatible version bumps at registration time. That keeps producers and consumers aligned when CDC shapes evolve with table migrations.
+
+For CDC, coordinate database migrations (new columns, nullability) with schema registration so Kafka Connect and downstream services stay compatible.

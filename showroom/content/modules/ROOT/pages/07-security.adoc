@@ -1,0 +1,3 @@
+= Security & Governance
+
+This demo runs on OpenShift with platform-level controls (namespaces, NetworkPolicies, Routes with TLS) and workload identity for Kafka (SCRAM users, TLS to brokers). Use this section in workshops to discuss least privilege for connectors, secret rotation, schema compatibility policies in Apicurio, and audit requirements — aligned with how the Helm-managed stack is deployed in `kafka-cdc` and adjacent namespaces.

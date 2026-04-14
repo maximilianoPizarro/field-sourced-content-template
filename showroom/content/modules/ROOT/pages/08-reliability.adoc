@@ -1,0 +1,3 @@
+= Reliability & Disaster Recovery
+
+Kafka brokers and ZooKeeper/KRaft components in this environment use persistent storage and replication settings tuned for fault tolerance (for example `min.insync.replicas` and topic replication factors). PodDisruptionBudgets and multiple Connect replicas allow rolling maintenance. For disaster recovery discussions, pair this demo with backup/restore strategies for persistent volumes, metadata stores, and off-cluster replication of critical topics.

@@ -1,0 +1,87 @@
+= Step 5: Observability
+
+== Grafana dashboard
+
+Open link:https://grafana-observability.{cluster_domain}[Grafana^] (anonymous access is typically enabled with Viewer permissions).
+
+Navigate to *Dashboards* → *Kafka CDC Pipeline* (or search for `kafka-cdc-pipeline`) to see broker, Connect, and pipeline panels in one place.
+
+== Metrics you can rely on
+
+* *Broker throughput* — Bytes in/out per second and message rates show whether the cluster keeps up with producers (including Connect).
+* *Consumer lag* — Per-group, per-partition lag highlights slow or stuck consumers before data grows stale.
+* *Kafka Connect status* — Connector and task metrics (running, failed, paused) surface misconfiguration or resource pressure alongside Debezium-specific signals when exported.
+
+These align with day-2 checks: saturation (throughput), backlog (lag), and control-plane health (Connect tasks).
+
+== PodMonitor (Kafka / workflow workloads)
+
+User-workload monitoring can scrape pods via a `PodMonitor`. Example for SonataFlow pods in `kogito-bpm` (paths and labels must match your `Service`/`Deployment`):
+
+[source,yaml]
+----
+apiVersion: monitoring.rhobs/v1
+kind: PodMonitor
+metadata:
+  name: sonataflow-metrics
+  namespace: openshift-cluster-observability-operator
+  labels:
+    k8s-app: sonataflow-metrics
+    openshift.io/user-monitoring: "true"
+spec:
+  namespaceSelector:
+    matchNames:
+      - kogito-bpm
+  podMetricsEndpoints:
+    - interval: 30s
+      path: /q/metrics
+      port: "8080"
+  selector:
+    matchLabels:
+      app: customer-onboarding
+----
+
+Strimzi often exposes Kafka and Connect metrics via JMX or dedicated ports; your cluster may ship additional `PodMonitor` objects for brokers and Connect.
+
+== PrometheusRule alerts
+
+Alerting rules turn metric thresholds into pages or tickets. Illustrative rules for lag and Connect health:
+
+[source,yaml]
+----
+apiVersion: monitoring.rhobs/v1
+kind: PrometheusRule
+metadata:
+  name: kafka-cdc-alerts
+  namespace: openshift-cluster-observability-operator
+  labels:
+    openshift.io/user-monitoring: "true"
+spec:
+  groups:
+    - name: kafka-cdc
+      rules:
+        - alert: KafkaConsumerLagHigh
+          expr: kafka_consumergroup_lag > 1000
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High consumer lag"
+            description: "Consumer lag exceeded threshold; inspect group, topic, and partition labels on the alert."
+        - alert: KafkaConnectTaskFailed
+          expr: kafka_connect_worker_connector_failed_task_count > 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Kafka Connect task failed"
+            description: "One or more connector tasks are in FAILED state."
+----
+
+Tune `expr` thresholds to your SLOs and label set (metric names vary with exporter version).
+
+== Stream analytics capabilities
+
+Beyond dashboards, the platform supports *stream analytics* patterns: consume Kafka topics with stateful processing (windows, joins, aggregations), emit derived topics, and feed ML or rules engines. On OpenShift this often pairs AMQ Streams with stream-processing runtimes (for example Apache Flink, Kafka Streams, or managed offerings) and the same observability stack for lag- and throughput-aware operations.
+
+Use lag metrics and consumer-group inspection from xref:03-kafka-events.adoc[Step 2] together with Grafana to validate that analytical jobs keep pace with CDC volume.

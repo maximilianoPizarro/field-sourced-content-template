@@ -1,0 +1,63 @@
+= Step 2: Kafka & Partitions
+
+== Viewing topics in Kafka Console
+
+Open link:https://kafka-console-kafka-cdc.{cluster_domain}[Kafka Console^] and go to *Topics*.
+
+Browse live CDC and integration topics, for example:
+
+* `cdc.public.customers` — Debezium events for `customers`
+* `cdc.public.orders` — Debezium events for `orders`
+* `bpm.approval.requests` — Approval requests from SonataFlow (when used in the flow)
+* `bpm.onboarding.metrics` — Onboarding metrics events
+
+Select a topic, open a partition, and click a message to inspect JSON. CDC envelopes include:
+
+* `before` — prior row state (often `null` on `INSERT`)
+* `after` — row state after the change
+* `op` — `c` create, `u` update, `d` delete, `r` read/snapshot
+* `source` — database, table, LSN, and connector metadata
+
+== Partition design
+
+Partitions split a topic’s write load and allow parallel consumers. Strimzi models topics with the `KafkaTopic` CR (cluster label must match your `Kafka` resource name):
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: cdc.public.customers
+  namespace: kafka-cdc
+  labels:
+    strimzi.io/cluster: cdc-cluster
+spec:
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: 604800000
+    cleanup.policy: compact
+----
+
+Higher partition counts increase parallelism but also operational surface area (more leadership elections, more consumer coordination). CDC keys often follow primary keys so related updates stay ordered *per key* within a partition.
+
+== Consumer groups
+
+List consumer groups against the in-cluster bootstrap address (from a pod that already has Kafka binaries, such as a broker):
+
+[source,bash]
+----
+oc exec -n kafka-cdc cdc-cluster-broker-0 -- bin/kafka-consumer-groups.sh \
+  --bootstrap-server localhost:9092 --list
+----
+
+For a specific group, add `--describe --group <name>` to see lag per partition. Lag shows how far behind processing is — useful when tuning consumers or investigating backpressure.
+
+== List topics from the broker pod
+
+Confirm topic names and replication from the broker (matches the console, useful when debugging ACLs or typos):
+
+[source,bash]
+----
+oc exec -n kafka-cdc cdc-cluster-broker-0 -- bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+----

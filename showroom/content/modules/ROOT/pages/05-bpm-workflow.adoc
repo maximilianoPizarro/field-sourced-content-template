@@ -1,0 +1,72 @@
+= Step 4: BPM Workflow
+
+== SonataFlow Swagger UI
+
+Explore REST operations exposed by the workflow service (health, metadata, and any generated APIs) in Swagger UI:
+
+link:https://customer-onboarding-kogito-bpm.{cluster_domain}/q/swagger-ui[SonataFlow Swagger UI^]
+
+For interactive process debugging and instance inspection, the Quarkus Dev UI remains useful: link:https://customer-onboarding-kogito-bpm.{cluster_domain}/q/dev-ui[SonataFlow Dev UI^].
+
+== SonataFlow custom resource
+
+The *Customer Onboarding* workflow is declared as a `SonataFlow` CR. The following illustrates the resource shape (events and start state); the deployed manifest in Git contains the full `states` graph.
+
+[source,yaml]
+----
+apiVersion: sonataflow.org/v1alpha08
+kind: SonataFlow
+metadata:
+  name: customer-onboarding
+  namespace: kogito-bpm
+  labels:
+    app: customer-onboarding
+    app.kubernetes.io/part-of: kogito-bpm
+spec:
+  flow:
+    start: ReceiveCDCEvent
+    events:
+      - name: cdcCustomerEvent
+        type: cdc.public.customers
+        source: debezium/cdc
+      - name: approvalCompleted
+        type: approval.completed
+        source: internal
+    functions:
+      - name: classifyCustomer
+        type: expression
+        operation: |
+          {tier: (if .customer.amount >= 50000 then "premium" elif .customer.amount >= 10000 then "standard" else "basic" end)}
+    states:
+      - name: ReceiveCDCEvent
+        type: event
+        onEvents:
+          - eventRefs:
+              - cdcCustomerEvent
+            eventDataFilter:
+              data: ".payload.after"
+              toStateData: ".customer"
+        transition: ValidateCustomerData
+      # ... additional states: validation, classification, approval, provisioning, metrics
+----
+
+== Workflow steps (high level)
+
+. *ReceiveCDCEvent* — Consumes CloudEvents from `cdc.public.customers` (Debezium payload in the event body).
+. *ValidateCustomerData* — Ensures required fields (for example email, name) are present.
+. *ClassifyCustomer* — Derives tier (for example basic / standard / premium) from business data.
+. *CheckApprovalRequired* — Routes premium flows through approval when configured.
+. *RequestManagerApproval* — Publishes approval requests and waits for callback events when applicable.
+. *ProvisionAccount* — Parallel work such as account creation and welcome notifications.
+. *EmitOnboardingMetric* — Publishes completion metrics to `bpm.onboarding.metrics`.
+
+== Workflow health
+
+Verify the workload is live:
+
+[source,bash,subs=attributes+]
+----
+curl -sS "https://customer-onboarding-kogito-bpm.{cluster_domain}/q/health" | jq .
+----
+
+If `jq` is unavailable, omit the pipe. Expect HTTP 200 with UP status for liveness/readiness when the pod is ready.

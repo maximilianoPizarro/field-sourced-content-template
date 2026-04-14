@@ -8,9 +8,48 @@ content:
       start_path: showroom/content
 asciidoc:
   attributes:
-    cluster_domain: "%cluster_domain%"
+    cluster_domain: "apps.cluster-l9nhj.dynamic.redhatworkshops.io"
     user: "%user%"
 ui:
   bundle:
     url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable
     snapshot: true
+  supplemental_files:
+    - path: partials/header-content.hbs
+      contents: |
+        <button class="navbar-burger" data-target="topbar-nav">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <a class="navbar-item" href="{{or siteRootPath (or site.url '/')}}">Event-Driven Architecture Live</a>
+    - path: partials/toolbar.hbs
+      contents: ""
+    - path: css/extra.css
+      contents: |
+        :root {
+          --color-brand-red: #CC0000;
+          --color-brand-dark: #151515;
+          --color-brand-blue: #0066CC;
+        }
+        .navbar {
+          background: var(--color-brand-dark) !important;
+          border-bottom: 3px solid var(--color-brand-red);
+        }
+        .navbar .navbar-brand, .navbar .navbar-item {
+          color: #fff !important;
+          font-weight: 700;
+        }
+        .nav-panel-menu .nav-link.is-current-page {
+          border-left: 3px solid var(--color-brand-red);
+          font-weight: 700;
+        }
+        .doc a { color: var(--color-brand-blue); }
+        .doc th { background: var(--color-brand-dark); color: #fff; }
+        pre.highlight code { font-size: 0.85rem; }
+        @media (max-width: 768px) {
+          .nav-container { display: none; }
+          .doc { padding: 0.5rem; }
+          .doc table { display: block; overflow-x: auto; }
+          .doc pre { font-size: 0.75rem; overflow-x: auto; }
+        }

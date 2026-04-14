@@ -1,0 +1,129 @@
+= Architecture & Components
+
+This page maps the demo’s moving parts: how change events leave PostgreSQL, land in Kafka, and fan out to integration, workflow, and notification paths — with the same YAML shapes shipped in the Helm charts (`connectivity-link-kafka`, `connectivity-link-cdc-demo`, and related components).
+
+== CDC pipeline flow
+
+Data flows through the stack in one direction, with side effects observable at each hop:
+
+PostgreSQL::
+Logical decoding (`pgoutput`) exposes inserts/updates/deletes from the `customers` and `orders` tables. A publication and replication slot feed the connector.
+
+Debezium (Kafka Connect source connector)::
+Reads the WAL stream and emits Debezium envelope records to Kafka topics prefixed with `cdc`.
+
+Kafka (Strimzi)::
+Brokers durably store topics with replication across the cluster; ordering is per partition.
+
+Downstream consumers::
+Integration (Apache Camel routes), workflow (SonataFlow / Kogito), and sinks (for example the HTTP sink toward Mailpit) consume from the same event log. APIs and UIs sit behind OpenShift Routes for human verification.
+
+Mailpit / APIs::
+The HTTP sink posts notification payloads to Mailpit’s API for demo visibility; production systems would swap this for enterprise notification or ticketing endpoints.
+
+Together: *PostgreSQL → Debezium → Kafka → Camel / SonataFlow → Mailpit (or REST APIs)*.
+
+== Partition design
+
+CDC topics are declared with three partitions and a replication factor of three so you can demonstrate parallelism, fault tolerance, and key-based ordering (within a partition). This matches `KafkaTopic` resources in the Kafka chart.
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: cdc.public.customers
+  namespace: kafka-cdc
+  labels:
+    strimzi.io/cluster: cdc-cluster
+spec:
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: 604800000
+    cleanup.policy: compact
+----
+
+Companion topics such as `cdc.public.orders` follow the same partition and replica counts for consistent throughput and operational symmetry.
+
+== Consumer groups and scalability
+
+*Kafka consumer groups* assign each partition to at most one consumer in the group at a time. Adding consumers scales read throughput until you hit the partition count; removing consumers triggers rebalance.
+
+For *Kafka Connect*, horizontal scale is expressed as Connect `replicas`: each replica runs connector tasks; Debezium typically uses `tasksMax: 1` for a single logical table set, while sink connectors can scale tasks with topic partitions.
+
+The CDC demo chart runs two Connect replicas for resilience and rolling updates:
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnect
+metadata:
+  name: cdc-connect
+  namespace: kafka-cdc
+  annotations:
+    strimzi.io/use-connector-resources: "true"
+spec:
+  version: "4.0.0"
+  replicas: 2
+  bootstrapServers: cdc-cluster-kafka-bootstrap:9093
+  authentication:
+    type: scram-sha-512
+    username: cdc-user
+    passwordSecret:
+      secretName: cdc-user
+      password: password
+  tls:
+    trustedCertificates:
+      - secretName: cdc-cluster-cluster-ca-cert
+        certificate: ca.crt
+----
+
+== Offset management and checkpoints
+
+Application consumers (Camel, Kogito, microservices) use Kafka client settings such as `auto.offset.reset` (where to start if no committed offset exists: `earliest`, `latest`, or `none`) and `enable.auto.commit` (whether offsets commit periodically vs. manual commit for exactly-once or at-least-once semantics).
+
+*Kafka Connect* does not use those client properties for connector offsets in the same way. Instead, the Connect cluster persists connector and task offsets, configuration, and status in internal Kafka topics (`group.id`, `offset.storage.topic`, etc.). That is the checkpoint mechanism you operate in production: offsets survive pod restarts as long as the topics exist and ACLs allow.
+
+The Helm template configures distributed storage topics and JSON converters:
+
+[source,yaml]
+----
+spec:
+  config:
+    group.id: cdc-connect-cluster
+    offset.storage.topic: cdc-connect-offsets
+    config.storage.topic: cdc-connect-configs
+    status.storage.topic: cdc-connect-status
+    offset.storage.replication.factor: 3
+    config.storage.replication.factor: 3
+    status.storage.replication.factor: 3
+    key.converter: org.apache.kafka.connect.json.JsonConverter
+    value.converter: org.apache.kafka.connect.json.JsonConverter
+    key.converter.schemas.enable: true
+    value.converter.schemas.enable: true
+----
+
+Debezium’s PostgreSQL connector adds its own snapshot and offset state on top of this Connect framework — recovery after failure resumes from the last committed offset stored in these internal topics.
+
+== Retention and reprocessing
+
+Topic-level `retention.ms` controls how long Kafka retains messages before compaction or deletion policies apply. Seven days (`604800000` ms) is a common starting point for reprocessing windows and forensic replay without unbounded storage growth.
+
+[source,yaml]
+----
+spec:
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: 604800000
+    cleanup.policy: compact
+----
+
+Dead-letter topics in the chart may use longer retention (for example `2592000000` ms) so failed records remain available for inspection. Reprocessing means resetting offsets or replaying from an earlier timestamp — feasible only while data still falls inside the retention window.
+
+== Enterprise example: oil and gas
+
+The same pattern appears in energy operations: *field sensors and SCADA-adjacent systems* land operational data in relational stores; CDC propagates *pressure, flow, and equipment state* to a central event bus. Downstream analytics correlate *well performance*, *pipeline integrity*, and *production accounting* in real time. BPM workflows orchestrate *work orders*, *alarms*, and *regulatory reporting* when thresholds breach.
+
+Kafka’s partitions isolate high-volume pads or regions; consumer groups scale processing as new assets onboard; retention policies bound storage while allowing replay after incidents. Governance (schemas, lineage) and observability (metrics, traces) match what you exercise in this demo — only the domain payloads change.

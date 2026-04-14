@@ -1,0 +1,3 @@
+= Operations
+
+Day-2 operations for this stack include monitoring connector task state, lag on consumer groups, and broker health via Grafana and the Kafka Console. Argo CD (when used) surfaces sync status for the Helm charts under `examples/helm/components/connectivity-link-kafka` and `connectivity-link-cdc-demo`. Use the embedded showroom terminal (`/terminal/`) to follow logs, describe workloads, and validate routes during live sessions.

@@ -1,0 +1,61 @@
+= Step 9: Self-Service IDE
+
+== Developer Hub
+
+Open link:https://backstage-developer-hub-developer-hub.{cluster_domain}[Red Hat Developer Hub^] for software templates, documentation, and golden paths into this demo stack.
+
+Use *Create…* to scaffold repositories and open them in OpenShift Dev Spaces (or compatible editors) with opinionated tooling.
+
+== Software templates
+
+Templates exposed in this environment commonly include:
+
+* *Camel Kaoto* — Visual editing for Apache Camel routes integrated with Kaoto.
+* *SonataFlow BPM* — Serverless Workflow projects with SonataFlow/Kogito tooling.
+* *Kafka CDC MCP* — Template path that combines Kafka/CDC context with MCP-assisted workflows (naming may vary per catalog).
+* *K8s Ops MCP* — Kubernetes operations patterns with MCP-assisted automation (naming may vary per catalog).
+
+Exact titles depend on the catalog configured in Developer Hub; search the template list if labels differ slightly.
+
+== Devfile example
+
+A minimal `devfile` can pin the stack image, resource limits, and starter commands:
+
+[source,yaml]
+----
+schemaVersion: 2.2.2
+metadata:
+  name: cdc-demo-workspace
+  displayName: CDC Demo Workspace
+components:
+  - name: tools
+    container:
+      image: registry.redhat.io/devspaces/udi-rhel8:latest
+      memoryLimit: 2Gi
+      cpuLimit: "1"
+      mountSources: true
+commands:
+  - id: build
+    exec:
+      component: tools
+      commandLine: "mvn package -DskipTests"
+      workingDir: ${PROJECT_SOURCE}
+  - id: run
+    exec:
+      component: tools
+      commandLine: "mvn quarkus:dev"
+      workingDir: ${PROJECT_SOURCE}
+----
+
+Adjust images and commands to match your template (Node, Quarkus, or SonataFlow-specific devfiles).
+
+== Pre-configured extensions
+
+Workspaces launched from these templates typically bundle editor extensions such as:
+
+* YAML and Kubernetes manifest support (validation, snippets)
+* Quarkus and Java tooling where applicable
+* Kaoto for Camel route visualization
+* SonataFlow or workflow editors when the template targets BPM
+
+The exact set is defined in the Dev Spaces `DevWorkspace` / devfile for each template; verify in the workspace *Extensions* view after launch.

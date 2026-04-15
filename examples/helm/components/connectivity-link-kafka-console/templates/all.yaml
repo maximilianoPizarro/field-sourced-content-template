@@ -12,3 +12,37 @@ spec:
     - name: cdc-cluster
       namespace: kafka-cdc
       listener: plain
+  kafkaConnectClusters:
+    - name: cdc-connect
+      namespace: kafka-cdc
+      url: http://cdc-connect-connect-api.kafka-cdc.svc:8083
+      kafkaClusters:
+        - kafka-cdc/cdc-cluster
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kafka-console-connect-access
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+rules:
+  - apiGroups: ["kafka.strimzi.io"]
+    resources: ["kafkaconnects", "kafkaconnectors"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kafka-console-connect-access
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+subjects:
+  - kind: ServiceAccount
+    name: kafka-console-console-serviceaccount
+    namespace: kafka-cdc
+roleRef:
+  kind: Role
+  name: kafka-console-connect-access
+  apiGroup: rbac.authorization.k8s.io

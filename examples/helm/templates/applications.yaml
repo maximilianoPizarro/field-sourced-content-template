@@ -1,6 +1,6 @@
 # App of Apps Pattern
 # This template generates ArgoCD Applications for each enabled component
-# Connectivity-link components: see connectivity-link-applications.yaml
+# Connectivity-link components: see applications.yaml
 
 {{- if .Values.components.operator.enabled }}
 ---

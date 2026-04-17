@@ -1,0 +1,6 @@
+apiVersion: v2
+name: cleanup
+description: Automated storage cleanup - removes completed/failed pods and old jobs (4x/day)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

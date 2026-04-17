@@ -1,6 +1,0 @@
-apiVersion: v2
-name: connectivity-link-applicationsets
-description: ApplicationSets for auto-deploying user repos from Gitea orgs via SCM Provider Generator
-type: application
-version: 0.1.0
-appVersion: "1.0"

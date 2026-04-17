@@ -1,0 +1,5 @@
+apiVersion: v2
+name: nfl-wallet
+description: NFL Wallet — API de billetera digital con autenticación API Key vía Kuadrant AuthPolicy
+version: 0.1.0
+type: application

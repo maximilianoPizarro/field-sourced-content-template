@@ -1,0 +1,108 @@
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: platform-observability
+  namespace: default
+  description: "Observability Stack — Prometheus, Grafana, Thanos, Kiali y OpenTelemetry para el cluster"
+  tags:
+    - observability
+    - monitoring
+    - grafana
+    - prometheus
+spec:
+  owner: platform-engineering
+  domain: infrastructure
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: grafana-dashboards
+  namespace: default
+  description: "Grafana — Dashboards de observabilidad para APIs, gateways y service mesh"
+  annotations:
+    backstage.io/kubernetes-id: grafana-dashboards
+    backstage.io/kubernetes-namespace: openshift-cluster-observability-operator
+    argocd/app-name: field-content-observability
+    argocd/app-namespace: openshift-gitops
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - grafana
+    - dashboards
+    - monitoring
+  links:
+    - url: https://grafana-observability.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+      title: Grafana UI
+      icon: dashboard
+    - url: https://grafana-observability.apps.cluster-l9nhj.dynamic.redhatworkshops.io/d/service-mesh-overview?orgId=1
+      title: Service Mesh Dashboard
+      icon: dashboard
+    - url: https://grafana-observability.apps.cluster-l9nhj.dynamic.redhatworkshops.io/d/api-gateway-metrics?orgId=1
+      title: API Gateway Dashboard
+      icon: dashboard
+    - url: https://thanos-querier.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+      title: Thanos Querier
+      icon: search
+    - url: https://kiali-openshift-cluster-observability-operator.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+      title: Kiali Console
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: platform-observability
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: kiali-service-mesh
+  namespace: default
+  description: "Kiali — Consola de observabilidad de Service Mesh (Istio) con visualización de tráfico"
+  annotations:
+    backstage.io/kubernetes-id: kiali-service-mesh
+    backstage.io/kubernetes-namespace: openshift-cluster-observability-operator
+    argocd/app-name: field-content-kiali
+    argocd/app-namespace: openshift-gitops
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - kiali
+    - service-mesh
+    - istio
+  links:
+    - url: https://kiali-openshift-cluster-observability-operator.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+      title: Kiali Console
+      icon: web
+    - url: https://grafana-observability.apps.cluster-l9nhj.dynamic.redhatworkshops.io/d/service-mesh-overview?orgId=1
+      title: Service Mesh Dashboard
+      icon: dashboard
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: platform-observability
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: prometheus-monitoring-stack
+  namespace: default
+  description: "RHOBS MonitoringStack — Prometheus + Alertmanager + Thanos para métricas de gateways y APIs"
+  annotations:
+    backstage.io/kubernetes-id: prometheus-monitoring-stack
+    backstage.io/kubernetes-namespace: openshift-cluster-observability-operator
+    argocd/app-name: field-content-observability
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - prometheus
+    - thanos
+    - alertmanager
+    - rhobs
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: platform-observability
+  dependsOn:
+    - component:default/grafana-dashboards

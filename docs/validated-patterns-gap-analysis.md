@@ -6,14 +6,14 @@ Comparative analysis between this repository's architecture and the [Red Hat Val
 
 | VP Capability | Equivalent in This Repo | Status |
 |---|---|---|
-| App-of-Apps pattern | `connectivity-link-applications.yaml` generates N `Application` CRs | Complete |
-| ApplicationSets | `connectivity-link-applicationsets` with SCM provider (Gitea) | Complete |
-| Operator management via OLM | `connectivity-link-operators/` with 15+ Subscriptions | Complete |
+| App-of-Apps pattern | `applications.yaml` generates N `Application` CRs | Complete |
+| ApplicationSets | `applicationsets` with SCM provider (Gitea) | Complete |
+| Operator management via OLM | `operators/` with 15+ Subscriptions | Complete |
 | Sync waves / ordering | Each app has `syncWave` (1-10) in `values.yaml` | Complete |
 | Imperative hooks | PostSync Jobs (Gitea token), CronJobs (cleanup, webhooks) | Complete |
 | Tekton CI/CD | Pipelines in software-templates + OpenShift Pipelines operator | Complete |
 | Per-app enable/disable | `enabled: true/false` on each `connectivityLink.apps[]` | Complete |
-| ArgoCD tuning | `connectivity-link-openshift-gitops` patches ArgoCD CR | Complete |
+| ArgoCD tuning | `openshift-gitops` patches ArgoCD CR | Complete |
 
 ## Gaps Identified
 

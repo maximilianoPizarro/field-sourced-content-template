@@ -1,0 +1,298 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  name: argocd-annotate-istio-services
+  namespace: istio-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  name: argocd-annotate-istio-services
+  namespace: istio-system
+rules:
+- apiGroups:
+  - ""
+  resourceNames:
+  - litemaas-gateway-istio
+  - neuralbank-gateway-istio
+  resources:
+  - services
+  verbs:
+  - get
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  name: argocd-gateway-manager
+  namespace: istio-system
+rules:
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - gateways
+  - httproutes
+  verbs:
+  - create
+  - get
+  - update
+  - patch
+  - delete
+  - list
+  - watch
+- apiGroups:
+  - limitador.kuadrant.io
+  resources:
+  - limitadors
+  verbs:
+  - create
+  - get
+  - update
+  - patch
+  - delete
+  - list
+  - watch
+- apiGroups:
+  - kuadrant.io
+  resources:
+  - kuadrants
+  verbs:
+  - create
+  - get
+  - update
+  - patch
+  - delete
+  - list
+  - watch
+- apiGroups:
+  - operator.authorino.kuadrant.io
+  resources:
+  - authorinos
+  verbs:
+  - create
+  - get
+  - update
+  - patch
+  - delete
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  name: argocd-sail-operator-manager
+rules:
+- apiGroups:
+  - sailoperator.io
+  resources:
+  - istios
+  - istios/finalizers
+  - istios/status
+  - istiocnis
+  - istiocnis/finalizers
+  - istiocnis/status
+  - ztunnels
+  - ztunnels/finalizers
+  - ztunnels/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - watch
+  - update
+  - patch
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
+  - routes/custom-host
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  name: argocd-annotate-istio-services
+  namespace: istio-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argocd-annotate-istio-services
+subjects:
+- kind: ServiceAccount
+  name: argocd-annotate-istio-services
+  namespace: istio-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  name: argocd-gateway-manager-binding
+  namespace: istio-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argocd-gateway-manager
+subjects:
+- kind: ServiceAccount
+  name: openshift-gitops-argocd-application-controller
+  namespace: openshift-gitops
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  name: argocd-sail-operator-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argocd-sail-operator-manager
+subjects:
+- kind: ServiceAccount
+  name: openshift-gitops-argocd-application-controller
+  namespace: openshift-gitops
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+  name: kuadrant-ratelimit-service
+  namespace: istio-system
+spec:
+  ports:
+  - name: grpc
+    port: 8081
+    protocol: TCP
+    targetPort: grpc
+  selector:
+    app: limitador
+    limitador-resource: limitador
+  type: ClusterIP
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+    argocd.argoproj.io/sync-wave: "6"
+  name: argocd-annotate-istio-services
+  namespace: istio-system
+spec:
+  template:
+    spec:
+      containers:
+      - command:
+        - /bin/sh
+        - -c
+        - |-
+          set -e
+          CA=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+          NS=istio-system
+          API="https://kubernetes.default.svc/api/v1/namespaces/${NS}/services"
+          PATCH='{"metadata":{"annotations":{"argocd.argoproj.io/compare-options":"IgnoreExtraneous"}}}'
+          for SVC in litemaas-gateway-istio neuralbank-gateway-istio; do
+            curl -sS -k -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/strategic-merge-patch+json" \
+              --cacert "$CA" -d "$PATCH" "${API}/${SVC}" || true
+          done
+          echo Done
+        image: registry.access.redhat.com/ubi8/ubi:8.9
+        name: annotate
+      restartPolicy: Never
+      serviceAccountName: argocd-annotate-istio-services
+  ttlSecondsAfterFinished: 300
+---
+apiVersion: sailoperator.io/v1
+kind: Istio
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  name: default
+  namespace: istio-system
+spec:
+  namespace: istio-system
+  profile: ambient
+  updateStrategy:
+    inactiveRevisionDeletionGracePeriodSeconds: 30
+    type: InPlace
+  values:
+    meshConfig:
+      defaultProviders:
+        metrics:
+        - prometheus
+        tracing:
+        - otel-tracing
+      enablePrometheusMerge: true
+      enableTracing: true
+      extensionProviders:
+      - name: otel-tracing
+        opentelemetry:
+          port: 4317
+          service: collector-collector.openshift-opentelemetry.svc.cluster.local
+      trustDomain: cluster.local
+    pilot:
+      trustedZtunnelNamespace: ztunnel
+  version: v1.27.3
+---
+apiVersion: sailoperator.io/v1
+kind: IstioCNI
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  name: default
+  namespace: istio-system
+spec:
+  namespace: istio-cni
+  profile: ambient
+  values:
+    cni:
+      ambient:
+        reconcileIptablesOnStartup: true
+  version: v1.27.3
+---
+apiVersion: sailoperator.io/v1alpha1
+kind: ZTunnel
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+  name: default
+  namespace: istio-system
+spec:
+  namespace: ztunnel
+  version: v1.27.3
+---
+apiVersion: telemetry.istio.io/v1
+kind: Telemetry
+metadata:
+  name: mesh-default
+  namespace: istio-system
+spec:
+  metrics:
+  - providers:
+    - name: prometheus
+  tracing:
+  - providers:
+    - name: otel-tracing
+    randomSamplingPercentage: 10

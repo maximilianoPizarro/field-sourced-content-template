@@ -1,0 +1,380 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nfl-wallet-prod
+  labels:
+    istio.io/dataplane-mode: ambient
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nfl-wallet-test
+  labels:
+    istio.io/dataplane-mode: ambient
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  name: nfl-wallet-api
+  namespace: nfl-wallet-prod
+  labels:
+    app: nfl-wallet-api
+    app.kubernetes.io/name: nfl-wallet-api
+    backstage.io/kubernetes-id: nfl-wallet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nfl-wallet-api
+  template:
+    metadata:
+      labels:
+        app: nfl-wallet-api
+        app.kubernetes.io/name: nfl-wallet-api
+    spec:
+      containers:
+      - name: nfl-wallet-api
+        image: quay.io/maximilianopizarro/neuralbank-backend:latest
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: QUARKUS_DATASOURCE_JDBC_URL
+          value: "jdbc:postgresql://nfl-wallet-db:5432/nflwallet"
+        - name: QUARKUS_DATASOURCE_USERNAME
+          value: "nflwallet"
+        - name: QUARKUS_DATASOURCE_PASSWORD
+          value: "nflwallet123!"
+        resources:
+          limits:
+            cpu: "500m"
+            memory: 512Mi
+          requests:
+            cpu: "100m"
+            memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  name: nfl-wallet-api
+  namespace: nfl-wallet-prod
+  labels:
+    app: nfl-wallet-api
+    backstage.io/kubernetes-id: nfl-wallet
+spec:
+  selector:
+    app: nfl-wallet-api
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  name: nfl-wallet-db
+  namespace: nfl-wallet-prod
+  labels:
+    app: nfl-wallet-db
+    backstage.io/kubernetes-id: nfl-wallet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nfl-wallet-db
+  template:
+    metadata:
+      labels:
+        app: nfl-wallet-db
+    spec:
+      containers:
+      - name: postgresql
+        image: registry.redhat.io/rhel9/postgresql-15:latest
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRESQL_USER
+          value: "nflwallet"
+        - name: POSTGRESQL_PASSWORD
+          value: "nflwallet123!"
+        - name: POSTGRESQL_DATABASE
+          value: "nflwallet"
+        resources:
+          limits:
+            cpu: "500m"
+            memory: 512Mi
+          requests:
+            cpu: "100m"
+            memory: 256Mi
+        volumeMounts:
+        - name: db-data
+          mountPath: /var/lib/pgsql/data
+      volumes:
+      - name: db-data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  name: nfl-wallet-db
+  namespace: nfl-wallet-prod
+  labels:
+    app: nfl-wallet-db
+    backstage.io/kubernetes-id: nfl-wallet
+spec:
+  selector:
+    app: nfl-wallet-db
+  ports:
+  - port: 5432
+    targetPort: 5432
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  name: nfl-wallet-route
+  namespace: nfl-wallet-prod
+  labels:
+    backstage.io/kubernetes-id: nfl-wallet
+spec:
+  host: nfl-wallet.{{ .Values.clusterDomain }}
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+  to:
+    kind: Service
+    name: nfl-wallet-gateway-istio
+    weight: 100
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    networking.istio.io/service-type: ClusterIP
+    kuadrant.io/namespace: kuadrant-system
+  name: nfl-wallet-gateway
+  namespace: nfl-wallet-prod
+spec:
+  gatewayClassName: istio
+  listeners:
+  - name: http
+    port: 8080
+    protocol: HTTP
+    allowedRoutes:
+      namespaces:
+        from: Same
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  name: nfl-wallet-api-route
+  namespace: nfl-wallet-prod
+  labels:
+    backstage.io/kubernetes-id: nfl-wallet
+spec:
+  hostnames:
+  - nfl-wallet.{{ .Values.clusterDomain }}
+  parentRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: nfl-wallet-gateway
+    namespace: nfl-wallet-prod
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api
+    backendRefs:
+    - name: nfl-wallet-api
+      port: 8080
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /q/swagger-ui
+    backendRefs:
+    - name: nfl-wallet-api
+      port: 8080
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /q/openapi
+    backendRefs:
+    - name: nfl-wallet-api
+      port: 8080
+---
+apiVersion: kuadrant.io/v1
+kind: AuthPolicy
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+  name: nfl-wallet-apikey
+  namespace: nfl-wallet-prod
+  labels:
+    backstage.io/kubernetes-id: nfl-wallet
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: nfl-wallet-api-route
+  defaults:
+    rules:
+      authentication:
+        api-key-auth:
+          apiKey:
+            allNamespaces: true
+            selector:
+              matchLabels:
+                app: nfl-wallet
+                kuadrant.io/apikey: "true"
+          credentials:
+            customHeader:
+              name: X-API-Key
+          metrics: false
+          priority: 0
+      response:
+        success: {}
+        unauthenticated:
+          code: 401
+          body:
+            value: '{"error":"Invalid or missing API key. Include header X-API-Key with a valid key."}'
+          headers:
+            content-type:
+              value: "application/json"
+---
+apiVersion: kuadrant.io/v1
+kind: RateLimitPolicy
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+  name: nfl-wallet-ratelimit
+  namespace: nfl-wallet-prod
+  labels:
+    backstage.io/kubernetes-id: nfl-wallet
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: nfl-wallet-api-route
+  limits:
+    api-global:
+      rates:
+      - limit: 120
+        window: 1m
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  name: nfl-wallet-apikey-admin
+  namespace: nfl-wallet-prod
+  labels:
+    app: nfl-wallet
+    kuadrant.io/apikey: "true"
+    authorino.kuadrant.io/managed-by: authorino
+type: Opaque
+stringData:
+  api_key: nfl-wallet-demo-key-2024
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  name: nfl-wallet-apikey-readonly
+  namespace: nfl-wallet-prod
+  labels:
+    app: nfl-wallet
+    kuadrant.io/apikey: "true"
+    authorino.kuadrant.io/managed-by: authorino
+type: Opaque
+stringData:
+  api_key: nfl-wallet-readonly-key-2024
+---
+apiVersion: extensions.kuadrant.io/v1alpha1
+kind: PlanPolicy
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+  name: nfl-wallet-plans
+  namespace: nfl-wallet-prod
+  labels:
+    backstage.io/kubernetes-id: nfl-wallet
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: nfl-wallet-api-route
+  plans:
+    - tier: free
+      predicate: |
+        has(auth.identity) && auth.identity.metadata.annotations["secret.kuadrant.io/plan-id"] == "free"
+      limits:
+        daily: 100
+        custom:
+          - limit: 10
+            window: "1m"
+    - tier: basic
+      predicate: |
+        has(auth.identity) && auth.identity.metadata.annotations["secret.kuadrant.io/plan-id"] == "basic"
+      limits:
+        daily: 1000
+        custom:
+          - limit: 60
+            window: "1m"
+    - tier: pro
+      predicate: |
+        has(auth.identity) && auth.identity.metadata.annotations["secret.kuadrant.io/plan-id"] == "pro"
+      limits:
+        daily: 10000
+        custom:
+          - limit: 300
+            window: "1m"
+---
+apiVersion: devportal.kuadrant.io/v1alpha1
+kind: APIProduct
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+  name: nfl-wallet-api
+  namespace: nfl-wallet-prod
+spec:
+  displayName: "NFL Wallet — Customer Service API"
+  description: |
+    API REST de gestión de clientes (CRUD, credit scoring, status management).
+    Protegida con API Key (header X-API-Key) y rate limiting (120 req/min).
+    Base path: /api/v1/customers
+  version: "v1"
+  publishStatus: Published
+  approvalMode: automatic
+  tags:
+    - fintech
+    - wallet
+    - api-key
+    - kuadrant
+    - rest
+  contact:
+    team: Platform Engineering
+    email: platform@neuralbank.dev
+  documentation:
+    openAPISpecURL: "https://nfl-wallet.{{ .Values.clusterDomain }}/q/openapi"
+    swaggerUI: "https://nfl-wallet.{{ .Values.clusterDomain }}/q/swagger-ui"
+    techdocsRef: "url:https://github.com/maximilianoPizarro/field-sourced-content-template/tree/main/examples/helm/components/nfl-wallet"
+    gitRepository: "https://github.com/maximilianoPizarro/field-sourced-content-template"
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: nfl-wallet-api-route

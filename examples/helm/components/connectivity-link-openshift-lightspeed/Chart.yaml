@@ -1,5 +1,0 @@
-apiVersion: v2
-name: connectivity-link-openshift-lightspeed
-description: OpenShift Lightspeed OLSConfig and LLM credentials
-version: 0.1.0
-type: application

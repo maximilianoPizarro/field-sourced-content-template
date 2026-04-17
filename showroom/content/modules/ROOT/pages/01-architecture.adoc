@@ -28,7 +28,7 @@
 </script>
 ++++
 
-This page maps the demo’s moving parts: how change events leave PostgreSQL, land in Kafka, and fan out to integration, workflow, and notification paths — with the same YAML shapes shipped in the Helm charts (`connectivity-link-kafka`, `connectivity-link-cdc-demo`, and related components).
+This page maps the demo’s moving parts: how change events leave PostgreSQL, land in Kafka, and fan out to integration, workflow, and notification paths — with the same YAML shapes shipped in the Helm charts (`kafka`, `cdc-demo`, and related components).
 
 == CDC pipeline flow
 

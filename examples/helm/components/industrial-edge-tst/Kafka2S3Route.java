@@ -1,6 +1,6 @@
 // dependency=camel:camel-endpointdsl
 // dependency=camel:kafka
-package com.redhat.industrial-edge.routes;
+package com.redhat.industrialedge.routes;
 import java.io.ByteArrayInputStream;
 import java.util.Iterator;
 import java.util.List;

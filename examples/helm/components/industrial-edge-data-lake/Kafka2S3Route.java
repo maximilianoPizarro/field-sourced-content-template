@@ -1,5 +1,5 @@
 // dependency=camel:camel-endpointdsl
-package com.redhat.industrial-edge.routes;
+package com.redhat.industrialedge.routes;
 import java.io.ByteArrayInputStream;
 import java.util.Iterator;
 import java.util.List;

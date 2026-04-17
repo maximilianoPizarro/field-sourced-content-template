@@ -11,9 +11,12 @@ spec:
   - type: repository
     value: https://maven.repository.redhat.com/earlyaccess/all@id=redhat.ea
   build:
+    baseImage: registry.access.redhat.com/ubi9/openjdk-17-runtime:latest
     registry:
       address: image-registry.openshift-image-registry.svc:5000
       insecure: true
+      organization: industrial-edge-tst-all
+      secret: camel-k-registry-secret
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -23,6 +26,9 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: camel-k-operator
+    namespace: industrial-edge-tst-all
+  - kind: ServiceAccount
+    name: default
     namespace: industrial-edge-tst-all
 roleRef:
   kind: ClusterRole
@@ -37,6 +43,9 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: camel-k-operator
+    namespace: industrial-edge-tst-all
+  - kind: ServiceAccount
+    name: default
     namespace: industrial-edge-tst-all
 roleRef:
   kind: ClusterRole

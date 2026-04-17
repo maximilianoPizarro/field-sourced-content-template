@@ -1,6 +1,6 @@
 // dependency=camel:camel-endpointdsl
 // dependency=camel:kafka
-package com.redhat.industrial-edge.routes;
+package com.redhat.industrialedge.routes;
 
 import org.apache.camel.PropertyInject;
 import org.apache.camel.builder.RouteBuilder;

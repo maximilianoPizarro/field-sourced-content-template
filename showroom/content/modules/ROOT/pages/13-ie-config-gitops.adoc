@@ -120,7 +120,7 @@ MirrorMaker2 replicates data from the factory Kafka to the central data lake:
 
 [source,bash]
 ----
-oc get kafkamirrormaker2 -n industrial-edge-data-lake
+oc get kafkamirrormaker2 -n industrial-edge-stormshift-messaging
 ----
 
 == High-level demo flow

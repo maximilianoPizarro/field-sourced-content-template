@@ -1,29 +1,88 @@
 = Industrial Edge Pattern
 
 ++++
-<div id="scene-ie" style="width:100%;min-height:400px;"></div>
+<div id="scene-ie" style="width:100%;min-height:480px;"></div>
 <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
 <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script src="../../_/js/three-helper.js"></script>
 <script>
 (function(){
-  var ctx = ThreeHelper.initScene('scene-ie', {height:420, camX:0, camY:14, camZ:28});
+  var ctx = ThreeHelper.initScene('scene-ie', {height:480, camX:4, camY:18, camZ:32, rotateSpeed:0.3});
   if(!ctx) return;
-  var sensor = ThreeHelper.createNode(ctx.scene,'IoT Sensors',0x4CAF50,-12,0,0);
-  var mqtt   = ThreeHelper.createNode(ctx.scene,'AMQ Broker',0xE53935,-6,0,0);
-  var camel  = ThreeHelper.createNode(ctx.scene,'Camel K',0xF57C00,0,0,-3);
-  var kafka  = ThreeHelper.createNode(ctx.scene,'Kafka',0x231F20,0,0,3);
-  var s3     = ThreeHelper.createNode(ctx.scene,'MinIO S3',0x00BCD4,6,0,-3);
-  var ml     = ThreeHelper.createNode(ctx.scene,'OpenShift AI',0xEE0000,6,0,3);
-  var dash   = ThreeHelper.createNode(ctx.scene,'Dashboard',0x1A73E8,12,0,0);
+  var Y_FACTORY=4, Y_DEV=0, Y_LAKE=-4, Y_ML=-8;
+
+  // Factory Edge layer
+  var fSensor1 = ThreeHelper.createNode(ctx.scene,'Sensor 1',0x4CAF50,-14,Y_FACTORY,-4);
+  var fSensor2 = ThreeHelper.createNode(ctx.scene,'Sensor 2',0x4CAF50,-14,Y_FACTORY,4);
+  var fBroker  = ThreeHelper.createNode(ctx.scene,'AMQ Broker',0xE53935,-8,Y_FACTORY,0);
+  var fCamel   = ThreeHelper.createNode(ctx.scene,'Camel K',0xF57C00,-2,Y_FACTORY,-3);
+  var fConsumer= ThreeHelper.createNode(ctx.scene,'IoT Consumer',0x9C27B0,-2,Y_FACTORY,3);
+  var fKafka   = ThreeHelper.createNode(ctx.scene,'Factory Kafka',0x231F20,5,Y_FACTORY,-3);
+  var fDash    = ThreeHelper.createNode(ctx.scene,'Dashboard',0x1A73E8,5,Y_FACTORY,3);
+
+  // Dev/Test layer
+  var dSensor  = ThreeHelper.createNode(ctx.scene,'Dev Sensors',0x66BB6A,-14,Y_DEV,0);
+  var dBroker  = ThreeHelper.createNode(ctx.scene,'AMQ Broker',0xEF5350,-8,Y_DEV,0);
+  var dCamel   = ThreeHelper.createNode(ctx.scene,'Camel K',0xFFA726,-2,Y_DEV,-3);
+  var dKafka   = ThreeHelper.createNode(ctx.scene,'Dev Kafka',0x424242,5,Y_DEV,-3);
+  var dDash    = ThreeHelper.createNode(ctx.scene,'Dashboard',0x42A5F5,5,Y_DEV,3);
+
+  // Data Lake layer
+  var lKafka   = ThreeHelper.createNode(ctx.scene,'Prod Kafka',0x37474F,0,Y_LAKE,-4);
+  var lCamel   = ThreeHelper.createNode(ctx.scene,'Kafka\u2192S3',0xFF8F00,7,Y_LAKE,-4);
+
+  // ML Workspace layer
+  var minio    = ThreeHelper.createNode(ctx.scene,'MinIO S3',0x00BCD4,0,Y_ML,0);
+  var jupyter  = ThreeHelper.createNode(ctx.scene,'JupyterLab',0xF57F17,7,Y_ML,-3);
+  var modelmesh= ThreeHelper.createNode(ctx.scene,'ModelMesh',0xEE0000,7,Y_ML,3);
+  var pipeline = ThreeHelper.createNode(ctx.scene,'DS Pipeline',0x7B1FA2,14,Y_ML,0);
+
+  // Layer labels
+  function addLabel(scene, text, x, y, z, color) {
+    var c = document.createElement('canvas');
+    c.width = 512; c.height = 48;
+    var cx = c.getContext('2d');
+    cx.font = 'bold 22px Arial';
+    cx.fillStyle = color || '#888';
+    cx.textAlign = 'left';
+    cx.fillText(text, 10, 34);
+    var t = new THREE.CanvasTexture(c);
+    var s = new THREE.SpriteMaterial({map:t, transparent:true});
+    var sp = new THREE.Sprite(s);
+    sp.position.set(x,y,z);
+    sp.scale.set(8,0.75,1);
+    scene.add(sp);
+  }
+  addLabel(ctx.scene,'\u2500\u2500 FACTORY EDGE \u2500\u2500',-14,Y_FACTORY+2.2,0,'#4CAF50');
+  addLabel(ctx.scene,'\u2500\u2500 DEV / TEST \u2500\u2500',-14,Y_DEV+2.2,0,'#42A5F5');
+  addLabel(ctx.scene,'\u2500\u2500 DATA LAKE \u2500\u2500',-14,Y_LAKE+2.2,0,'#FF8F00');
+  addLabel(ctx.scene,'\u2500\u2500 ML WORKSPACE \u2500\u2500',-14,Y_ML+2.2,0,'#EE0000');
+
   var edges = [
-    ThreeHelper.createEdge(ctx.scene,sensor,mqtt,0x4CAF50,{speed:0.01}),
-    ThreeHelper.createEdge(ctx.scene,mqtt,camel,0xE53935,{speed:0.008}),
-    ThreeHelper.createEdge(ctx.scene,mqtt,kafka,0xE53935,{speed:0.008}),
-    ThreeHelper.createEdge(ctx.scene,camel,s3,0xF57C00,{speed:0.007}),
-    ThreeHelper.createEdge(ctx.scene,kafka,ml,0x231F20,{speed:0.006}),
-    ThreeHelper.createEdge(ctx.scene,ml,dash,0xEE0000,{speed:0.009}),
-    ThreeHelper.createEdge(ctx.scene,s3,ml,0x00BCD4,{speed:0.005})
+    // Factory flow
+    ThreeHelper.createEdge(ctx.scene,fSensor1,fBroker,0x4CAF50,{speed:0.012}),
+    ThreeHelper.createEdge(ctx.scene,fSensor2,fBroker,0x4CAF50,{speed:0.011}),
+    ThreeHelper.createEdge(ctx.scene,fBroker,fCamel,0xE53935,{speed:0.009}),
+    ThreeHelper.createEdge(ctx.scene,fBroker,fConsumer,0xE53935,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,fCamel,fKafka,0xF57C00,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,fConsumer,fDash,0x9C27B0,{speed:0.007}),
+    // Dev flow
+    ThreeHelper.createEdge(ctx.scene,dSensor,dBroker,0x66BB6A,{speed:0.01}),
+    ThreeHelper.createEdge(ctx.scene,dBroker,dCamel,0xEF5350,{speed:0.009}),
+    ThreeHelper.createEdge(ctx.scene,dCamel,dKafka,0xFFA726,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,dBroker,dDash,0xEF5350,{speed:0.007}),
+    // Kafka mirror to data lake
+    ThreeHelper.createEdge(ctx.scene,fKafka,lKafka,0x37474F,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,dKafka,lKafka,0x37474F,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,lKafka,lCamel,0xFF8F00,{speed:0.007}),
+    // Data lake to ML
+    ThreeHelper.createEdge(ctx.scene,lCamel,minio,0x00BCD4,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,minio,jupyter,0xF57F17,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,minio,modelmesh,0xEE0000,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,jupyter,pipeline,0x7B1FA2,{speed:0.004}),
+    ThreeHelper.createEdge(ctx.scene,pipeline,modelmesh,0xEE0000,{speed:0.005}),
+    // ML inference back to consumer
+    ThreeHelper.createEdge(ctx.scene,modelmesh,fConsumer,0xEE0000,{speed:0.004})
   ];
   ThreeHelper.animate(ctx, edges);
 })();
@@ -33,6 +92,10 @@
 The *Industrial Edge* stack is already deployed and running on this cluster. It simulates a full IoT manufacturing environment: sensors publish data via MQTT, events stream through Kafka, and an ML model detects anomalies — all managed by GitOps.
 
 This section is hands-on: open the UIs, tail the logs, and trigger changes to see the platform react.
+
+== Solution overview
+
+image::edge-manufacturing-overview.png[Industrial Edge solution overview,align=center]
 
 == What's running
 
@@ -53,7 +116,7 @@ This section is hands-on: open the UIs, tail the logs, and trigger changes to se
 | Cluster-internal (bootstrap services)
 
 | Camel K
-| MQTT→Kafka bridge and Kafka→S3 data lake integration
+| MQTT->Kafka bridge and Kafka->S3 data lake integration
 | Cluster-internal integrations
 
 | Line Dashboard (dev)
@@ -96,23 +159,25 @@ Each page below focuses on one observable slice of the running platform:
 
 == Architecture
 
+image::industrial-edge-logical.png[Industrial Edge logical architecture,align=center]
+
 All components run on this single cluster across separate namespaces:
 
-[source,text]
-----
-┌─────────────────────────────────┐
-│  industrial-edge-tst-all        │  Dev/Test: full IoT stack
-│  (sensors, broker, kafka,       │
-│   dashboard, anomaly detection) │
-├─────────────────────────────────┤
-│  industrial-edge-stormshift-*   │  Factory: sensors → MQTT → Kafka
-│  (machine-sensor, messaging,    │
-│   line-dashboard)               │
-├─────────────────────────────────┤
-│  industrial-edge-data-lake      │  Central: Kafka mirror + S3 store
-├─────────────────────────────────┤
-│  industrial-edge-ml-workspace   │  ML: MinIO + OpenShift AI
-└─────────────────────────────────┘
-----
+[cols="1,3", options="header"]
+|===
+| Namespace | Components
+
+| `industrial-edge-tst-all`
+| Dev/Test: full IoT stack (sensors, broker, Kafka dev-cluster, dashboard, anomaly detection)
+
+| `industrial-edge-stormshift-*`
+| Factory: sensors -> MQTT -> Kafka factory-cluster (machine-sensor, messaging, line-dashboard)
+
+| `industrial-edge-data-lake`
+| Central: Kafka prod-cluster + Camel K -> S3 store
+
+| `industrial-edge-ml-workspace` + `ml-development`
+| ML: MinIO S3 + OpenShift AI (JupyterLab, ModelMesh, DS Pipelines)
+|===
 
 Based on the https://validatedpatterns.io/patterns/industrial-edge/[Red Hat Validated Patterns^] Industrial Edge pattern, adapted for single-cluster deployment.

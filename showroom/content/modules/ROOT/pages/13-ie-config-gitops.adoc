@@ -1,6 +1,35 @@
 = Step 11: Explore Kafka Streams
 
+++++
+<div id="scene-ie-kafka" style="width:100%;min-height:380px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../../_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-ie-kafka', {height:380, camX:2, camY:14, camZ:26, rotateSpeed:0.3});
+  if(!ctx) return;
+  var devK    = ThreeHelper.createNode(ctx.scene,'Dev Kafka',0x42A5F5,-10,2,0);
+  var factK   = ThreeHelper.createNode(ctx.scene,'Factory Kafka',0x4CAF50,-10,-2,0);
+  var prodK   = ThreeHelper.createNode(ctx.scene,'Prod Kafka',0xFF8F00,0,0,0);
+  var camelS3 = ThreeHelper.createNode(ctx.scene,'Camel K\u2192S3',0xF57C00,8,0,-3);
+  var mirror  = ThreeHelper.createNode(ctx.scene,'MirrorMaker2',0x7B1FA2,8,0,3);
+  var minio   = ThreeHelper.createNode(ctx.scene,'MinIO S3',0x00BCD4,16,0,0);
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,devK,prodK,0x42A5F5,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,factK,prodK,0x4CAF50,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,prodK,camelS3,0xFF8F00,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,prodK,mirror,0xFF8F00,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,camelS3,minio,0x00BCD4,{speed:0.006})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
 Sensor data flows from MQTT into Kafka via Camel K. In this step you will inspect the Kafka clusters, topics, and consume live messages.
+
+image::edge-mfg-messaging-ml.png[Messaging and ML components,align=center]
 
 == Kafka clusters in this deployment
 
@@ -62,14 +91,14 @@ You should see 5 sensor readings printed, then the consumer exits. Each message 
 oc get kafkatopics -n industrial-edge-stormshift-messaging --no-headers
 ----
 
-Consume from the factory:
+Consume from the factory (note: factory topics are prefixed with the namespace):
 
 [source,bash]
 ----
 oc exec -n industrial-edge-stormshift-messaging factory-cluster-factory-0 -- \
   bin/kafka-console-consumer.sh \
   --bootstrap-server localhost:9092 \
-  --topic iot-sensor-sw-vibration \
+  --topic industrial-edge-stormshift-messaging.iot-sensor-sw-vibration \
   --max-messages 3
 ----
 
@@ -94,9 +123,13 @@ MirrorMaker2 replicates data from the factory Kafka to the central data lake:
 oc get kafkamirrormaker2 -n industrial-edge-data-lake
 ----
 
+== High-level demo flow
+
+image::highleveldemo.png[High-level demo diagram showing sensor data flow through Kafka,align=center]
+
 == What you observed
 
 * 3 Kafka clusters processing IoT data across dev, factory, and data lake
 * Live sensor messages flowing through topics
-* Camel K bridging MQTT→Kafka and Kafka→S3
+* Camel K bridging MQTT->Kafka and Kafka->S3
 * MirrorMaker2 replicating factory data to the central cluster

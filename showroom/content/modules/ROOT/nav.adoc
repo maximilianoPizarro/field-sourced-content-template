@@ -16,3 +16,4 @@
 * xref:14-ie-app-devops.adoc[12. Dashboard & Anomalies]
 * xref:15-ie-mlops.adoc[13. GitOps Config Change]
 * xref:16-ie-troubleshooting.adoc[14. MinIO Data Lake]
+* xref:17-ie-sizing.adoc[15. Capacity & Infrastructure]

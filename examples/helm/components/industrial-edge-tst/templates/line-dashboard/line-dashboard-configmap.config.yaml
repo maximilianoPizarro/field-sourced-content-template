@@ -8,7 +8,7 @@ metadata:
 data:
   "config.json": |-
     {
-      "websocketHost": "http://messaging-industrial-edge-tst-all.{{ .Values.global.localClusterDomain }}",
+      "websocketHost": "https://messaging-industrial-edge-tst-all.{{ .Values.global.localClusterDomain }}",
       "websocketPath": "/api/service-web/socket",
       "SERVER_TIMEOUT": "20000"
     }

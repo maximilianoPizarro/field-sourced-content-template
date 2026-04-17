@@ -1,6 +1,35 @@
 = Step 13: Enable Temperature Sensors via GitOps
 
+++++
+<div id="scene-ie-gitops" style="width:100%;min-height:380px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../../_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-ie-gitops', {height:380, camX:0, camY:10, camZ:22, rotateSpeed:0.4});
+  if(!ctx) return;
+  var git     = ThreeHelper.createNode(ctx.scene,'Git Repo',0x424242,-12,0,0);
+  var argocd  = ThreeHelper.createNode(ctx.scene,'ArgoCD',0xEF6C00,-4,0,0);
+  var configM = ThreeHelper.createNode(ctx.scene,'ConfigMap',0x0066CC,4,0,-3);
+  var sensor  = ThreeHelper.createNode(ctx.scene,'Sensor Pod',0x4CAF50,4,0,3);
+  var kafka   = ThreeHelper.createNode(ctx.scene,'Kafka Topic',0x231F20,12,0,-3);
+  var dash    = ThreeHelper.createNode(ctx.scene,'Dashboard',0x1A73E8,12,0,3);
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,git,argocd,0x424242,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,argocd,configM,0xEF6C00,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,configM,sensor,0x0066CC,{speed:0.009}),
+    ThreeHelper.createEdge(ctx.scene,sensor,kafka,0x4CAF50,{speed:0.01}),
+    ThreeHelper.createEdge(ctx.scene,sensor,dash,0x4CAF50,{speed:0.009})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
 Temperature sensors are deployed but *disabled* by default. In this step you will enable them by editing a `ConfigMap` — and watch the change propagate through the system.
+
+image::edge-mfg-gitops.png[GitOps workflow for configuration changes,align=center]
 
 == Before: verify temperature is off
 

@@ -1,0 +1,63 @@
+schemaVersion: 2.2.2
+metadata:
+  name: ie-camel-k-kaoto
+  version: 1.0.0
+  displayName: Industrial Edge — Camel K Integrations
+  description: Visualize and edit Industrial Edge Camel K routes with Kaoto designer
+  language: java
+  projectType: camel
+  tags:
+    - Camel
+    - Kaoto
+    - Industrial-Edge
+attributes:
+  .vscode/extensions.json: |
+    {
+      "recommendations": [
+        "redhat.vscode-kaoto",
+        "redhat.vscode-apache-camel",
+        "redhat.vscode-yaml",
+        "redhat.java",
+        "redhat.vscode-quarkus"
+      ]
+    }
+  .vscode/settings.json: |
+    {
+      "kaoto.catalog.version": "4.12.0",
+      "files.associations": {
+        "*.java": "java"
+      }
+    }
+components:
+  - name: tools
+    container:
+      image: registry.redhat.io/devspaces/udi-rhel8:latest
+      memoryLimit: 3Gi
+      cpuLimit: "2"
+      mountSources: true
+      env:
+        - name: MQTT_BROKER_URI
+          value: "tcp://broker-amq-mqtt-all-0-svc.industrial-edge-tst-all.svc:61616"
+        - name: KAFKA_BROKER_URI
+          value: "dev-cluster-kafka-bootstrap.industrial-edge-tst-all.svc:9092"
+        - name: MINIO_ENDPOINT
+          value: "http://minio.industrial-edge-ml-workspace.svc:9000"
+      volumeMounts:
+        - name: m2
+          path: /home/user/.m2
+  - name: m2
+    volume:
+      size: 2Gi
+commands:
+  - id: install-kaoto
+    exec:
+      component: tools
+      commandLine: |
+        mkdir -p /home/user/.vsix-cache
+        [ -f /home/user/.vsix-cache/kaoto.vsix ] || \
+          curl -sL "https://redhat.gallerycdn.vsassets.io/extensions/redhat/vscode-kaoto/2.10.2/1775215869920/Microsoft.VisualStudio.Services.VSIXPackage" -o /home/user/.vsix-cache/kaoto.vsix
+        [ -f /home/user/.vsix-cache/camel.vsix ] || \
+          curl -sL "https://redhat.gallerycdn.vsassets.io/extensions/redhat/vscode-apache-camel/1.14.0/1758543062217/Microsoft.VisualStudio.Services.VSIXPackage" -o /home/user/.vsix-cache/camel.vsix
+events:
+  postStart:
+    - install-kaoto

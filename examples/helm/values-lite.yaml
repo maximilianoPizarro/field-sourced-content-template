@@ -1,0 +1,332 @@
+# =============================================================================
+# Lite Profile — Event-Driven Architecture workshop with minimal resources
+# =============================================================================
+#
+# Usage:
+#   helm install field-content . -f values.yaml -f values-lite.yaml
+#
+# Or override in ArgoCD Application valuesFiles:
+#   source:
+#     helm:
+#       valueFiles:
+#         - values.yaml
+#         - values-lite.yaml
+#
+# Estimated footprint:
+#   Infra fixed: ~20-25 vCPU, ~30-40 Gi RAM, ~150 GB disk
+#   Per user:    ~1.5 vCPU, ~1.5 Gi RAM (no DevSpaces)
+#   30 users:    2-3 workers m5.4xlarge (16 vCPU, 64 Gi)
+#
+# What stays:  Kafka CDC pipeline, Developer Hub, Keycloak, Gitea,
+#              ApplicationSets, Neuralbank demo, Showroom, Registration
+# What's off:  AI/ML, DevSpaces, Service Mesh, Observability stack,
+#              MCP Gateway, Kuadrant, BPM workflows
+# =============================================================================
+
+userCount: 30
+
+connectivityLink:
+  operators:
+    subscriptions:
+      - name: cluster-observability-operator
+        namespace: openshift-cluster-observability-operator
+        channel: stable
+        source: redhat-operators
+
+  apps:
+    # --- Core infrastructure (always on) ---
+    - id: connectivity-link-namespaces
+      enabled: true
+      path: connectivity-link-namespaces
+      destinationNamespace: openshift-gitops
+      syncWave: "1"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: false
+    - id: connectivity-link-openshift-gitops
+      enabled: true
+      path: connectivity-link-openshift-gitops
+      destinationNamespace: openshift-gitops
+      syncWave: "0"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-operators
+      enabled: true
+      path: connectivity-link-operators
+      destinationNamespace: openshift-operators
+      syncWave: "2"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-rhbk
+      enabled: true
+      path: connectivity-link-rhbk
+      destinationNamespace: rhbk-operator
+      syncWave: "2"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-developer-hub
+      enabled: true
+      path: connectivity-link-developer-hub
+      destinationNamespace: developer-hub
+      syncWave: "3"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-oauth-users
+      enabled: true
+      path: connectivity-link-oauth-users
+      destinationNamespace: openshift-config
+      syncWave: "2"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: gitea
+      enabled: true
+      path: connectivity-link-gitea
+      destinationNamespace: gitea
+      syncWave: "3"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: false
+    - id: connectivity-link-applicationsets
+      enabled: true
+      path: connectivity-link-applicationsets
+      destinationNamespace: openshift-gitops
+      syncWave: "4"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+
+    # --- Kafka CDC pipeline (core EDA demo) ---
+    - id: connectivity-link-kafka
+      enabled: true
+      path: connectivity-link-kafka
+      destinationNamespace: kafka-cdc
+      syncWave: "4"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-kafka-console
+      enabled: true
+      path: connectivity-link-kafka-console
+      destinationNamespace: kafka-cdc
+      syncWave: "5"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-apicurio-registry
+      enabled: true
+      path: connectivity-link-apicurio-registry
+      destinationNamespace: kafka-cdc
+      syncWave: "5"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-cdc-demo
+      enabled: true
+      path: connectivity-link-cdc-demo
+      destinationNamespace: kafka-cdc
+      syncWave: "6"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-camel-cdc
+      enabled: true
+      path: connectivity-link-camel-cdc
+      destinationNamespace: kafka-cdc
+      syncWave: "7"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+
+    # --- Demo app + workshop ---
+    - id: connectivity-link-neuralbank-stack
+      enabled: true
+      path: connectivity-link-neuralbank-stack
+      destinationNamespace: neuralbank-stack
+      syncWave: "5"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-console-links
+      enabled: true
+      path: connectivity-link-console-links
+      destinationNamespace: openshift-gitops
+      syncWave: "10"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: false
+    - id: connectivity-link-cleanup
+      enabled: true
+      path: connectivity-link-cleanup
+      destinationNamespace: kafka-cdc
+      syncWave: "9"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: false
+    - id: workshop-registration
+      enabled: true
+      path: connectivity-link-workshop-registration
+      destinationNamespace: showroom
+      syncWave: "10"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: false
+
+    # --- Disabled in lite profile (saves ~30 vCPU, ~48 Gi RAM) ---
+    - id: connectivity-link-servicemeshoperator3
+      enabled: false
+      path: connectivity-link-servicemeshoperator3
+      destinationNamespace: openshift-operators
+      syncWave: "3"
+      prune: false
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-rhcl-operator
+      enabled: false
+      path: connectivity-link-rhcl-operator
+      destinationNamespace: kuadrant-system
+      syncWave: "6"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-observability
+      enabled: false
+      path: connectivity-link-observability
+      destinationNamespace: openshift-cluster-observability-operator
+      syncWave: "5"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-kiali
+      enabled: false
+      path: connectivity-link-kiali
+      destinationNamespace: openshift-cluster-observability-operator
+      syncWave: "6"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-opentelemetry
+      enabled: false
+      path: connectivity-link-opentelemetry
+      destinationNamespace: openshift-opentelemetry
+      syncWave: "6"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-litemaas
+      enabled: false
+      path: connectivity-link-litemaas
+      destinationNamespace: litemaas
+      syncWave: "6"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-openshift-ai
+      enabled: false
+      path: connectivity-link-openshift-ai
+      destinationNamespace: openshift-ai
+      syncWave: "6"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-devspaces
+      enabled: false
+      path: connectivity-link-devspaces
+      destinationNamespace: devspaces
+      syncWave: "7"
+      prune: false
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: ols
+      enabled: false
+      path: connectivity-link-openshift-lightspeed
+      destinationNamespace: openshift-lightspeed
+      syncWave: "8"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: mcp-gateway
+      enabled: false
+      path: connectivity-link-mcp-gateway
+      destinationNamespace: mcp-system
+      syncWave: "9"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-nfl-wallet
+      enabled: false
+      path: connectivity-link-nfl-wallet
+      destinationNamespace: nfl-wallet-prod
+      syncWave: "7"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: connectivity-link-kogito-bpm
+      enabled: false
+      path: connectivity-link-kogito-bpm
+      destinationNamespace: kogito-bpm
+      syncWave: "8"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    # --- Industrial Edge / Manuela (disabled in lite) ---
+    - id: manuela-minio
+      enabled: false
+      path: manuela-minio
+      destinationNamespace: manuela-ml-workspace
+      syncWave: "5"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: manuela-data-science-cluster
+      enabled: false
+      path: manuela-data-science-cluster
+      destinationNamespace: redhat-ods-applications
+      syncWave: "6"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: manuela-data-science-project
+      enabled: false
+      path: manuela-data-science-project
+      destinationNamespace: ml-development
+      syncWave: "7"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: manuela-data-lake
+      enabled: false
+      path: manuela-data-lake
+      destinationNamespace: manuela-data-lake
+      syncWave: "6"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: manuela-tst
+      enabled: false
+      path: manuela-tst
+      destinationNamespace: manuela-tst-all
+      syncWave: "7"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: manuela-stormshift
+      enabled: false
+      path: manuela-stormshift
+      destinationNamespace: manuela-stormshift-messaging
+      syncWave: "8"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    - id: manuela-pipelines
+      enabled: false
+      path: manuela-pipelines
+      destinationNamespace: manuela-ci
+      syncWave: "7"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true

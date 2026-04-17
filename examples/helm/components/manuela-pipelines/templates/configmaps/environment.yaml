@@ -1,0 +1,33 @@
+{{- $giturl := coalesce .Values.global.git.hostname (printf "gitea-route-vp-gitea.%s" .Values.global.localClusterDomain) }}
+{{- $full_giturl := printf "https://%s/%s/manuela-dev.git" $giturl .Values.global.git.account }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: environment
+data:
+  DESCRIPTION: "Config keys for openshift-pipelines"
+  IMAGE_PROVIDER: {{ include "imageRegistryHostname" . }}
+  IMAGE_ACCOUNT: {{ include "imageRegistryAccount" . }}
+  GIT_EMAIL: {{ .Values.global.git.email }}
+  GIT_DEV_REPO_URL: {{ $full_giturl }}
+  GIT_DEV_REPO_REVISION: {{ .Values.global.git.dev_revision }}
+  GIT_OPS_REPO_TEST_URL: {{ .Values.global.repoURL }}
+  GIT_OPS_REPO_TEST_REVISION: {{ .Values.global.targetRevision }}
+  GIT_OPS_REPO_PROD_URL: {{ .Values.global.repoURL }}
+  GIT_OPS_REPO_PROD_REVISION: {{ .Values.global.targetRevision }}
+  IOT_CONSUMER_IMAGE: {{ .Values.iot_consumer.image }}
+  IOT_CONSUMER_YAML_PATH: {{ .Values.iot_consumer.yaml_path | quote }}
+  IOT_CONSUMER_BUILT_TAGS_PATH: {{ .Values.iot_consumer.built_tags_path }}
+  IOT_CONSUMER_TEST_VALUES_PATH: {{ .Values.iot_consumer.test_values_path }}
+  IOT_CONSUMER_PROD_VALUES_PATH: {{ .Values.iot_consumer.prod_values_path }}
+  IOT_FRONTEND_IMAGE: {{ .Values.iot_frontend.image }}
+  IOT_FRONTEND_YAML_PATH: {{ .Values.iot_frontend.yaml_path | quote }}
+  IOT_FRONTEND_BUILT_TAGS_PATH: {{ .Values.iot_frontend.built_tags_path | quote }}
+  IOT_FRONTEND_TEST_VALUES_PATH: {{ .Values.iot_frontend.test_values_path }}
+  IOT_FRONTEND_PROD_VALUES_PATH: {{ .Values.iot_frontend.prod_values_path }}
+  IOT_SWSENSOR_IMAGE: {{ .Values.machine_sensor.image }}
+  IOT_SWSENSOR_YAML_PATH: {{ .Values.machine_sensor.yaml_path | quote }}
+  IOT_SWSENSOR_BUILT_TAGS_PATH: {{ .Values.machine_sensor.built_tags_path }}
+  IOT_SWSENSOR_TEST_VALUES_PATH: {{ .Values.machine_sensor.test_values_path }}
+  IOT_SWSENSOR_PROD_VALUES_PATH: {{ .Values.machine_sensor.prod_values_path }}

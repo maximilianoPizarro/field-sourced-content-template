@@ -1,0 +1,36 @@
+# =============================================================================
+# Global values — Validated Patterns convention
+# =============================================================================
+# Shared configuration across all cluster groups.
+# Reference: https://validatedpatterns.io/learn/values-files/
+#
+# This file contains settings that are cluster-independent:
+# repository, ArgoCD defaults, and scaling parameters.
+# =============================================================================
+
+main:
+  clusterGroupName: hub
+
+global:
+  pattern: event-driven-architecture
+  options:
+    useCSV: false
+    syncPolicy: Automatic
+    installPlanApproval: Automatic
+
+gitops:
+  repoUrl: "https://github.com/maximilianoPizarro/field-sourced-content-template.git"
+  revision: "main"
+  basePath: "examples/helm"
+
+argocd:
+  namespace: openshift-gitops
+  project: default
+
+# User scaling — drives Keycloak, Gitea, DevSpaces, RBAC provisioning
+# Profiles: 30 (small), 50 (medium), 100 (large), 200 (extra-large)
+userCount: 200
+
+# Deployment type metadata
+fieldContent:
+  deploymentType: "helm"

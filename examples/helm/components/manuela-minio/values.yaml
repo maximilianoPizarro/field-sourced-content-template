@@ -1,0 +1,11 @@
+clusterDomain: apps.cluster.example.com
+
+minio:
+  image: quay.io/minio/minio:latest
+  accessKey: minioadmin
+  secretKey: minioadmin
+  storage: 20Gi
+  buckets:
+    - anomaly-detection
+    - user-bucket
+    - pipeline-bucket

@@ -118,6 +118,95 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 # ============================================================
+# Industrial Edge / Manuela Namespaces
+# ============================================================
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: manuela-tst-all
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    modelmesh-enabled: 'true'
+    opendatahub.io/dashboard: 'true'
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: manuela-ci
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: manuela-data-lake
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: manuela-ml-workspace
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ml-development
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    modelmesh-enabled: 'true'
+    opendatahub.io/dashboard: 'true'
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: manuela-stormshift-line-dashboard
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: manuela-stormshift-machine-sensor
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: manuela-stormshift-messaging
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: manuela-inference
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    modelmesh-enabled: 'true'
+    opendatahub.io/dashboard: 'true'
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: redhat-ods-applications
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: redhat-ods-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+# ============================================================
 # Per-User Namespaces (dynamic, driven by .Values.userCount)
 # Each user gets two namespaces:
 #   - userN-devspaces  (developer workspace)

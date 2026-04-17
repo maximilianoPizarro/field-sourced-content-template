@@ -1,0 +1,52 @@
+{
+  "name": "event-driven-architecture",
+  "displayName": "Event-Driven Architecture Workshop",
+  "version": "1.0.0",
+  "description": "Self-service developer workshop on OpenShift featuring Kafka CDC, Developer Hub, ArgoCD GitOps, and Neuralbank software templates.",
+  "category": "workshop",
+  "products": [
+    "Red Hat OpenShift",
+    "Red Hat Developer Hub",
+    "Red Hat AMQ Streams (Kafka)",
+    "Red Hat AMQ Broker",
+    "Red Hat Build of Keycloak",
+    "Red Hat OpenShift GitOps",
+    "Red Hat OpenShift Pipelines",
+    "Red Hat OpenShift Dev Spaces",
+    "Red Hat OpenShift AI",
+    "Red Hat OpenShift Service Mesh",
+    "Red Hat Connectivity Link (Kuadrant)",
+    "Red Hat Camel K",
+    "MinIO (S3-compatible storage)"
+  ],
+  "clusterGroupName": "hub",
+  "multiCluster": false,
+  "profiles": {
+    "full": {
+      "description": "All components enabled — AI/ML, Service Mesh, Observability, DevSpaces, BPM, Industrial Edge (Manuela)",
+      "valuesFiles": ["examples/helm/values.yaml"],
+      "estimatedResources": {
+        "fixedCPU": "66 vCPU",
+        "fixedRAM": "122 Gi",
+        "fixedDisk": "570 GB",
+        "perUserCPU": "3.5 vCPU",
+        "perUserRAM": "4.5 Gi",
+        "recommendedUsers": 200,
+        "recommendedWorkers": "10-14 m5.8xlarge"
+      }
+    },
+    "lite": {
+      "description": "Core EDA workshop only — Kafka CDC, Developer Hub, Keycloak, Gitea. No AI/ML, DevSpaces, Service Mesh, or Observability.",
+      "valuesFiles": ["examples/helm/values.yaml", "examples/helm/values-lite.yaml"],
+      "estimatedResources": {
+        "fixedCPU": "20-25 vCPU",
+        "fixedRAM": "30-40 Gi",
+        "fixedDisk": "150 GB",
+        "perUserCPU": "1.5 vCPU",
+        "perUserRAM": "1.5 Gi",
+        "recommendedUsers": 30,
+        "recommendedWorkers": "2-3 m5.4xlarge"
+      }
+    }
+  }
+}

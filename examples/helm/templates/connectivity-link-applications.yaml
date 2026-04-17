@@ -113,6 +113,21 @@ spec:
       kind: ConfigMap
       jsonPointers:
         - /metadata/annotations
+    - group: datasciencecluster.opendatahub.io
+      kind: "*"
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: serving.kserve.io
+      kind: "*"
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: camel.apache.org
+      kind: "*"
+      jsonPointers:
+        - /metadata/annotations
+        - /status
   source:
     repoURL: {{ $.Values.gitops.repoUrl }}
     targetRevision: {{ $.Values.gitops.revision }}
@@ -222,6 +237,13 @@ spec:
     helm:
       valuesObject:
         clusterDomain: {{ $domain }}
+    {{- else if has .path (list "manuela-tst" "manuela-stormshift" "manuela-data-lake" "manuela-data-science-project" "manuela-pipelines" "manuela-minio" "manuela-data-science-cluster") }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+        global:
+          localClusterDomain: {{ $domain }}
+          hubClusterDomain: {{ $domain }}
     {{- else if eq .path "connectivity-link-neuralbank-stack" }}
     helm:
       valuesObject:

@@ -1,29 +1,19 @@
-# Field Content Demo - App of Apps
-# This chart deploys multiple components as separate ArgoCD Applications
+# =============================================================================
+# Hub cluster values — Validated Patterns convention
+# =============================================================================
+# Configuration specific to the hub (primary) cluster group.
+# Reference: https://validatedpatterns.io/learn/clustergroup-in-values-files/
+#
+# This file maps the existing connectivityLink.apps[] structure to the VP
+# naming convention. The app-of-apps templates in templates/ consume these
+# values identically to values.yaml — this file is a VP-compatible alias.
+# =============================================================================
 
-# ============================================================
-# GitOps Configuration
-# ============================================================
-gitops:
-  # Repository containing the component charts (your fork or this template)
-  repoUrl: "https://github.com/maximilianoPizarro/field-sourced-content-template.git"
-  revision: "main"
-  basePath: "examples/helm"
-
-# ArgoCD settings
-argocd:
-  namespace: openshift-gitops
-  project: default
-
-# ============================================================
-# Connectivity Link (vendored from GitLab connectivity-link)
-# One Argo CD Application per entry; paths under components/connectivity-link-*
-# ============================================================
+# Operator channels and subscriptions managed by the hub
 connectivityLink:
   operators:
     channel: stable-4.20
     version: 4.20.4
-    # servicemeshoperator3: templates/servicemeshoperator3.yaml (omit here to avoid duplicate)
     subscriptions:
       - name: cluster-observability-operator
         namespace: openshift-cluster-observability-operator
@@ -51,7 +41,6 @@ connectivityLink:
         channel: stable-2.25
         source: redhat-operators
 
-  # neuralbank-stack — Keycloak URLs derived from deployer.domain when synced
   neuralbank:
     global:
       postgresql:
@@ -87,8 +76,10 @@ connectivityLink:
     api:
       baseUrl: "/api"
 
-  # Argo CD Applications (order via sync-wave on Application metadata)
+  # ArgoCD Applications — full profile (all components enabled)
+  # For lite profile, use values-lite.yaml overlay to disable heavy components
   apps:
+    # --- Core platform ---
     - id: connectivity-link-namespaces
       enabled: true
       path: connectivity-link-namespaces
@@ -145,6 +136,7 @@ connectivityLink:
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
+    # --- Observability ---
     - id: connectivity-link-observability
       enabled: true
       path: connectivity-link-observability
@@ -169,6 +161,7 @@ connectivityLink:
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
+    # --- AI / ML ---
     - id: connectivity-link-litemaas
       enabled: true
       path: connectivity-link-litemaas
@@ -185,6 +178,7 @@ connectivityLink:
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
+    # --- Developer tools ---
     - id: connectivity-link-devspaces
       enabled: true
       path: connectivity-link-devspaces
@@ -193,6 +187,7 @@ connectivityLink:
       prune: false
       selfHeal: true
       skipDryRunOnMissingResource: true
+    # --- Demo applications ---
     - id: connectivity-link-neuralbank-stack
       enabled: true
       path: connectivity-link-neuralbank-stack
@@ -257,7 +252,7 @@ connectivityLink:
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: false
-    # --- Kafka CDC Pipeline ---
+    # --- Kafka CDC pipeline ---
     - id: connectivity-link-kafka
       enabled: true
       path: connectivity-link-kafka
@@ -298,7 +293,7 @@ connectivityLink:
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
-    # --- Kogito BPM (SonataFlow) ---
+    # --- BPM / workflows ---
     - id: connectivity-link-kogito-bpm
       enabled: true
       path: connectivity-link-kogito-bpm
@@ -307,7 +302,7 @@ connectivityLink:
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
-    # --- OpenShift Console Links ---
+    # --- UI and utilities ---
     - id: connectivity-link-console-links
       enabled: true
       path: connectivity-link-console-links
@@ -316,7 +311,6 @@ connectivityLink:
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: false
-    # --- Automated Storage Cleanup ---
     - id: connectivity-link-cleanup
       enabled: true
       path: connectivity-link-cleanup
@@ -383,44 +377,22 @@ connectivityLink:
       selfHeal: true
       skipDryRunOnMissingResource: true
 
-# ============================================================
-# Lightspeed / MCP — LLM provider config for OLS component
-# Keys are injected at deploy time (RHDP or --set), NOT in git
-# ============================================================
+# LLM configuration (injected at deploy time, not in git)
 lightspeed:
   llmApiKey: "sk-no-key"
   llmEndpoint: "https://qwen25-7b-instruct-my-first-model.apps.ocp.xbgvw.sandbox67.opentlc.com/v1"
   model: "qwen25-7b-instruct"
 
-# ============================================================
-# LiteMaaS / MaaS (optional — injected by RHDP when enabled on order)
-# ============================================================
 litemaas:
   apiUrl: ""
   apiKey: ""
   model: ""
 
-# ============================================================
-# User Scaling — single parameter controls all user provisioning
-# Keycloak users, DevSpaces namespaces, RBAC policy, workshop registration
-# Recommended: 30 (small), 50 (medium), 100 (large), 200 (extra-large)
-# See README.md "Cluster Sizing" for node/resource recommendations
-# ============================================================
-userCount: 200
-
-# ============================================================
-# Workshop Registration Portal
-# ============================================================
 workshopRegistration:
   adminToken: "workshop-admin-2024"
   keycloakAdminPassword: ""
 
-# ============================================================
-# Components - Enable/disable and configure each component
-# ============================================================
 components:
-
-  # --- Operator Installation (single OLM subscription, template repo) ---
   operator:
     enabled: false
     name: web-terminal
@@ -429,8 +401,6 @@ components:
     source: redhat-operators
     sourceNamespace: openshift-marketplace
     installPlanApproval: Automatic
-
-  # --- Hello World Demo Application ---
   helloWorld:
     enabled: false
     namespace: terminal-demo
@@ -441,8 +411,6 @@ components:
       enabled: true
       title: "Web Terminal Demo"
       instructions: "Access the Showroom lab guide, then click the terminal icon (>_) in the OpenShift console."
-
-  # --- Showroom Lab Guide ---
   showroom:
     enabled: true
     namespace: showroom
@@ -466,12 +434,7 @@ components:
           cpu: "500m"
           memory: "1Gi"
 
-# ============================================================
-# Values injected by field content workload (do not modify)
-# ============================================================
+# Injected by deployer / workload role
 deployer:
-  domain: "apps.cluster-l9nhj.dynamic.redhatworkshops.io"
+  domain: ""
   apiUrl: ""
-
-fieldContent:
-  deploymentType: "helm"

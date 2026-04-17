@@ -1,0 +1,23 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: line-dashboard
+  namespace: manuela-tst-all
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+  - name: {{ .Values.iot_frontend.bootstrap_tag | quote }}
+    from:
+      kind: DockerImage
+      name: {{ .Values.iot_frontend.bootstrap_image }}
+    referencePolicy:
+      type: Local
+{{- range .Values.iot_frontend.built_tags }}
+  - name: {{ . | quote }}
+    from:
+      kind: DockerImage
+      name: "{{ include "imageRegistryHostname" $ }}/{{ include "imageRegistryAccount" $ }}/{{ $.Values.iot_frontend.repo_name }}:{{ . }}"
+    referencePolicy:
+      type: Local
+{{- end }}

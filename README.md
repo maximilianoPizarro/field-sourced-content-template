@@ -72,6 +72,59 @@ This deployment provisions a full Neuralbank developer workshop environment on O
 | **OLS (Lightspeed)** | AI assistant with MCP Gateway integration |
 | **LiteMaaS** | LLM proxy for model access |
 
+### Industrial Edge / Manuela Stack
+
+Integrated from the [Red Hat Validated Patterns Industrial Edge](https://github.com/validatedpatterns/industrial-edge) pattern, adapted for single-cluster deployment without Vault, ACM, or ODF.
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Manuela IoT Manufacturing Demo                    │
+│                                                                     │
+│  ┌──────────────────────────┐  ┌──────────────────────────────┐    │
+│  │  Factory (Stormshift)     │  │  Datacenter                  │    │
+│  │  ┌────────────────────┐  │  │  ┌────────────────────────┐  │    │
+│  │  │ Machine Sensors ×2 │──┼──┼─▶│ Kafka Data Lake        │  │    │
+│  │  │ (temp + vibration) │  │  │  │ (MirrorMaker2)         │  │    │
+│  │  └────────┬───────────┘  │  │  └────────────┬───────────┘  │    │
+│  │           │              │  │               │              │    │
+│  │  ┌────────▼───────────┐  │  │  ┌────────────▼───────────┐  │    │
+│  │  │ AMQ Broker (MQTT)  │  │  │  │ Camel K (S3 store)     │  │    │
+│  │  │ + Kafka + Camel K  │  │  │  └────────────┬───────────┘  │    │
+│  │  └────────┬───────────┘  │  │               │              │    │
+│  │           │              │  │  ┌────────────▼───────────┐  │    │
+│  │  ┌────────▼───────────┐  │  │  │ MinIO (S3 storage)     │  │    │
+│  │  │ Line Dashboard     │  │  │  └────────────┬───────────┘  │    │
+│  │  │ (IoT visualization)│  │  │               │              │    │
+│  │  └────────────────────┘  │  │  ┌────────────▼───────────┐  │    │
+│  │                          │  │  │ OpenShift AI (RHODS)    │  │    │
+│  │  ┌────────────────────┐  │  │  │ + ML Pipelines         │  │    │
+│  │  │ Anomaly Detection  │  │  │  │ + Anomaly Detection    │  │    │
+│  │  │ (ModelMesh)        │◀─┼──┼──│ + Model Serving        │  │    │
+│  │  └────────────────────┘  │  │  └────────────────────────┘  │    │
+│  └──────────────────────────┘  └──────────────────────────────┘    │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │  CI/CD Pipelines (Tekton)                                    │    │
+│  │  build sensor → build frontend → build consumer → deploy     │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+| Component | Chart | Purpose |
+|-----------|-------|---------|
+| **Machine Sensors** | `manuela-stormshift` | Simulated IoT sensors (temperature + vibration) publishing via MQTT |
+| **AMQ Broker + Kafka** | `manuela-stormshift` | MQTT broker + Kafka cluster for factory-side event streaming |
+| **Line Dashboard** | `manuela-stormshift` | Real-time IoT data visualization web app |
+| **Kafka MirrorMaker2** | `manuela-stormshift` | Replicates factory Kafka topics to datacenter data lake |
+| **Kafka Data Lake** | `manuela-data-lake` | Central Kafka cluster + Camel K S3 integration |
+| **MinIO** | `manuela-minio` | S3-compatible object storage (replaces ODF) for ML models and data |
+| **OpenShift AI** | `manuela-data-science-cluster` | DataScienceCluster CR, custom notebooks, serving runtimes |
+| **ML Workspace** | `manuela-data-science-project` | ML pipelines, model serving, S3 data connections |
+| **Anomaly Detection** | `manuela-tst` / `manuela-stormshift` | ModelMesh inference service for vibration anomaly detection |
+| **CI/CD Pipelines** | `manuela-pipelines` | Tekton pipelines for building IoT components |
+
+**Additional resources**: ~16 vCPU, ~34 Gi RAM, ~102 GB disk (see [Deployment Profiles](#deployment-profiles)).
+
 ### Software Templates (Neuralbank)
 
 Each template generates a full application with CI/CD pipeline, connectivity-link manifests (Gateway, HTTPRoute, OIDCPolicy, RateLimitPolicy), DevSpaces devfile, and catalog registration.
@@ -266,6 +319,65 @@ Control plane: 3 masters with **16 vCPU, 64 Gi RAM, 200 GB SSD** each (upgraded 
 
 > **Warning**: Single-node (SNO) deployments are not supported for >30 users. Standard 3-master control plane with 8 vCPU / 32 Gi is sufficient up to 100 users; for 200 users, upgrade masters to 16 vCPU / 64 Gi.
 
+## Deployment Profiles
+
+Two deployment profiles are available to match different resource budgets:
+
+### Full Profile (default)
+
+All components enabled — AI/ML, Service Mesh, Observability, DevSpaces, BPM workflows.
+
+```bash
+helm install field-content examples/helm -f examples/helm/values.yaml
+```
+
+| Metric | Value |
+|--------|-------|
+| Fixed infra (platform + all components) | ~66 vCPU, ~122 Gi RAM, ~570 GB disk |
+| Manuela stack alone | ~16 vCPU, ~34 Gi RAM, ~102 GB disk |
+| Per user (with DevSpaces) | ~3.5 vCPU, ~4.5 Gi RAM |
+| Per user (no DevSpaces) | ~1.5 vCPU, ~1.5 Gi RAM |
+| Recommended for 200 users | 10–14 workers m5.8xlarge |
+
+### Lite Profile (~60% fewer resources)
+
+Core EDA workshop only: Kafka CDC pipeline, Developer Hub, Keycloak, Gitea, Neuralbank demo, Showroom. Disables 12 optional components (OpenShift AI, DevSpaces, Service Mesh, Observability, LiteMaaS, Kuadrant, OLS, MCP Gateway, BPM, NFL Wallet).
+
+```bash
+helm install field-content examples/helm -f examples/helm/values.yaml -f examples/helm/values-lite.yaml
+```
+
+Or in ArgoCD:
+```yaml
+source:
+  helm:
+    valueFiles:
+      - values.yaml
+      - values-lite.yaml
+```
+
+| Metric | Value |
+|--------|-------|
+| Fixed infra | ~20–25 vCPU, ~30–40 Gi RAM, ~150 GB disk |
+| Per user | ~1.5 vCPU, ~1.5 Gi RAM |
+| Default users | 30 |
+| Recommended workers | 2–3 nodes m5.4xlarge |
+
+### Validated Patterns Compatibility
+
+The repository also ships VP-convention files for teams adopting the [Red Hat Validated Patterns](https://validatedpatterns.io/) framework:
+
+| File | Purpose |
+|------|---------|
+| `pattern.json` | Pattern metadata (name, version, profiles, estimated resources) |
+| `examples/helm/values-global.yaml` | Cluster-independent settings (repo URL, ArgoCD config, userCount) |
+| `examples/helm/values-hub.yaml` | Hub cluster config (operators, apps, secrets, components) |
+| `examples/helm/values-lite.yaml` | Lite overlay that disables heavy components |
+
+The existing `values.yaml` remains the primary source of truth. The VP-convention files are optional and provided for compatibility — the app-of-apps templates consume the same schema regardless of which file supplies the values.
+
+> **Note**: This repo intentionally does not adopt the VP `clusterGroup` chart, HashiCorp Vault, or ACM multi-cluster. These layers add significant complexity and resource overhead without benefit for single-cluster workshops. See the [gap analysis plan](docs/validated-patterns-gap-analysis.md) for details.
+
 ## Getting Started
 
 ### Choose Your Pattern
@@ -430,18 +542,30 @@ metadata:
 - [examples/ansible/README.md](examples/ansible/README.md) - Ansible deployment guide
 - [docs/ansible-developer-guide.md](docs/ansible-developer-guide.md) - In-depth Ansible patterns
 - [docs/SHOWROOM-UPDATE-SPEC.md](docs/SHOWROOM-UPDATE-SPEC.md) - Showroom maintenance guide
+- [docs/validated-patterns-gap-analysis.md](docs/validated-patterns-gap-analysis.md) - Validated Patterns integration analysis
 
 ## Repository Structure
 
 ```
 field-content/
+├── pattern.json                           # Validated Patterns metadata
 ├── examples/
 │   ├── helm/
-│   │   ├── values.yaml                    # Parent chart values
+│   │   ├── values.yaml                    # Parent chart values (full profile)
+│   │   ├── values-lite.yaml              # Lite overlay (~60% fewer resources)
+│   │   ├── values-global.yaml            # VP convention: cluster-independent settings
+│   │   ├── values-hub.yaml               # VP convention: hub cluster config
 │   │   ├── templates/                     # ArgoCD Application definitions
 │   │   ├── components/                    # Per-component Helm sub-charts
 │   │   │   ├── connectivity-link-*/       # Infrastructure components
 │   │   │   ├── connectivity-link-workshop-registration/  # Self-service registration portal
+│   │   │   ├── manuela-tst/              # IoT test env (sensors, messaging, dashboard)
+│   │   │   ├── manuela-data-lake/        # Central Kafka + Camel K S3 integration
+│   │   │   ├── manuela-stormshift/       # Factory edge (sensors, MirrorMaker2, dashboard)
+│   │   │   ├── manuela-data-science-cluster/  # RHODS DataScienceCluster
+│   │   │   ├── manuela-data-science-project/  # ML workspace + pipelines
+│   │   │   ├── manuela-pipelines/        # Tekton CI/CD for IoT components
+│   │   │   ├── manuela-minio/            # MinIO S3 storage (replaces ODF)
 │   │   │   ├── showroom/                  # Workshop lab guide
 │   │   │   └── ...
 │   │   └── software-templates/            # Backstage scaffolder templates

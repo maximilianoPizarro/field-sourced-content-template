@@ -1,0 +1,18 @@
+apiVersion: camel.apache.org/v1
+kind: Integration
+metadata:
+  name: kafka-to-s3-integration
+  namespace: manuela-tst-all
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  traits:
+    mount:
+      configs:
+        - configmap:kafka-to-s3-config
+        - secret:s3-anomaly
+  profile: OpenShift
+  sources:
+    - content: |-
+{{ .Files.Get "Kafka2S3Route.java" | indent 8 }}
+      name: Kafka2S3Route.java

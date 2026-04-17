@@ -7,6 +7,9 @@ spec:
   subdomain: messaging-industrial-edge-stormshift-messaging
   port:
     targetPort: 3000-tcp
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
   to:
     kind: Service
     name: messaging

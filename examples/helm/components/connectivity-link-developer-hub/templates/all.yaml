@@ -651,7 +651,7 @@ data:
         disabled: false
       - package: ./dynamic-plugins/dist/backstage-community-plugin-catalog-backend-module-scaffolder-relation-processor-dynamic
         disabled: false
-      - package: ./dynamic-plugins/dist/backstage-community-plugin-kafka-backend-dynamic
+      - package: "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-community-plugin-kafka-backend:pr_2209__0.10.0!backstage-community-plugin-kafka-backend"
         disabled: false
         pluginConfig:
           kafka:
@@ -669,7 +669,7 @@ data:
               - name: prod-cluster
                 brokers:
                   - prod-cluster-kafka-bootstrap.industrial-edge-data-lake.svc:9092
-      - package: ./dynamic-plugins/dist/backstage-community-plugin-kafka
+      - package: "oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-community-plugin-kafka:pr_2209__0.11.0!backstage-community-plugin-kafka"
         disabled: false
         pluginConfig:
           dynamicPlugins:

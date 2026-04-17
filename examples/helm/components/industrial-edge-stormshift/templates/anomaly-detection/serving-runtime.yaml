@@ -45,7 +45,7 @@ spec:
           value: 127.0.0.1
         - name: MLSERVER_GRPC_MAX_MESSAGE_LENGTH
           value: '-1'
-      image: 'quay.io/opendatahub/mlserver:1.3.5-sklearn'
+      image: 'image-registry.openshift-image-registry.svc:5000/ml-development/mlserver-sklearn:1.3.5'
       name: mlserver
       resources:
         limits:

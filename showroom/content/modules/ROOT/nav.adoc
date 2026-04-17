@@ -10,10 +10,9 @@
 * xref:09-operations.adoc[8. Operations]
 * xref:10-devspaces.adoc[9. Self-Service IDE]
 
-* Industrial Edge Pattern
-** xref:11-industrial-edge.adoc[10. Industrial Edge Overview]
-** xref:12-ie-health-check.adoc[11. Health Check]
-** xref:13-ie-config-gitops.adoc[12. Configuration with GitOps]
-** xref:14-ie-app-devops.adoc[13. Application with DevOps]
-** xref:15-ie-mlops.adoc[14. AI/ML with MLOps]
-** xref:16-ie-troubleshooting.adoc[Troubleshooting]
+* xref:11-industrial-edge.adoc[— Industrial Edge —]
+* xref:12-ie-health-check.adoc[10. IE Health Check]
+* xref:13-ie-config-gitops.adoc[11. IE Config GitOps]
+* xref:14-ie-app-devops.adoc[12. IE App DevOps]
+* xref:15-ie-mlops.adoc[13. IE AI/ML MLOps]
+* xref:16-ie-troubleshooting.adoc[14. IE Troubleshooting]

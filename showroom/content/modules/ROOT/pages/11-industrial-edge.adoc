@@ -16,7 +16,6 @@
   var s3     = ThreeHelper.createNode(ctx.scene,'MinIO S3',0x00BCD4,6,0,-3);
   var ml     = ThreeHelper.createNode(ctx.scene,'OpenShift AI',0xEE0000,6,0,3);
   var dash   = ThreeHelper.createNode(ctx.scene,'Dashboard',0x1A73E8,12,0,0);
-  var pipe   = ThreeHelper.createNode(ctx.scene,'Tekton CI/CD',0x0066CC,0,4,0);
   var edges = [
     ThreeHelper.createEdge(ctx.scene,sensor,mqtt,0x4CAF50,{speed:0.01}),
     ThreeHelper.createEdge(ctx.scene,mqtt,camel,0xE53935,{speed:0.008}),
@@ -24,186 +23,96 @@
     ThreeHelper.createEdge(ctx.scene,camel,s3,0xF57C00,{speed:0.007}),
     ThreeHelper.createEdge(ctx.scene,kafka,ml,0x231F20,{speed:0.006}),
     ThreeHelper.createEdge(ctx.scene,ml,dash,0xEE0000,{speed:0.009}),
-    ThreeHelper.createEdge(ctx.scene,s3,ml,0x00BCD4,{speed:0.005}),
-    ThreeHelper.createEdge(ctx.scene,pipe,kafka,0x0066CC,{speed:0.004})
+    ThreeHelper.createEdge(ctx.scene,s3,ml,0x00BCD4,{speed:0.005})
   ];
   ThreeHelper.animate(ctx, edges);
 })();
 </script>
 ++++
 
-This section covers the *Industrial Edge* validated pattern — an end-to-end IoT manufacturing solution that demonstrates real-time sensor monitoring, event streaming, machine learning inference, and GitOps-driven operations on Red Hat OpenShift.
+The *Industrial Edge* stack is already deployed and running on this cluster. It simulates a full IoT manufacturing environment: sensors publish data via MQTT, events stream through Kafka, and an ML model detects anomalies — all managed by GitOps.
 
-The pattern is derived from the https://validatedpatterns.io/patterns/industrial-edge/[Red Hat Validated Patterns^] project and has been adapted for single-cluster deployment within this workshop environment.
+This section is hands-on: open the UIs, tail the logs, and trigger changes to see the platform react.
 
-== Solution overview
-
-The Industrial Edge pattern addresses a common manufacturing challenge: bringing AI/ML capabilities to the factory floor while maintaining centralized control over data, models, and application lifecycle.
-
-image::https://validatedpatterns.io/images/industrial-edge/overview.png[Industrial Edge Overview,800]
-
-The solution provides:
-
-* *Real-time sensor monitoring* — IoT sensors publish temperature and vibration data via MQTT
-* *Event streaming* — AMQ Broker and Kafka transport sensor data across the platform
-* *ML-based anomaly detection* — Trained models perform live inference on sensor readings
-* *Data lake* — Sensor data is stored in S3-compatible storage (MinIO) for model training
-* *CI/CD pipelines* — Tekton pipelines automate image builds and GitOps-based deployments
-* *GitOps operations* — Configuration and application changes flow through Git and ArgoCD
-
-== Architecture (single-cluster adaptation)
-
-This workshop deploys all components on a single OpenShift cluster using separate namespaces to simulate the factory/datacenter split:
+== What's running
 
 [cols="1,2,1", options="header"]
 |===
-| Namespace | Role | Components
+| Component | What it does | Access
 
-| `industrial-edge-tst-all`
-| Development/test environment (full IoT stack)
-| Machine sensors, AMQ Broker, Kafka, Camel K, Line Dashboard, Anomaly Detection
+| Machine Sensors (x4)
+| Simulate vibration and temperature readings every 5 seconds via MQTT
+| Pod logs (see below)
 
-| `industrial-edge-stormshift-messaging`
-| Factory messaging layer
-| Kafka cluster, AMQ Broker, MQTT-to-Kafka bridge
+| AMQ Broker (x2)
+| MQTT broker receiving sensor data at the factory edge
+| Cluster-internal (`broker-amq-mqtt-all-0-svc`)
 
-| `industrial-edge-stormshift-machine-sensor`
-| Factory sensor simulation
-| Machine sensor pods (temperature + vibration)
+| Kafka Clusters (x3)
+| Dev, Factory, and Data Lake clusters for event streaming and replication
+| Cluster-internal (bootstrap services)
 
-| `industrial-edge-stormshift-line-dashboard`
-| Factory visualization
-| IoT Line Dashboard web app
+| Camel K
+| MQTT→Kafka bridge and Kafka→S3 data lake integration
+| Cluster-internal integrations
 
-| `industrial-edge-data-lake`
-| Central data lake
-| Kafka cluster, Kafka-to-S3 integration (Camel K), KafkaMirrorMaker2
+| Line Dashboard (dev)
+| Real-time visualization of sensor data and anomaly alerts
+| link:https://line-dashboard-industrial-edge-tst-all.{cluster_domain}[Dev Dashboard^]
 
-| `industrial-edge-ml-workspace`
-| ML workspace and pipelines
-| OpenShift AI workbench, model training pipelines, S3 data connections
+| Line Dashboard (factory)
+| Production factory dashboard
+| link:https://line-dashboard-industrial-edge-stormshift-line-dashboard.{cluster_domain}[Factory Dashboard^]
 
-| `industrial-edge-ci`
-| CI/CD pipelines
-| Tekton pipelines for building and deploying IoT component images
+| MinIO S3
+| Object storage for the data lake (model training data, artifacts)
+| link:https://minio-console-industrial-edge-ml-workspace.{cluster_domain}[MinIO Console^] (minioadmin / minioadmin)
 
-| `industrial-edge-inference`
-| Model inference
-| Anomaly detection inference service (KServe)
+| Messaging UI (dev)
+| AMQ web console for MQTT inspection
+| link:https://messaging-industrial-edge-tst-all.{cluster_domain}[Messaging UI^]
 |===
 
-== Technology stack
+== Quick look: are sensors streaming?
 
-[cols="1,3", options="header"]
-|===
-| Technology | Purpose
+Run this to see live sensor output from the factory:
 
-| *Red Hat AMQ Broker*
-| MQTT broker for IoT sensor data ingestion
+[source,bash]
+----
+oc logs -f deploy/machine-sensor-1 -n industrial-edge-stormshift-machine-sensor --tail=5
+----
 
-| *AMQ Streams (Kafka)*
-| Durable event streaming backbone for sensor data and data mirroring
-
-| *Apache Camel K*
-| Lightweight integration: MQTT-to-Kafka bridge, Kafka-to-S3 data lake ingestion
-
-| *Red Hat OpenShift AI*
-| ML model training (Jupyter notebooks), model serving (KServe), data science pipelines
-
-| *MinIO*
-| S3-compatible object storage for the data lake (replaces OpenShift Data Foundation)
-
-| *OpenShift Pipelines (Tekton)*
-| CI/CD for building sensor, dashboard, and consumer images; model deployment
-
-| *OpenShift GitOps (ArgoCD)*
-| Declarative application delivery and configuration management
-|===
-
-== Data flows
-
-=== Northbound (sensor → datacenter)
-
-Sensor data flows from the factory floor to the central data lake:
-
-. *Machine sensors* generate temperature and vibration readings
-. Readings are published via *MQTT* to the *AMQ Broker*
-. *Camel K* bridges MQTT messages into *Kafka* topics
-. *KafkaMirrorMaker2* replicates factory Kafka topics to the central *data lake* Kafka cluster
-. *Camel K* writes from Kafka to *MinIO S3* buckets for long-term storage and ML training
-
-=== Southbound (datacenter → factory)
-
-Models and configuration flow from the datacenter back to the factory:
-
-. Data scientists train anomaly detection models in *OpenShift AI* notebooks
-. Trained model artifacts are committed to *Git*
-. *Tekton pipelines* build model images and push them to the internal registry
-. *ArgoCD* deploys updated models and configurations to factory namespaces via GitOps
-
-=== Live inference
-
-At the factory edge, the anomaly detection model runs in real-time:
-
-. The *inference service* (KServe) receives sensor readings
-. It applies the trained ML model to detect anomalies
-. Results are displayed on the *Line Dashboard*
-. Anomaly alerts appear every 2–3 minutes under normal operation
+You should see JSON payloads with vibration readings every few seconds. Press `Ctrl+C` to stop.
 
 == Demo steps
 
-Work through the following guides to explore the Industrial Edge pattern:
+Each page below focuses on one observable slice of the running platform:
 
-. xref:12-ie-health-check.adoc[Quick Health Check] — Verify all components are running
-. xref:13-ie-config-gitops.adoc[Configuration with GitOps] — Change sensor configuration via Git
-. xref:14-ie-app-devops.adoc[Application with DevOps] — Modify, build, and redeploy the dashboard
-. xref:15-ie-mlops.adoc[AI/ML Model with MLOps] — Train and deploy anomaly detection models
-. xref:16-ie-troubleshooting.adoc[Troubleshooting] — Common issues and resolutions
+. xref:12-ie-health-check.adoc[10. Observe IoT Sensors] — Watch sensor data flow in real-time
+. xref:13-ie-config-gitops.adoc[11. Explore Kafka Streams] — Inspect topics, partitions, and event flow
+. xref:14-ie-app-devops.adoc[12. Line Dashboard & Anomalies] — See ML anomaly detection live
+. xref:15-ie-mlops.adoc[13. GitOps Config Change] — Enable temperature sensors via Git
+. xref:16-ie-troubleshooting.adoc[14. Explore MinIO Data Lake] — Browse stored sensor data in S3
 
-== Cluster sizing
+== Architecture
 
-This single-cluster deployment adds approximately *8 vCPU* and *16 Gi memory* to the base workshop footprint. The key resource consumers are:
+All components run on this single cluster across separate namespaces:
 
-[cols="1,1,1", options="header"]
-|===
-| Component | CPU | Memory
+[source,text]
+----
+┌─────────────────────────────────┐
+│  industrial-edge-tst-all        │  Dev/Test: full IoT stack
+│  (sensors, broker, kafka,       │
+│   dashboard, anomaly detection) │
+├─────────────────────────────────┤
+│  industrial-edge-stormshift-*   │  Factory: sensors → MQTT → Kafka
+│  (machine-sensor, messaging,    │
+│   line-dashboard)               │
+├─────────────────────────────────┤
+│  industrial-edge-data-lake      │  Central: Kafka mirror + S3 store
+├─────────────────────────────────┤
+│  industrial-edge-ml-workspace   │  ML: MinIO + OpenShift AI
+└─────────────────────────────────┘
+----
 
-| Kafka clusters (2)
-| 2 vCPU
-| 4 Gi
-
-| OpenShift AI (RHODS)
-| 2 vCPU
-| 4 Gi
-
-| AMQ Broker
-| 0.5 vCPU
-| 1 Gi
-
-| Camel K integrations
-| 1 vCPU
-| 2 Gi
-
-| MinIO
-| 0.5 vCPU
-| 1 Gi
-
-| Sensors + Dashboard
-| 0.5 vCPU
-| 1 Gi
-
-| Tekton pipelines (idle)
-| 0.5 vCPU
-| 1 Gi
-
-| ML inference
-| 1 vCPU
-| 2 Gi
-|===
-
-== References
-
-* https://validatedpatterns.io/patterns/industrial-edge/[Industrial Edge — Validated Patterns^]
-* https://validatedpatterns.io/patterns/industrial-edge/application/[Application Demos^]
-* https://validatedpatterns.io/patterns/industrial-edge/demo-script/[Demo Script^]
-* https://github.com/validatedpatterns/industrial-edge[Source Code^]
+Based on the https://validatedpatterns.io/patterns/industrial-edge/[Red Hat Validated Patterns^] Industrial Edge pattern, adapted for single-cluster deployment.

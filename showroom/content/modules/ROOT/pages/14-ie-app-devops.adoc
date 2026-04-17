@@ -1,158 +1,74 @@
-= Step 12: Application Changes with DevOps
+= Step 12: Line Dashboard & Anomaly Detection
 
-++++
-<div id="scene-devops" style="width:100%;min-height:350px;"></div>
-<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
-<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script src="../../_/js/three-helper.js"></script>
-<script>
-(function(){
-  var ctx = ThreeHelper.initScene('scene-devops', {height:350, camY:10, camZ:22});
-  if(!ctx) return;
-  var dev  = ThreeHelper.createNode(ctx.scene,'Developer',0x4CAF50,-10,0,0);
-  var git  = ThreeHelper.createNode(ctx.scene,'Gitea',0xF57C00,-4,0,0);
-  var pipe = ThreeHelper.createNode(ctx.scene,'Tekton',0x0066CC,2,0,0);
-  var reg  = ThreeHelper.createNode(ctx.scene,'Registry',0x7B1FA2,2,3,0);
-  var tst  = ThreeHelper.createNode(ctx.scene,'Test Env',0xE53935,8,0,-2);
-  var pr   = ThreeHelper.createNode(ctx.scene,'Pull Request',0xFF6F00,8,0,2);
-  var edges = [
-    ThreeHelper.createEdge(ctx.scene,dev,git,0x4CAF50,{speed:0.008}),
-    ThreeHelper.createEdge(ctx.scene,git,pipe,0xF57C00,{speed:0.01}),
-    ThreeHelper.createEdge(ctx.scene,pipe,reg,0x0066CC,{speed:0.007}),
-    ThreeHelper.createEdge(ctx.scene,pipe,tst,0x0066CC,{speed:0.009}),
-    ThreeHelper.createEdge(ctx.scene,pipe,pr,0xFF6F00,{speed:0.006})
-  ];
-  ThreeHelper.animate(ctx, edges);
-})();
-</script>
-++++
+The Line Dashboard visualizes sensor data in real-time and displays ML anomaly alerts. Open it and watch the system work.
 
-This demo walks through a full DevOps cycle: modifying application code, triggering a CI/CD pipeline, and watching the change propagate to the test and production environments.
-
-== Scenario
-
-The `line-dashboard` application displays IoT sensor data. You will make a visible UI change, rebuild the image via Tekton, and observe the update roll out through the GitOps pipeline.
-
-== Step 1: View the current dashboard
-
-Open the Line Dashboard and note the current title:
+== Open the Dev Line Dashboard
 
 [source,bash,subs=attributes+]
 ----
-echo "https://$(oc get route line-dashboard -n industrial-edge-tst-all -o jsonpath='{.spec.host}')"
+echo "https://line-dashboard-industrial-edge-tst-all.{cluster_domain}"
 ----
 
-The page header reads *IoT Dashboard*.
+Or click: link:https://line-dashboard-industrial-edge-tst-all.{cluster_domain}[Dev Line Dashboard^]
 
-== Step 2: Edit the application code
+Once the page loads:
 
-Open the Gitea web interface and navigate to the `manuela-dev` repository (if cloned into Gitea). Find the file:
+. Click *Realtime Data* in the left navigation
+. Wait 10–15 seconds for data to appear
+. You should see *vibration* charts updating in real-time
 
-`components/iot-frontend/src/app/app.component.html`
+NOTE: Temperature charts are empty because temperature sensors are disabled. You will enable them in xref:15-ie-mlops.adoc[step 13].
 
-Change the dashboard title:
+== Open the Factory Line Dashboard
 
-[source,diff]
-----
--  IoT Dashboard
-+  IoT Dashboard - DEVOPS was here!
-----
+The factory has its own dashboard instance:
 
-Commit the change directly in the Gitea web interface.
+link:https://line-dashboard-industrial-edge-stormshift-line-dashboard.{cluster_domain}[Factory Line Dashboard^]
 
-== Step 3: Start the CI/CD pipeline
+This dashboard reads from the factory Kafka cluster and shows the same sensor types.
 
-Trigger the `build-and-test-iot-frontend` pipeline that will:
+== Observe anomaly detection
 
-. Clone the source code from Gitea
-. Build a new container image with the change
-. Push the image to the OpenShift internal registry
-. Deploy the new image to the `industrial-edge-tst-all` test namespace
-. Create a Pull Request in Gitea for promotion to production
+The anomaly detection model runs inference on vibration data. Under normal operation:
+
+* Every *2–3 minutes*, the model flags an anomaly
+* An *alert* appears in the dashboard with the anomaly score
+* This simulates real manufacturing scenarios where vibration patterns indicate potential equipment failure
+
+Watch the dashboard for a couple of minutes and look for alert indicators.
+
+== Inspect the anomaly detection service
 
 [source,bash]
 ----
-oc create -f examples/helm/components/industrial-edge-pipelines/extra/build-and-test-iot-frontend.yaml \
-  -n industrial-edge-ci
+oc get inferenceservice -n industrial-edge-tst-all 2>/dev/null || echo "InferenceService not found in tst-all"
+oc get pods -l app=anomaly-detection -n industrial-edge-tst-all 2>/dev/null
 ----
 
-== Step 4: Monitor the pipeline
+== Check the messaging UI
 
-Watch the pipeline execution in real-time:
+The messaging app provides a web UI to see MQTT messages. Open it:
+
+link:https://messaging-industrial-edge-tst-all.{cluster_domain}[Messaging UI^]
+
+This shows raw MQTT payloads as they arrive from the sensors.
+
+== Compare dev vs factory
+
+Both environments receive the same sensor data types but from different sensor pod instances:
 
 [source,bash]
 ----
-oc get pipelineruns -n industrial-edge-ci -w
+echo "=== Dev sensors ==="
+oc get pods -l app=machine-sensor -n industrial-edge-tst-all --no-headers
+
+echo "=== Factory sensors ==="
+oc get pods -l app=machine-sensor -n industrial-edge-stormshift-machine-sensor --no-headers
 ----
 
-Or check the OpenShift Console under *Pipelines* → *PipelineRuns* in the `industrial-edge-ci` namespace.
+== What you observed
 
-The pipeline stages are:
-
-[cols="1,2", options="header"]
-|===
-| Stage | Action
-
-| `git-clone`
-| Clones the application source from Gitea
-
-| `build`
-| Builds the container image using Buildah
-
-| `push`
-| Pushes the image to the internal OpenShift registry
-
-| `deploy-test`
-| Updates the image tag in the test environment
-
-| `create-pr`
-| Creates a Pull Request in Gitea for production promotion
-|===
-
-== Step 5: Verify in test environment
-
-After the pipeline completes, ArgoCD will refresh the `industrial-edge-tst` application and deploy the new image.
-
-Check the test Line Dashboard — you should see the updated title: *IoT Dashboard - DEVOPS was here!*
-
-You may need to clear your browser cache or do a hard refresh (Ctrl+Shift+R) to see the change.
-
-== Step 6: Promote to production
-
-Open Gitea and review the Pull Request created by the pipeline. The PR updates the image tag in the production (stormshift) configuration.
-
-. Verify the change is correct in the test environment
-. Merge the PR in Gitea
-. ArgoCD will automatically deploy the change to the production factory namespaces
-
-[source,bash]
-----
-oc get application field-content-industrial-edge-stormshift -n openshift-gitops -w
-----
-
-== Key takeaways
-
-* *Automated build and test* — Tekton pipelines ensure consistent, repeatable builds
-* *Image promotion* — Images flow from internal registry → test → production via GitOps
-* *Pull Request workflow* — Production changes require explicit approval (merge)
-* *Separation of concerns* — Developers commit code; pipelines handle builds; ArgoCD handles deployment
-* *Traceability* — Every production deployment traces back to a specific code commit and pipeline run
-
-== Other pipelines
-
-Additional pipelines are available for other IoT components:
-
-[source,bash]
-----
-# Build the IoT consumer (Kafka consumer)
-oc create -f examples/helm/components/industrial-edge-pipelines/extra/build-and-test-iot-consumer.yaml \
-  -n industrial-edge-ci
-
-# Build the software sensor
-oc create -f examples/helm/components/industrial-edge-pipelines/extra/build-and-test-iot-software-sensor.yaml \
-  -n industrial-edge-ci
-----
-
-== Next
-
-xref:15-ie-mlops.adoc[AI/ML model changes with MLOps] — Train and deploy anomaly detection models using OpenShift AI.
+* Real-time vibration data streaming on two dashboards (dev + factory)
+* ML anomaly detection generating periodic alerts
+* Raw MQTT messages visible in the messaging UI
+* Identical architecture deployed in dev and factory namespaces

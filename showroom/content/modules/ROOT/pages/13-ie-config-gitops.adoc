@@ -1,130 +1,102 @@
-= Step 11: Configuration Changes with GitOps
+= Step 11: Explore Kafka Streams
 
-++++
-<div id="scene-gitops" style="width:100%;min-height:350px;"></div>
-<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
-<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script src="../../_/js/three-helper.js"></script>
-<script>
-(function(){
-  var ctx = ThreeHelper.initScene('scene-gitops', {height:350, camY:10, camZ:20});
-  if(!ctx) return;
-  var git  = ThreeHelper.createNode(ctx.scene,'Gitea',0xF57C00,-8,0,0);
-  var argo = ThreeHelper.createNode(ctx.scene,'ArgoCD',0x0066CC,-2,0,0);
-  var cm   = ThreeHelper.createNode(ctx.scene,'ConfigMap',0x4CAF50,4,0,-2);
-  var pod  = ThreeHelper.createNode(ctx.scene,'Sensor Pod',0x231F20,4,0,2);
-  var dash = ThreeHelper.createNode(ctx.scene,'Dashboard',0x1A73E8,10,0,0);
-  var edges = [
-    ThreeHelper.createEdge(ctx.scene,git,argo,0xF57C00,{speed:0.008}),
-    ThreeHelper.createEdge(ctx.scene,argo,cm,0x0066CC,{speed:0.01}),
-    ThreeHelper.createEdge(ctx.scene,cm,pod,0x4CAF50,{speed:0.007}),
-    ThreeHelper.createEdge(ctx.scene,pod,dash,0x231F20,{speed:0.009})
-  ];
-  ThreeHelper.animate(ctx, edges);
-})();
-</script>
-++++
+Sensor data flows from MQTT into Kafka via Camel K. In this step you will inspect the Kafka clusters, topics, and consume live messages.
 
-This demo shows how to change the configuration of edge devices using GitOps. You will enable temperature sensor data (which is initially disabled) by modifying a `ConfigMap` through Git — and watch ArgoCD propagate the change to the running pods.
+== Kafka clusters in this deployment
 
-== Scenario
-
-The machine sensors in the Industrial Edge demo can report both *vibration* and *temperature* data. By default, temperature reporting is disabled. In this exercise, you will:
-
-. Edit the sensor configuration in the Git repository
-. Watch ArgoCD detect and sync the change
-. See temperature data appear on the Line Dashboard
-
-== Step 1: Open the current Line Dashboard
-
-Access the Line Dashboard to see the current state:
-
-[source,bash,subs=attributes+]
-----
-echo "https://$(oc get route line-dashboard -n industrial-edge-tst-all -o jsonpath='{.spec.host}')"
-----
-
-Click *Realtime Data* in the left navigation. Note that only *vibration* data is currently streaming.
-
-== Step 2: Locate the sensor ConfigMap
-
-The machine sensor configuration is defined in ConfigMaps. View the current configuration:
+There are 3 Kafka clusters serving different roles:
 
 [source,bash]
 ----
-oc get configmap machine-sensor-1 -n industrial-edge-tst-all -o yaml
+oc get kafka -A --no-headers 2>/dev/null | grep industrial-edge
 ----
 
-Look for the `SENSOR_TEMPERATURE_ENABLED` field — it should be `false`.
+[cols="1,1,2", options="header"]
+|===
+| Cluster | Namespace | Role
 
-== Step 3: Edit the configuration via Git
+| `dev-cluster`
+| `industrial-edge-tst-all`
+| Development/test environment
 
-Open your Gitea instance and navigate to the repository. Find the sensor ConfigMap template:
+| `factory-cluster`
+| `industrial-edge-stormshift-messaging`
+| Factory edge — receives sensor data via MQTT→Kafka bridge
 
-`examples/helm/components/industrial-edge-tst/templates/machine-sensor/machine-sensor-1-configmap.yaml`
+| `prod-cluster`
+| `industrial-edge-data-lake`
+| Central data lake — receives mirrored data from factory
+|===
 
-Change the temperature setting from `false` to `true`:
-
-[source,yaml]
-----
-data:
-  SENSOR_TEMPERATURE_ENABLED: "true"
-----
-
-Commit the change with a descriptive message like: `Enable temperature sensor on machine-sensor-1`.
-
-TIP: You can also make this change from the terminal using `oc edit` for immediate testing, but the GitOps approach (committing to Git) is the recommended production workflow.
-
-== Step 4: Watch ArgoCD sync
-
-After committing, ArgoCD will detect the change within its polling interval (typically 3 minutes, or you can trigger a manual sync).
-
-Monitor the sync from the terminal:
+== List Kafka topics
 
 [source,bash]
 ----
-oc get application field-content-industrial-edge-tst -n openshift-gitops -w
+oc get kafkatopics -n industrial-edge-tst-all --no-headers
 ----
 
-Or trigger a manual sync:
+Key topics to look for:
+
+* `iot-sensor-sw-vibration` — vibration sensor data
+* `iot-sensor-sw-temperature` — temperature data (will have traffic after enabling)
+
+== Consume live messages from a topic
+
+Read the latest vibration events from the dev cluster:
 
 [source,bash]
 ----
-oc annotate application field-content-industrial-edge-tst -n openshift-gitops \
-  argocd.argoproj.io/refresh=hard --overwrite
+oc exec -n industrial-edge-tst-all dev-cluster-dev-0 -- \
+  bin/kafka-console-consumer.sh \
+  --bootstrap-server localhost:9092 \
+  --topic iot-sensor-sw-vibration \
+  --max-messages 5
 ----
 
-== Step 5: Verify the change
+You should see 5 sensor readings printed, then the consumer exits. Each message contains the raw vibration data from the machine sensors.
 
-Once ArgoCD syncs, the sensor pod will pick up the new ConfigMap. Verify:
+== Check the factory Kafka cluster
 
 [source,bash]
 ----
-oc get configmap machine-sensor-1 -n industrial-edge-tst-all -o jsonpath='{.data.SENSOR_TEMPERATURE_ENABLED}'
+oc get kafkatopics -n industrial-edge-stormshift-messaging --no-headers
 ----
 
-The sensor pod may need a restart to pick up the ConfigMap change:
+Consume from the factory:
 
 [source,bash]
 ----
-oc rollout restart deployment/machine-sensor-1 -n industrial-edge-tst-all
+oc exec -n industrial-edge-stormshift-messaging factory-cluster-factory-0 -- \
+  bin/kafka-console-consumer.sh \
+  --bootstrap-server localhost:9092 \
+  --topic iot-sensor-sw-vibration \
+  --max-messages 3
 ----
 
-== Step 6: Observe temperature data
+== Inspect Kafka-to-S3 integration (Camel K)
 
-Return to the *Line Dashboard* and click *Realtime Data*. You should now see both:
+The Camel K integration writes Kafka events to MinIO S3 for the data lake:
 
-* *Vibration* data (as before)
-* *Temperature* data (newly enabled)
+[source,bash]
+----
+oc get integration -n industrial-edge-tst-all
+oc get integration -n industrial-edge-data-lake
+----
 
-== Key takeaways
+If integrations show `Running`, data is flowing to S3. If `Building Kit`, the integration images are still being compiled (takes a few minutes on first deploy).
 
-* *Declarative configuration* — The desired state lives in Git, not in imperative commands
-* *Automated reconciliation* — ArgoCD continuously ensures the cluster matches the Git state
-* *Audit trail* — Every configuration change is a Git commit with author, timestamp, and message
-* *Rollback* — Reverting a configuration change is as simple as reverting the Git commit
-* *Scale* — The same GitOps workflow applies whether you manage 1 factory or 1,000
+== Check KafkaMirrorMaker2 (data replication)
 
-== Next
+MirrorMaker2 replicates data from the factory Kafka to the central data lake:
 
-xref:14-ie-app-devops.adoc[Application changes with DevOps] — Modify the dashboard application code, rebuild, and redeploy.
+[source,bash]
+----
+oc get kafkamirrormaker2 -n industrial-edge-data-lake
+----
+
+== What you observed
+
+* 3 Kafka clusters processing IoT data across dev, factory, and data lake
+* Live sensor messages flowing through topics
+* Camel K bridging MQTT→Kafka and Kafka→S3
+* MirrorMaker2 replicating factory data to the central cluster

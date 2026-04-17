@@ -1,264 +1,99 @@
-= Industrial Edge — Troubleshooting
+= Step 14: Explore MinIO Data Lake
 
-This page covers common issues you may encounter with the Industrial Edge components and their resolutions.
+MinIO provides S3-compatible storage for the Industrial Edge data lake. Sensor data flows from Kafka into S3 buckets for long-term storage and ML model training.
 
-== ArgoCD applications
+== Open the MinIO Console
 
-=== Symptom: Application shows `OutOfSync` or `Unknown`
+link:https://minio-console-industrial-edge-ml-workspace.{cluster_domain}[MinIO Console^]
 
-*Cause:* A recent commit may have introduced invalid YAML or a template rendering error.
+Login:
 
-*Resolution:*
+* *Username:* `minioadmin`
+* *Password:* `minioadmin`
 
-. Check the ArgoCD application details for the specific error message:
-+
-[source,bash]
-----
-oc get application field-content-industrial-edge-tst -n openshift-gitops \
-  -o jsonpath='{.status.conditions[*].message}'
-----
+== Browse the buckets
 
-. If the error mentions invalid YAML, review the recent commits in the repository
-. Fix the YAML issue, commit, and push — ArgoCD will auto-reconcile
+After logging in, you should see these buckets:
 
-=== Symptom: Application is `Synced` but `Degraded` or `Progressing` indefinitely
+[cols="1,2", options="header"]
+|===
+| Bucket | Purpose
 
-*Cause:* A Kubernetes resource failed to reach a healthy state (e.g., pod crash loop, missing image, insufficient resources).
+| `pipeline-bucket`
+| ML training pipeline artifacts and intermediate data
 
-*Resolution:*
+| `user-bucket`
+| Data scientist workspace for notebooks and experiments
 
-[source,bash]
-----
-oc get pods -n industrial-edge-tst-all --field-selector status.phase!=Running
-oc describe pod <failing-pod> -n industrial-edge-tst-all
-oc logs <failing-pod> -n industrial-edge-tst-all
-----
+| `anomaly-models`
+| Trained anomaly detection model artifacts
+|===
 
-== Pipeline failures
+Click into each bucket to explore its contents. If the Camel K Kafka→S3 integration is running, you will see sensor data files accumulating.
 
-=== Symptom: Intermittent failures in pipeline stages
+== Check MinIO from the CLI
 
-*Common errors:*
-
-[source,text]
-----
-level=error msg="Error while applying layer: ApplyLayer io: read/write on closed pipe"
-error creating build container: Error committing the finished image
-----
-
-*Cause:* Buildah/Podman resource contention or transient registry issues.
-
-*Resolution:*
-
-. Cancel the failed pipeline run
-. Re-run the specific pipeline:
-+
-[source,bash]
-----
-oc create -f examples/helm/components/industrial-edge-pipelines/extra/seed-run.yaml \
-  -n industrial-edge-ci
-----
-
-IMPORTANT: Avoid running multiple pipelines concurrently — they may conflict when pushing to the same Git repository.
-
-=== Symptom: `push-*` pipeline tasks fail
-
-*Cause:* Multiple processes attempted concurrent Git changes, resulting in a non-fast-forward push.
-
-*Resolution:* Re-run the failed pipeline. Ensure only one pipeline runs at a time.
-
-=== Symptom: Pipelines application perpetually `Progressing`
-
-*Cause:* The application is missing container images that should have been built by the seed pipeline.
-
-*Resolution:*
+List buckets using the MinIO pod:
 
 [source,bash]
 ----
-oc create -f examples/helm/components/industrial-edge-pipelines/extra/seed-run.yaml \
-  -n industrial-edge-ci
+oc exec deploy/minio -n industrial-edge-ml-workspace -- \
+  mc alias set local http://localhost:9000 minioadmin minioadmin 2>/dev/null
+
+oc exec deploy/minio -n industrial-edge-ml-workspace -- \
+  mc ls local/
 ----
 
-This rebuilds all images and deploys them to test and production.
-
-== Sensor and messaging issues
-
-=== Symptom: No data appears on the Line Dashboard
-
-*Possible causes and checks:*
-
-. *Sensor pods not running:*
-+
-[source,bash]
-----
-oc get pods -n industrial-edge-tst-all -l app=machine-sensor
-----
-
-. *AMQ Broker not ready:*
-+
-[source,bash]
-----
-oc get activemqartemis -n industrial-edge-tst-all
-----
-
-. *Kafka cluster not ready:*
-+
-[source,bash]
-----
-oc get kafka -n industrial-edge-tst-all
-oc get pods -n industrial-edge-tst-all -l strimzi.io/kind=Kafka
-----
-
-. *Camel K integration not running:*
-+
-[source,bash]
-----
-oc get integration -n industrial-edge-tst-all
-----
-
-=== Symptom: Only vibration data appears (no temperature)
-
-*Cause:* Temperature sensors are disabled by default.
-
-*Resolution:* Follow the xref:13-ie-config-gitops.adoc[GitOps configuration demo] to enable temperature data.
-
-== Kafka and data lake issues
-
-=== Symptom: KafkaMirrorMaker2 fails to replicate
-
-*Cause:* In the single-cluster deployment, MirrorMaker2 connects to Kafka clusters via internal service DNS.
-
-*Resolution:*
+List objects in the anomaly-models bucket:
 
 [source,bash]
 ----
-oc get kafkamirrormaker2 -n industrial-edge-data-lake
-oc describe kafkamirrormaker2 -n industrial-edge-data-lake
+oc exec deploy/minio -n industrial-edge-ml-workspace -- \
+  mc ls local/anomaly-models/ 2>/dev/null || echo "Bucket empty or not yet populated"
 ----
 
-Verify that the source cluster bootstrap address resolves:
+== Check MinIO health
 
 [source,bash]
 ----
-oc exec -n industrial-edge-data-lake -it <mirrormaker-pod> -- \
-  nslookup industrial-edge-kafka-cluster-kafka-bootstrap.industrial-edge-stormshift-messaging.svc
-----
-
-=== Symptom: Kafka-to-S3 integration fails
-
-*Cause:* MinIO credentials or endpoint misconfiguration.
-
-*Resolution:*
-
-[source,bash]
-----
-oc get secret s3-anomaly -n industrial-edge-data-lake -o yaml
-oc get integration -n industrial-edge-data-lake
-oc logs -n industrial-edge-data-lake -l camel.apache.org/integration
-----
-
-Verify MinIO is accessible:
-
-[source,bash]
-----
-oc get pods -n industrial-edge-ml-workspace -l app=minio
+oc get pods -l app=minio -n industrial-edge-ml-workspace
 oc get svc minio -n industrial-edge-ml-workspace
+oc get route minio-console -n industrial-edge-ml-workspace
 ----
 
-== MinIO issues
+== How data gets here
 
-=== Symptom: Buckets not created
+The data flow into MinIO:
 
-*Cause:* The PostSync Job that creates buckets may have failed.
+. *Sensors* → publish MQTT → *AMQ Broker*
+. *Camel K* bridges MQTT → *Kafka*
+. *Camel K* integration reads from Kafka topics and writes to *MinIO S3* buckets
+. *OpenShift AI* notebooks read training data from S3 and write trained models back
 
-*Resolution:*
+Check the Camel K integration status:
 
 [source,bash]
 ----
-oc get jobs -n industrial-edge-ml-workspace
-oc logs job/minio-create-buckets -n industrial-edge-ml-workspace
+oc get integration -n industrial-edge-tst-all --no-headers 2>/dev/null
+oc get integration -n industrial-edge-data-lake --no-headers 2>/dev/null
 ----
 
-Manually create buckets if needed:
+If `kafka-to-s3-integration` shows `Running`, data is actively flowing to S3.
+
+== ArgoCD view
+
+See all Industrial Edge applications and their health:
 
 [source,bash]
 ----
-oc exec -n industrial-edge-ml-workspace deploy/minio -- \
-  mc alias set local http://localhost:9000 minioadmin minioadmin
-oc exec -n industrial-edge-ml-workspace deploy/minio -- \
-  mc mb local/pipeline-bucket local/user-bucket local/anomaly-models --ignore-existing
+oc get applications -n openshift-gitops --no-headers | grep industrial-edge
 ----
 
-== OpenShift AI issues
+All should show `Synced`. Components in `Progressing` are still initializing (Camel K builds take a few minutes on first deploy).
 
-=== Symptom: DataScienceCluster not ready
+== What you observed
 
-*Cause:* RHODS operator may still be installing or has insufficient resources.
-
-*Resolution:*
-
-[source,bash]
-----
-oc get datasciencecluster -A
-oc get csv -n redhat-ods-operator | grep rhods
-oc get pods -n redhat-ods-operator
-----
-
-If the operator CSV is not in `Succeeded` state, check operator events:
-
-[source,bash]
-----
-oc get events -n redhat-ods-operator --sort-by='.lastTimestamp' | tail -20
-----
-
-=== Symptom: JupyterLab workbench fails to start
-
-*Cause:* Insufficient resources or missing S3 data connections.
-
-*Resolution:*
-
-[source,bash]
-----
-oc get pods -n industrial-edge-ml-workspace -l app=jupyterlab
-oc describe pod <jupyter-pod> -n industrial-edge-ml-workspace
-----
-
-== Operator issues
-
-=== Symptom: Required operator not installed
-
-Check that all three Industrial Edge operators are present:
-
-[source,bash]
-----
-oc get subscriptions -A | grep -E "amq-broker|camel-k|rhods"
-----
-
-If missing, verify the operator subscriptions in the `connectivity-link-operators` component:
-
-[source,bash]
-----
-oc get application field-content-connectivity-link-operators -n openshift-gitops \
-  -o jsonpath='{.status.sync.status}'
-----
-
-== Useful diagnostic commands
-
-Quick health overview of all Industrial Edge namespaces:
-
-[source,bash]
-----
-for ns in industrial-edge-tst-all industrial-edge-ci industrial-edge-data-lake \
-           industrial-edge-ml-workspace industrial-edge-stormshift-messaging \
-           industrial-edge-stormshift-machine-sensor industrial-edge-stormshift-line-dashboard \
-           industrial-edge-inference; do
-  echo "=== $ns ==="
-  oc get pods -n $ns --no-headers 2>/dev/null | awk '{print $1, $3}' || echo "(namespace not found)"
-  echo
-done
-----
-
-== References
-
-* https://validatedpatterns.io/patterns/industrial-edge/troubleshooting/[Validated Patterns Troubleshooting^]
-* https://validatedpatterns.io/patterns/industrial-edge/cluster-sizing/[Cluster Sizing Guide^]
+* MinIO S3 console with pre-created buckets for ML pipelines and model storage
+* CLI access to browse S3 objects
+* End-to-end data path from sensors through Kafka into S3 storage
+* GitOps management of all Industrial Edge components via ArgoCD

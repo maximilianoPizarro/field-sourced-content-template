@@ -1,0 +1,10 @@
+site_name: Industrial Edge Platform
+site_description: IoT manufacturing platform — sensors, event streaming, ML anomaly detection, data lake, and HA sizing
+nav:
+  - Home: index.md
+  - Arquitectura: architecture.md
+  - "Componente 1 — CDC para Aplicaciones": cdc-sizing.md
+  - "Componente 2 — Industrial Edge IoT": ie-sizing.md
+  - "Componente 3 — Mirror/Réplicas para Consultas Externas": mirror-plan.md
+plugins:
+  - techdocs-core

@@ -1,0 +1,323 @@
+apiVersion: backstage.io/v1alpha1
+kind: Domain
+metadata:
+  name: industrial-edge
+  namespace: default
+  description: "Industrial Edge — IoT manufacturing platform with sensors, event streaming, ML anomaly detection, and data lake"
+  tags:
+    - iot
+    - manufacturing
+    - edge
+    - validated-patterns
+spec:
+  owner: platform-engineering
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: industrial-edge-system
+  namespace: default
+  description: "Industrial Edge IoT stack — Sensors, AMQ Broker, Kafka, Camel K, ML inference, dashboards"
+  tags:
+    - iot
+    - kafka
+    - camel-k
+    - openshift-ai
+  links:
+    - url: https://rhods-dashboard-redhat-ods-applications.apps.cluster-l9nhj.dynamic.redhatworkshops.io/projects/ml-development?section=overview
+      title: OpenShift AI — ML Development
+      icon: dashboard
+    - url: https://minio-console-industrial-edge-ml-workspace.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+      title: MinIO S3 Console
+      icon: storage
+    - url: https://line-dashboard-industrial-edge-tst-all.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+      title: Line Dashboard (Dev)
+      icon: dashboard
+    - url: https://line-dashboard-industrial-edge-stormshift-line-dashboard.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+      title: Line Dashboard (Factory)
+      icon: dashboard
+spec:
+  owner: platform-engineering
+  domain: industrial-edge
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ie-machine-sensors
+  namespace: default
+  description: "Machine Sensors — Simulate vibration and temperature IoT readings via MQTT (4 instances across dev + factory)"
+  annotations:
+    backstage.io/kubernetes-id: machine-sensor-1
+    backstage.io/kubernetes-namespace: industrial-edge-tst-all
+    argocd/app-name: field-content-industrial-edge-tst
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - iot
+    - sensor
+    - mqtt
+  links:
+    - url: https://console-openshift-console.apps.cluster-l9nhj.dynamic.redhatworkshops.io/k8s/ns/industrial-edge-tst-all/deployments/machine-sensor-1
+      title: Sensor 1 (Dev)
+      icon: web
+    - url: https://console-openshift-console.apps.cluster-l9nhj.dynamic.redhatworkshops.io/k8s/ns/industrial-edge-stormshift-machine-sensor/deployments/machine-sensor-1
+      title: Sensor 1 (Factory)
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: industrial-edge-system
+  providesApis:
+    - ie-mqtt-events
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ie-amq-broker
+  namespace: default
+  description: "AMQ Broker — MQTT broker receiving sensor data at the factory edge and dev environment"
+  annotations:
+    backstage.io/kubernetes-id: broker-amq-mqtt-ss
+    backstage.io/kubernetes-namespace: industrial-edge-tst-all
+    argocd/app-name: field-content-industrial-edge-tst
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - amq
+    - mqtt
+    - broker
+    - messaging
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: industrial-edge-system
+  dependsOn:
+    - component:default/ie-machine-sensors
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ie-kafka-event-streaming
+  namespace: default
+  description: "Kafka Event Streaming — 3 clusters (dev, factory, data-lake) for IoT event transport and replication"
+  annotations:
+    backstage.io/kubernetes-id: dev-cluster-dev
+    backstage.io/kubernetes-namespace: industrial-edge-tst-all
+    argocd/app-name: field-content-industrial-edge-tst
+    argocd/app-namespace: openshift-gitops
+    backstage.io/techdocs-ref: dir:.
+    kafka.apache.org/consumer-groups: mqtt2kafka-integration
+  tags:
+    - kafka
+    - amq-streams
+    - event-streaming
+  links:
+    - url: https://console-openshift-console.apps.cluster-l9nhj.dynamic.redhatworkshops.io/k8s/ns/industrial-edge-tst-all/strimzi.io~v1beta2~Kafka/dev-cluster
+      title: Dev Kafka Cluster
+      icon: web
+    - url: https://console-openshift-console.apps.cluster-l9nhj.dynamic.redhatworkshops.io/k8s/ns/industrial-edge-stormshift-messaging/strimzi.io~v1beta2~Kafka/factory-cluster
+      title: Factory Kafka Cluster
+      icon: web
+    - url: https://console-openshift-console.apps.cluster-l9nhj.dynamic.redhatworkshops.io/k8s/ns/industrial-edge-data-lake/strimzi.io~v1beta2~Kafka/prod-cluster
+      title: Data Lake Kafka Cluster
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: industrial-edge-system
+  dependsOn:
+    - component:default/ie-amq-broker
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ie-camel-k-integrations
+  namespace: default
+  description: "Camel K — MQTT→Kafka bridge and Kafka→S3 data lake integrations"
+  annotations:
+    backstage.io/kubernetes-id: mqtt2kafka-integration
+    backstage.io/kubernetes-namespace: industrial-edge-tst-all
+    argocd/app-name: field-content-industrial-edge-tst
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - camel-k
+    - integration
+    - etl
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: industrial-edge-system
+  dependsOn:
+    - component:default/ie-kafka-event-streaming
+    - component:default/ie-minio-data-lake
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ie-line-dashboard
+  namespace: default
+  description: "Line Dashboard — Real-time visualization of sensor data and anomaly alerts"
+  annotations:
+    backstage.io/kubernetes-id: line-dashboard
+    backstage.io/kubernetes-namespace: industrial-edge-tst-all
+    argocd/app-name: field-content-industrial-edge-tst
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - dashboard
+    - frontend
+    - websocket
+  links:
+    - url: https://line-dashboard-industrial-edge-tst-all.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+      title: Dev Dashboard
+      icon: dashboard
+    - url: https://line-dashboard-industrial-edge-stormshift-line-dashboard.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+      title: Factory Dashboard
+      icon: dashboard
+spec:
+  type: website
+  lifecycle: production
+  owner: platform-engineering
+  system: industrial-edge-system
+  dependsOn:
+    - component:default/ie-amq-broker
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ie-minio-data-lake
+  namespace: default
+  description: "MinIO S3 — Object storage for sensor data lake, ML training data, and model artifacts"
+  annotations:
+    backstage.io/kubernetes-id: minio
+    backstage.io/kubernetes-namespace: industrial-edge-ml-workspace
+    argocd/app-name: field-content-industrial-edge-minio
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - minio
+    - s3
+    - data-lake
+    - storage
+  links:
+    - url: https://minio-console-industrial-edge-ml-workspace.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+      title: MinIO Console
+      icon: storage
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: industrial-edge-system
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ie-ml-anomaly-detection
+  namespace: default
+  description: "OpenShift AI — ML workspace with JupyterLab, Data Science Pipelines, and ModelMesh for anomaly detection"
+  annotations:
+    backstage.io/kubernetes-id: modelmesh-serving-anomaly-detection-model-server
+    backstage.io/kubernetes-namespace: ml-development
+    argocd/app-name: field-content-industrial-edge-data-science-project
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - openshift-ai
+    - ml
+    - anomaly-detection
+    - sklearn
+    - modelmesh
+  links:
+    - url: https://rhods-dashboard-redhat-ods-applications.apps.cluster-l9nhj.dynamic.redhatworkshops.io/projects/ml-development?section=overview
+      title: OpenShift AI — ML Development
+      icon: dashboard
+    - url: https://rhods-dashboard-redhat-ods-applications.apps.cluster-l9nhj.dynamic.redhatworkshops.io/projects/ml-development?section=workbenches
+      title: Workbenches (JupyterLab)
+      icon: code
+    - url: https://rhods-dashboard-redhat-ods-applications.apps.cluster-l9nhj.dynamic.redhatworkshops.io/projects/ml-development?section=model-server
+      title: Model Servers
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: industrial-edge-system
+  dependsOn:
+    - component:default/ie-minio-data-lake
+    - component:default/ie-kafka-event-streaming
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ie-messaging-consumer
+  namespace: default
+  description: "IoT Consumer — Backend service consuming MQTT sensor data and forwarding to ML inference"
+  annotations:
+    backstage.io/kubernetes-id: messaging
+    backstage.io/kubernetes-namespace: industrial-edge-stormshift-messaging
+    argocd/app-name: field-content-industrial-edge-stormshift
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - nodejs
+    - mqtt
+    - consumer
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: industrial-edge-system
+  dependsOn:
+    - component:default/ie-amq-broker
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: ie-mqtt-events
+  namespace: default
+  description: "MQTT IoT sensor events — vibration and temperature data published from machine sensors"
+  tags:
+    - mqtt
+    - iot
+    - events
+spec:
+  type: asyncapi
+  lifecycle: production
+  owner: platform-engineering
+  system: industrial-edge-system
+  definition: |
+    asyncapi: 2.6.0
+    info:
+      title: Industrial Edge IoT Sensor Events
+      version: 1.0.0
+      description: MQTT events from machine sensors (vibration, temperature)
+    channels:
+      iot-sensor/sw/vibration:
+        publish:
+          summary: Vibration sensor readings
+          message:
+            payload:
+              type: string
+              description: "CSV: line,pump,value,timestamp"
+      iot-sensor/sw/temperature:
+        publish:
+          summary: Temperature sensor readings
+          message:
+            payload:
+              type: string
+              description: "CSV: line,sensor,value,timestamp"
+    servers:
+      dev-broker:
+        url: broker-amq-mqtt-all-0-svc.industrial-edge-tst-all.svc:61616
+        protocol: mqtt
+      factory-broker:
+        url: broker-amq-mqtt-all-0-svc.industrial-edge-stormshift-messaging.svc:61616
+        protocol: mqtt

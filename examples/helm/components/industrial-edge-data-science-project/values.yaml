@@ -1,5 +1,12 @@
 clusterDomain: apps.cluster.example.com
 
+global:
+  localClusterDomain: apps.cluster.example.com
+  git:
+    hostname: ""
+    account: "gitea_admin"
+    dev_revision: "main"
+
 s3:
   default_endpoint: http://minio.industrial-edge-ml-workspace.svc:9000
   default_region: us-east-1

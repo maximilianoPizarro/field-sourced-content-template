@@ -1,4 +1,4 @@
-{{- $giturl := coalesce .Values.global.git.hostname (printf "gitea-route-vp-gitea.%s" .Values.global.localClusterDomain) }}
+{{- $giturl := coalesce .Values.global.git.hostname (printf "gitea-route-vp-gitea.%s" .Values.clusterDomain) }}
 {{- $full_giturl := printf "https://%s/%s/industrial-edge-dev.git" $giturl .Values.global.git.account }}
 ---
 apiVersion: v1
@@ -64,8 +64,8 @@ spec:
     enableExternalRoute: false
     externalStorage:
       bucket: pipeline-bucket
-      host: 's3.openshift-storage.svc.cluster.local'
-      port: ''
+      host: 'minio.industrial-edge-ml-workspace.svc'
+      port: '9000'
       s3CredentialsSecret:
         accessKey: AWS_ACCESS_KEY_ID
         secretKey: AWS_SECRET_ACCESS_KEY
@@ -85,7 +85,7 @@ metadata:
     notebooks.opendatahub.io/inject-oauth: 'true'
     notebooks.opendatahub.io/last-size-selection: Small
     notebooks.opendatahub.io/oauth-logout-url: >-
-      https://rhods-dashboard-redhat-ods-applications.{{ .Values.global.localClusterDomain }}/projects/ml-development?notebookLogout=jupyterlab
+      https://rhods-dashboard-redhat-ods-applications.{{ .Values.clusterDomain }}/projects/ml-development?notebookLogout=jupyterlab
     opendatahub.io/username: 'user'
     openshift.io/description: ''
     openshift.io/display-name: JupyterLab
@@ -165,7 +165,7 @@ spec:
                                   --ServerApp.password=''
                                   --ServerApp.base_url=/notebook/ml-development/jupyterlab
                                   --ServerApp.quit_button=False
-                                  --ServerApp.tornado_settings={"user":"user","hub_host":"https://rhods-dashboard-redhat-ods-applications.{{ .Values.global.localClusterDomain }}","hub_prefix":"/projects/ml-development"}
+                                  --ServerApp.tornado_settings={"user":"user","hub_host":"https://rhods-dashboard-redhat-ods-applications.{{ .Values.clusterDomain }}","hub_prefix":"/projects/ml-development"}
             - name: JUPYTER_IMAGE
               value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/industrial-edge:industrial-edge-v0.1.0
             - name: SSL_CERT_FILE
@@ -264,7 +264,7 @@ spec:
             - >-
               --openshift-sar={"verb":"get","resource":"notebooks","resourceAPIGroup":"kubeflow.org","resourceName":"jupyterlab","namespace":"$(NAMESPACE)"}
             - >-
-              --logout-url=https://rhods-dashboard-redhat-ods-applications.{{ .Values.global.localClusterDomain }}/projects/ml-development?notebookLogout=jupyterlab
+              --logout-url=https://rhods-dashboard-redhat-ods-applications.{{ .Values.clusterDomain }}/projects/ml-development?notebookLogout=jupyterlab
       enableServiceLinks: false
       serviceAccountName: jupyterlab
       volumes:
@@ -315,42 +315,6 @@ spec:
             defaultMode: 420
             secretName: jupyterlab-oauth-client
 ---
-apiVersion: objectbucket.io/v1alpha1
-kind: ObjectBucketClaim
-metadata:
-  name: pipeline-bucket
-  namespace: ml-development
-  finalizers:
-    - objectbucket.io/finalizer
-  labels:
-    app: noobaa
-    bucket-provisioner: openshift-storage.noobaa.io-obc
-    noobaa-domain: openshift-storage.noobaa.io
-spec:
-  additionalConfig:
-    bucketclass: noobaa-default-bucket-class
-  bucketName: pipeline-bucket
-  generateBucketName: pipeline-bucket
-  storageClassName: openshift-storage.noobaa.io
----
-apiVersion: objectbucket.io/v1alpha1
-kind: ObjectBucketClaim
-metadata:
-  name: user-bucket
-  namespace: ml-development
-  finalizers:
-    - objectbucket.io/finalizer
-  labels:
-    app: noobaa
-    bucket-provisioner: openshift-storage.noobaa.io-obc
-    noobaa-domain: openshift-storage.noobaa.io
-spec:
-  additionalConfig:
-    bucketclass: noobaa-default-bucket-class
-  bucketName: user-bucket
-  generateBucketName: user-bucket
-  storageClassName: openshift-storage.noobaa.io
----
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
@@ -373,7 +337,7 @@ metadata:
     notebooks.opendatahub.io/inject-oauth: 'true'
     notebooks.opendatahub.io/last-size-selection: Small
     notebooks.opendatahub.io/oauth-logout-url: >-
-      https://rhods-dashboard-redhat-ods-applications.{{ .Values.global.localClusterDomain }}/projects/ml-development?notebookLogout=s3-browser
+      https://rhods-dashboard-redhat-ods-applications.{{ .Values.clusterDomain }}/projects/ml-development?notebookLogout=s3-browser
     opendatahub.io/username: 'user'
     openshift.io/description: ''
     openshift.io/display-name: 'S3 Browser'
@@ -453,7 +417,7 @@ spec:
                                   --ServerApp.password=''
                                   --ServerApp.base_url=/notebook/ml-development/s3-browser
                                   --ServerApp.quit_button=False
-                                  --ServerApp.tornado_settings={"user":"user","hub_host":"https://rhods-dashboard-redhat-ods-applications.{{ .Values.global.localClusterDomain }}","hub_prefix":"/projects/ml-development"}
+                                  --ServerApp.tornado_settings={"user":"user","hub_host":"https://rhods-dashboard-redhat-ods-applications.{{ .Values.clusterDomain }}","hub_prefix":"/projects/ml-development"}
             - name: JUPYTER_IMAGE
               value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/odh-tec:v0.1
             - name: SSL_CERT_FILE
@@ -555,7 +519,7 @@ spec:
             - >-
               --openshift-sar={"verb":"get","resource":"notebooks","resourceAPIGroup":"kubeflow.org","resourceName":"s3-browser","namespace":"$(NAMESPACE)"}
             - >-
-              --logout-url=https://rhods-dashboard-redhat-ods-applications.{{ .Values.global.localClusterDomain }}/projects/ml-development?notebookLogout=s3-browser
+              --logout-url=https://rhods-dashboard-redhat-ods-applications.{{ .Values.clusterDomain }}/projects/ml-development?notebookLogout=s3-browser
       enableServiceLinks: false
       serviceAccountName: s3-browser
       volumes:

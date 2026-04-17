@@ -40,7 +40,7 @@ spec:
           type: string
           description: "Your OpenShift username. Namespace: <username>-<instance-name>"
           default: ${{ user.entity.metadata.name }}
-          pattern: "^user[0-9]+$"
+          pattern: "^[a-z][a-z0-9-]*$"
           ui:help: "E.g.: user1 → namespace user1-edge-factory-1"
         sensorCount:
           title: Number of Machine Sensors
@@ -63,7 +63,7 @@ spec:
           title: Cluster Domain
           type: string
           default: "apps.cluster-l9nhj.dynamic.redhatworkshops.io"
-          ui:widget: hidden
+          description: "OpenShift apps domain (oc get ingresses.config cluster -o jsonpath='{.spec.domain}')"
   steps:
     - id: fetch-skeleton
       name: Generate Skeleton

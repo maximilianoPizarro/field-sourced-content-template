@@ -5,14 +5,22 @@ metadata:
   name: anomaly-detection-model-server
   namespace: ${{values.namespace}}
   labels:
-    name: modelmesh-serving-anomaly-detection-model-server
+    name: modelmesh-serving-mlserver-1.x-SR
+    opendatahub.io/dashboard: "true"
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-    maxLoadingConcurrency: "2"
+    opendatahub.io/template-display-name: ML Server
+    opendatahub.io/template-name: mlserver
 spec:
   supportedModelFormats:
     - name: sklearn
       version: "0"
+      autoSelect: true
+    - name: xgboost
+      version: "1"
+      autoSelect: true
+    - name: lightgbm
+      version: "3"
       autoSelect: true
   builtInAdapter:
     serverType: mlserver
@@ -31,8 +39,10 @@ spec:
           value: "8002"
         - name: MLSERVER_LOAD_MODELS_AT_STARTUP
           value: "false"
-        - name: MLSERVER_MODEL_NAME_REGEXP
-          value: ".*"
+        - name: MLSERVER_MODEL_NAME
+          value: dummy-model-fixme
+        - name: MLSERVER_HOST
+          value: "127.0.0.1"
         - name: MLSERVER_GRPC_MAX_MESSAGE_LENGTH
           value: "-1"
       resources:
@@ -42,16 +52,47 @@ spec:
         limits:
           cpu: "2"
           memory: 2Gi
-  grpcEndpoint: port:8085
-  grpcDataEndpoint: port:8001
+      volumeMounts:
+        - mountPath: /dev/shm
+          name: shm
+  protocolVersions:
+    - grpc-v2
+  grpcEndpoint: "port:8085"
+  grpcDataEndpoint: "port:8001"
+  volumes:
+    - name: shm
+      emptyDir:
+        medium: Memory
+        sizeLimit: 2Gi
   multiModel: true
   replicas: 1
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: aws-connection-user-bucket
+  namespace: ${{values.namespace}}
+  labels:
+    opendatahub.io/dashboard: "true"
+    opendatahub.io/managed: "true"
+  annotations:
+    opendatahub.io/connection-type: s3
+    openshift.io/display-name: MinIO S3
+type: Opaque
+stringData:
+  AWS_ACCESS_KEY_ID: minio
+  AWS_SECRET_ACCESS_KEY: minio123
+  AWS_DEFAULT_REGION: none
+  AWS_S3_BUCKET: user-bucket
+  AWS_S3_ENDPOINT: "http://minio.${{values.namespace}}.svc:9000"
 ---
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
 metadata:
   name: inference-service
   namespace: ${{values.namespace}}
+  labels:
+    opendatahub.io/dashboard: "true"
   annotations:
     serving.kserve.io/deploymentMode: ModelMesh
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
@@ -60,8 +101,11 @@ spec:
     model:
       modelFormat:
         name: sklearn
+        version: "0"
       runtime: anomaly-detection-model-server
       storage:
-        key: localMinIO
-        path: sklearn/model
+        key: aws-connection-user-bucket
+        path: initial_model.joblib
+{%- else %}
+# Anomaly detection disabled — no ML resources deployed
 {%- endif %}

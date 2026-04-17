@@ -5,7 +5,7 @@ metadata:
   namespace: ${{values.namespace}}
 data:
   VIBRATION_ALERT_ENABLED: "true"
-  VIBRATION_ANOMALY_ENABLED: "false"
+  VIBRATION_ANOMALY_ENABLED: "{% if values.anomalyDetection %}true{% else %}false{% endif %}"
   NODE_TLS_REJECT_UNAUTHORIZED: "0"
   MQTT_BROKER: "ws://broker-amq-mqtt-all-0-svc:61616"
   MQTT_USER: "iotuser"

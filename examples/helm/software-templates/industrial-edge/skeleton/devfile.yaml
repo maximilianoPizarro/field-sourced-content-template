@@ -67,7 +67,7 @@ commands:
   - id: run-camel
     exec:
       component: tools
-      commandLine: "jbang -Dcamel.main.routes-include-pattern=file:manifests/mqtt2kafka-integration.yaml camel@apache/camel run"
+      commandLine: "jbang camel@apache/camel run src/MQTT2KafkaRoute.java"
       workingDir: ${PROJECT_SOURCE}
 events:
   postStart:

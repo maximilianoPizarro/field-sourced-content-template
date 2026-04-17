@@ -102,4 +102,6 @@ spec:
             public OnCompletionDefinition onCompletion() { return super.onCompletion(); }
         }
       name: Kafka2S3Route.java
+{%- else %}
+# Kafka→S3 integration disabled — anomaly detection not enabled
 {%- endif %}

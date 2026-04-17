@@ -2,9 +2,9 @@
 
 Consola de observabilidad de Istio Service Mesh con visualización de tráfico en tiempo real, estado de configuración y health de servicios.
 
-<iframe src="https://kiali-openshift-cluster-observability-operator.apps.cluster-l9nhj.dynamic.redhatworkshops.io/kiali/" width="100%" height="900" frameborder="0" style="border:1px solid #ddd; border-radius:8px;"></iframe>
+<iframe src="https://kiali-openshift-cluster-observability-operator.<CLUSTER_DOMAIN>/kiali/" width="100%" height="900" frameborder="0" style="border:1px solid #ddd; border-radius:8px;"></iframe>
 
-[Abrir Kiali :material-open-in-new:](https://kiali-openshift-cluster-observability-operator.apps.cluster-l9nhj.dynamic.redhatworkshops.io){ .md-button }
+[Abrir Kiali :material-open-in-new:](https://kiali-openshift-cluster-observability-operator.<CLUSTER_DOMAIN>){ .md-button }
 
 ## Funcionalidades principales
 

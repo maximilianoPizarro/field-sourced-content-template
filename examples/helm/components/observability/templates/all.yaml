@@ -422,7 +422,7 @@ metadata:
   name: thanos-querier-connectivity-link
   namespace: openshift-cluster-observability-operator
 spec:
-  host: thanos-querier.{{ .Values.clusterDomain | default "apps.cluster-l9nhj.dynamic.redhatworkshops.io" }}
+  host: thanos-querier.{{ .Values.clusterDomain | default "{{ .Values.clusterDomain }}" }}
   port:
     targetPort: 10902
   tls:
@@ -455,7 +455,7 @@ spec:
       admin_user: admin
   route:
     spec:
-      host: grafana-observability.{{ .Values.clusterDomain | default "apps.cluster-l9nhj.dynamic.redhatworkshops.io" }}
+      host: grafana-observability.{{ .Values.clusterDomain | default "{{ .Values.clusterDomain }}" }}
       tls:
         termination: edge
 ---
@@ -1088,7 +1088,7 @@ metadata:
 data:
   generate.sh: |
     #!/bin/sh
-    DOMAIN="{{ .Values.clusterDomain | default "apps.cluster-l9nhj.dynamic.redhatworkshops.io" }}"
+    DOMAIN="{{ .Values.clusterDomain | default "{{ .Values.clusterDomain }}" }}"
     NB_HOST="neuralbank.${DOMAIN}"
     NFL_HOST="nfl-wallet.${DOMAIN}"
     LM_HOST="litemaas.${DOMAIN}"

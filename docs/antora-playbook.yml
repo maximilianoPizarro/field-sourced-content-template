@@ -13,7 +13,7 @@ asciidoc:
   extensions:
     - asciidoctor-kroki
   attributes:
-    cluster_domain: "apps.cluster-l9nhj.dynamic.redhatworkshops.io"
+    cluster_domain: "<CLUSTER_DOMAIN>"
 
 ui:
   bundle:

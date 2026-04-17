@@ -69,12 +69,12 @@ Enviar la API key en el header `X-API-Key`:
 
 ```bash
 curl -H "X-API-Key: nfl-wallet-demo-key-2024" \
-  https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers
+  https://nfl-wallet.<CLUSTER_DOMAIN>/api/v1/customers
 ```
 
 ### En Swagger UI
 
-1. Abrir [Swagger UI](https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/q/swagger-ui)
+1. Abrir [Swagger UI](https://nfl-wallet.<CLUSTER_DOMAIN>/q/swagger-ui)
 2. Hacer click en **Authorize** (icono de candado)
 3. Ingresar la API key: `nfl-wallet-demo-key-2024`
 4. Click en **Authorize** y luego **Close**

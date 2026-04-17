@@ -48,7 +48,7 @@ The OIDCPolicy links to the Keycloak realm `neuralbank` and protects the HTTPRou
 
 ```bash
 curl -s -o /dev/null -w "HTTP %{http_code}\n" \
-  https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers
+  https://neuralbank.<CLUSTER_DOMAIN>/api/v1/customers
 ```
 
 Expected output:
@@ -106,7 +106,7 @@ Output: `nfl-wallet-demo-key-2024`
 
 ```bash
 curl -s -w "\nHTTP %{http_code}\n" \
-  https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers
+  https://nfl-wallet.<CLUSTER_DOMAIN>/api/v1/customers
 ```
 
 Expected output:
@@ -121,7 +121,7 @@ HTTP 401
 ```bash
 curl -s -w "\nHTTP %{http_code}\n" \
   -H "X-API-Key: this-is-not-a-valid-key" \
-  https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers
+  https://nfl-wallet.<CLUSTER_DOMAIN>/api/v1/customers
 ```
 
 Expected output:
@@ -136,7 +136,7 @@ HTTP 401
 ```bash
 curl -s -w "\nHTTP %{http_code}\n" \
   -H "X-API-Key: nfl-wallet-demo-key-2024" \
-  https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers \
+  https://nfl-wallet.<CLUSTER_DOMAIN>/api/v1/customers \
   | python3 -m json.tool
 ```
 
@@ -147,7 +147,7 @@ You should receive a JSON response with paginated customer records and `HTTP 200
 ```bash
 curl -s -w "\nHTTP %{http_code}\n" \
   -H "X-API-Key: nfl-wallet-readonly-key-2024" \
-  https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers \
+  https://nfl-wallet.<CLUSTER_DOMAIN>/api/v1/customers \
   | python3 -m json.tool
 ```
 
@@ -161,7 +161,7 @@ The RateLimitPolicy allows **120 requests per minute**. Run a burst to see the l
 for i in $(seq 1 10); do
   code=$(curl -s -o /dev/null -w '%{http_code}' \
     -H "X-API-Key: nfl-wallet-demo-key-2024" \
-    https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers)
+    https://nfl-wallet.<CLUSTER_DOMAIN>/api/v1/customers)
   echo "Request $i: HTTP $code"
 done
 ```

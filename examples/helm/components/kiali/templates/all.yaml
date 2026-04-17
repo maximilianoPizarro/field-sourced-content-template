@@ -12,13 +12,13 @@ spec:
   external_services:
     grafana:
       enabled: true
-      external_url: https://grafana-observability.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+      external_url: https://grafana-observability.{{ .Values.clusterDomain }}
       internal_url: http://grafana-observability-service.openshift-cluster-observability-operator.svc.cluster.local:3000
     prometheus:
       url: http://stack-prometheus.openshift-cluster-observability-operator.svc.cluster.local:9090
     tracing:
       enabled: true
-      external_url: https://jaeger.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+      external_url: https://jaeger.{{ .Values.clusterDomain }}
       internal_url: http://jaeger.openshift-opentelemetry.svc.cluster.local:16686
       use_grpc: false
 ---

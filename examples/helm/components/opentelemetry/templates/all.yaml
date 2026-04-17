@@ -75,7 +75,7 @@ metadata:
   name: jaeger
   namespace: openshift-opentelemetry
 spec:
-  host: jaeger.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+  host: jaeger.{{ .Values.clusterDomain }}
   port:
     targetPort: query
   tls:

@@ -62,7 +62,7 @@ spec:
         clusterDomain:
           title: Cluster Domain
           type: string
-          default: "apps.cluster-l9nhj.dynamic.redhatworkshops.io"
+          default: ""
           description: "OpenShift apps domain (oc get ingresses.config cluster -o jsonpath='{.spec.domain}')"
   steps:
     - id: fetch-skeleton

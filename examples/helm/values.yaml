@@ -470,7 +470,7 @@ components:
 # Values injected by field content workload (do not modify)
 # ============================================================
 deployer:
-  domain: "apps.cluster-l9nhj.dynamic.redhatworkshops.io"
+  domain: ""
   apiUrl: ""
 
 fieldContent:

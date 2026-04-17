@@ -3,7 +3,7 @@
 ## URL de acceso
 
 ```
-https://grafana-observability.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+https://grafana-observability.<CLUSTER_DOMAIN>
 ```
 
 ## Credenciales

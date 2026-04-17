@@ -6,9 +6,9 @@ API REST de gestión de clientes desplegada en OpenShift con protección de Kuad
 
 | Recurso | URL |
 |---------|-----|
-| **Swagger UI** | [nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/q/swagger-ui](https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/q/swagger-ui) |
-| **API Base** | `https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers` |
-| **Grafana** | [grafana-observability.apps.cluster-l9nhj.dynamic.redhatworkshops.io](https://grafana-observability.apps.cluster-l9nhj.dynamic.redhatworkshops.io) |
+| **Swagger UI** | [nfl-wallet.<CLUSTER_DOMAIN>/q/swagger-ui](https://nfl-wallet.<CLUSTER_DOMAIN>/q/swagger-ui) |
+| **API Base** | `https://nfl-wallet.<CLUSTER_DOMAIN>/api/v1/customers` |
+| **Grafana** | [grafana-observability.<CLUSTER_DOMAIN>](https://grafana-observability.<CLUSTER_DOMAIN>) |
 
 ## Credenciales
 
@@ -41,25 +41,25 @@ API REST de gestión de clientes desplegada en OpenShift con protección de Kuad
 ```bash
 # Listar clientes (paginado)
 curl -H "X-API-Key: nfl-wallet-demo-key-2024" \
-  https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers
+  https://nfl-wallet.<CLUSTER_DOMAIN>/api/v1/customers
 
 # Obtener cliente por ID
 curl -H "X-API-Key: nfl-wallet-demo-key-2024" \
-  https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers/1
+  https://nfl-wallet.<CLUSTER_DOMAIN>/api/v1/customers/1
 
 # Crear cliente
 curl -X POST -H "X-API-Key: nfl-wallet-demo-key-2024" \
   -H "Content-Type: application/json" \
   -d '{"identificacion":"99-99999999-0","tipoIdentificacion":"CUIT","nombre":"Test","apellido":"User","email":"test@example.com","tipoCliente":"PERSONAL"}' \
-  https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers
+  https://nfl-wallet.<CLUSTER_DOMAIN>/api/v1/customers
 
 # Obtener score crediticio
 curl -H "X-API-Key: nfl-wallet-demo-key-2024" \
-  https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers/1/credit-score
+  https://nfl-wallet.<CLUSTER_DOMAIN>/api/v1/customers/1/credit-score
 
 # Resumen del cliente
 curl -H "X-API-Key: nfl-wallet-demo-key-2024" \
-  https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers/1/summary
+  https://nfl-wallet.<CLUSTER_DOMAIN>/api/v1/customers/1/summary
 ```
 
 ## Namespaces

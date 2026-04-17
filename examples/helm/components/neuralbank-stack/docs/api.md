@@ -5,7 +5,7 @@ Neuralbank expone una API REST de gestión de clientes construida con Quarkus. T
 ## Base URL
 
 ```
-https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+https://neuralbank.<CLUSTER_DOMAIN>
 ```
 
 ## Autenticación
@@ -14,7 +14,7 @@ Todos los endpoints requieren un JWT token válido emitido por Keycloak:
 
 ```bash
 TOKEN=$(curl -s -X POST \
-  "https://rhbk.apps.cluster-l9nhj.dynamic.redhatworkshops.io/realms/neuralbank/protocol/openid-connect/token" \
+  "https://rhbk.<CLUSTER_DOMAIN>/realms/neuralbank/protocol/openid-connect/token" \
   -d "grant_type=password" \
   -d "client_id=neuralbank-frontend" \
   -d "username=user1" \
@@ -101,7 +101,7 @@ Ver [Autenticación OIDC](oidc-auth.md) para más detalles.
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" \
-  "https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers" \
+  "https://neuralbank.<CLUSTER_DOMAIN>/api/v1/customers" \
   | python3 -m json.tool
 ```
 
@@ -109,7 +109,7 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" \
-  "https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers?tipoCliente=PERSONAL&ciudad=Buenos+Aires&page=0&size=5" \
+  "https://neuralbank.<CLUSTER_DOMAIN>/api/v1/customers?tipoCliente=PERSONAL&ciudad=Buenos+Aires&page=0&size=5" \
   | python3 -m json.tool
 ```
 
@@ -132,7 +132,7 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" \
     "paisId": 4,
     "tipoCliente": "PERSONAL"
   }' \
-  "https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers" \
+  "https://neuralbank.<CLUSTER_DOMAIN>/api/v1/customers" \
   | python3 -m json.tool
 ```
 
@@ -140,7 +140,7 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" \
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" \
-  "https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers/1/credit-score" \
+  "https://neuralbank.<CLUSTER_DOMAIN>/api/v1/customers/1/credit-score" \
   | python3 -m json.tool
 ```
 
@@ -148,7 +148,7 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" \
-  "https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers/1/summary" \
+  "https://neuralbank.<CLUSTER_DOMAIN>/api/v1/customers/1/summary" \
   | python3 -m json.tool
 ```
 
@@ -156,7 +156,7 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 
 La API expone una interfaz Swagger UI interactiva:
 
-**URL**: [https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/q/swagger-ui](https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/q/swagger-ui)
+**URL**: [https://neuralbank.<CLUSTER_DOMAIN>/q/swagger-ui](https://neuralbank.<CLUSTER_DOMAIN>/q/swagger-ui)
 
 Para autenticarse en Swagger UI, usar el flujo OIDC o inyectar el Bearer token manualmente.
 
@@ -166,7 +166,7 @@ El spec OpenAPI completo se puede descargar:
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" \
-  https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/q/openapi
+  https://neuralbank.<CLUSTER_DOMAIN>/q/openapi
 ```
 
 ## Tipos de datos

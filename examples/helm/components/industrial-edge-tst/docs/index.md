@@ -6,10 +6,10 @@ IoT manufacturing platform based on [Red Hat Validated Patterns — Industrial E
 
 | Resource | URL |
 |----------|-----|
-| **OpenShift AI — ML Development** | [RHODS Dashboard](https://rhods-dashboard-redhat-ods-applications.apps.cluster-l9nhj.dynamic.redhatworkshops.io/projects/ml-development?section=overview) |
-| **Line Dashboard (Dev)** | [Dev Dashboard](https://line-dashboard-industrial-edge-tst-all.apps.cluster-l9nhj.dynamic.redhatworkshops.io) |
-| **Line Dashboard (Factory)** | [Factory Dashboard](https://line-dashboard-industrial-edge-stormshift-line-dashboard.apps.cluster-l9nhj.dynamic.redhatworkshops.io) |
-| **MinIO Console** | [MinIO](https://minio-console-industrial-edge-ml-workspace.apps.cluster-l9nhj.dynamic.redhatworkshops.io) |
+| **OpenShift AI — ML Development** | [RHODS Dashboard](https://rhods-dashboard-redhat-ods-applications.<CLUSTER_DOMAIN>/projects/ml-development?section=overview) |
+| **Line Dashboard (Dev)** | [Dev Dashboard](https://line-dashboard-industrial-edge-tst-all.<CLUSTER_DOMAIN>) |
+| **Line Dashboard (Factory)** | [Factory Dashboard](https://line-dashboard-industrial-edge-stormshift-line-dashboard.<CLUSTER_DOMAIN>) |
+| **MinIO Console** | [MinIO](https://minio-console-industrial-edge-ml-workspace.<CLUSTER_DOMAIN>) |
 
 ## Namespaces
 

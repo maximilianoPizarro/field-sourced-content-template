@@ -237,6 +237,10 @@ spec:
     helm:
       valuesObject:
         clusterDomain: {{ $domain }}
+    {{- else if has .path (list "opentelemetry" "kiali" "litemaas" "rhcl-operator" "observability") }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
     {{- else if has .path (list "industrial-edge-tst" "industrial-edge-stormshift" "industrial-edge-data-lake" "industrial-edge-data-science-project" "industrial-edge-pipelines" "industrial-edge-minio" "industrial-edge-data-science-cluster") }}
     helm:
       valuesObject:

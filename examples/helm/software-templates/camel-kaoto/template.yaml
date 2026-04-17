@@ -41,7 +41,7 @@ spec:
         clusterDomain:
           title: Cluster Domain
           type: string
-          default: "apps.cluster-l9nhj.dynamic.redhatworkshops.io"
+          default: ""
           ui:widget: hidden
     - title: Kafka Configuration
       properties:

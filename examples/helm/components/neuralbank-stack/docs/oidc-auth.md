@@ -54,8 +54,8 @@ AuthPolicies generadas autom√°ticamente:
 
 | Campo | Valor |
 |-------|-------|
-| **Realm URL** | `https://rhbk.apps.cluster-l9nhj.dynamic.redhatworkshops.io/realms/neuralbank` |
-| **Well-known** | `https://rhbk.apps.cluster-l9nhj.dynamic.redhatworkshops.io/realms/neuralbank/.well-known/openid-configuration` |
+| **Realm URL** | `https://rhbk.<CLUSTER_DOMAIN>/realms/neuralbank` |
+| **Well-known** | `https://rhbk.<CLUSTER_DOMAIN>/realms/neuralbank/.well-known/openid-configuration` |
 
 ### Client: neuralbank-frontend
 
@@ -87,7 +87,7 @@ Neuralbank usa OIDC (interactivo), mientras que NFL Wallet usa API Key (program√
 
 ## Acceso desde el navegador
 
-1. Navegar a `https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io`
+1. Navegar a `https://neuralbank.<CLUSTER_DOMAIN>`
 2. La OIDCPolicy redirige autom√°ticamente a Keycloak
 3. Ingresar credenciales (`user1` / `Welcome123!`)
 4. Tras la autenticaci√≥n, se redirige de vuelta a la app con un JWT en cookie
@@ -98,7 +98,7 @@ Neuralbank usa OIDC (interactivo), mientras que NFL Wallet usa API Key (program√
 
 ```bash
 TOKEN=$(curl -s -X POST \
-  "https://rhbk.apps.cluster-l9nhj.dynamic.redhatworkshops.io/realms/neuralbank/protocol/openid-connect/token" \
+  "https://rhbk.<CLUSTER_DOMAIN>/realms/neuralbank/protocol/openid-connect/token" \
   -d "grant_type=password" \
   -d "client_id=neuralbank-frontend" \
   -d "username=user1" \
@@ -111,13 +111,13 @@ echo $TOKEN
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" \
-  https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers | python3 -m json.tool
+  https://neuralbank.<CLUSTER_DOMAIN>/api/v1/customers | python3 -m json.tool
 ```
 
 ### Sin token (redirect 302)
 
 ```bash
-curl -v https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers 2>&1 | grep "< HTTP\|< location"
+curl -v https://neuralbank.<CLUSTER_DOMAIN>/api/v1/customers 2>&1 | grep "< HTTP\|< location"
 ```
 
 Resultado esperado: `302` redirect a la URL de login de Keycloak.

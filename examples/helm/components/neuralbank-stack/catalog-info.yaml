@@ -24,7 +24,7 @@ metadata:
     backstage.io/kubernetes-namespace: neuralbank-stack
     argocd/app-name: field-content-neuralbank-stack
     argocd/app-namespace: openshift-gitops
-    backstage.io/view-url: https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+    backstage.io/view-url: https://neuralbank.<CLUSTER_DOMAIN>
     backstage.io/techdocs-ref: dir:.
   tags:
     - neuralbank
@@ -35,16 +35,16 @@ metadata:
     - oidc
     - keycloak
   links:
-    - url: https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+    - url: https://neuralbank.<CLUSTER_DOMAIN>
       title: Frontend
       icon: web
-    - url: https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/q/swagger-ui
+    - url: https://neuralbank.<CLUSTER_DOMAIN>/q/swagger-ui
       title: Swagger UI
       icon: api
-    - url: https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers
+    - url: https://neuralbank.<CLUSTER_DOMAIN>/api/v1/customers
       title: API Endpoint
       icon: api
-    - url: https://grafana-observability.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+    - url: https://grafana-observability.<CLUSTER_DOMAIN>
       title: Grafana Dashboards
       icon: dashboard
 spec:
@@ -168,7 +168,7 @@ spec:
         name: Platform Engineering
         email: platform@neuralbank.dev
     servers:
-      - url: https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+      - url: https://neuralbank.<CLUSTER_DOMAIN>
         description: Producción (neuralbank-stack)
     security:
       - bearerAuth: []

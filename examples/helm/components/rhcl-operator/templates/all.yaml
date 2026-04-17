@@ -134,11 +134,11 @@ spec:
       cookie:
         name: jwt
   provider:
-    authorizationEndpoint: https://rhbk.apps.cluster-l9nhj.dynamic.redhatworkshops.io/realms/neuralbank/protocol/openid-connect/auth
+    authorizationEndpoint: https://rhbk.{{ .Values.clusterDomain }}/realms/neuralbank/protocol/openid-connect/auth
     clientID: neuralbank-frontend
-    issuerURL: https://rhbk.apps.cluster-l9nhj.dynamic.redhatworkshops.io/realms/neuralbank
-    redirectURI: https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/auth/callback
-    tokenEndpoint: https://rhbk.apps.cluster-l9nhj.dynamic.redhatworkshops.io/realms/neuralbank/protocol/openid-connect/token
+    issuerURL: https://rhbk.{{ .Values.clusterDomain }}/realms/neuralbank
+    redirectURI: https://neuralbank.{{ .Values.clusterDomain }}/auth/callback
+    tokenEndpoint: https://rhbk.{{ .Values.clusterDomain }}/realms/neuralbank/protocol/openid-connect/token
   targetRef:
     group: gateway.networking.k8s.io
     kind: HTTPRoute
@@ -178,7 +178,7 @@ metadata:
   namespace: neuralbank-stack
 spec:
   hostnames:
-  - neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+  - neuralbank.{{ .Values.clusterDomain }}
   parentRefs:
   - name: neuralbank-gateway
     namespace: neuralbank-stack
@@ -203,7 +203,7 @@ metadata:
   namespace: neuralbank-stack
 spec:
   hostnames:
-  - neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+  - neuralbank.{{ .Values.clusterDomain }}
   parentRefs:
   - name: neuralbank-gateway
     namespace: neuralbank-stack
@@ -369,8 +369,8 @@ spec:
     team: Platform Engineering
     email: platform@neuralbank.dev
   documentation:
-    openAPISpecURL: "https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/q/openapi"
-    swaggerUI: "https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/q/swagger-ui"
+    openAPISpecURL: "https://neuralbank.{{ .Values.clusterDomain }}/q/openapi"
+    swaggerUI: "https://neuralbank.{{ .Values.clusterDomain }}/q/swagger-ui"
     gitRepository: "https://github.com/maximilianoPizarro/field-sourced-content-template"
   targetRef:
     group: gateway.networking.k8s.io
@@ -386,7 +386,7 @@ metadata:
   name: neuralbank-external-route
   namespace: neuralbank-stack
 spec:
-  host: neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+  host: neuralbank.{{ .Values.clusterDomain }}
   port:
     targetPort: http
   tls:

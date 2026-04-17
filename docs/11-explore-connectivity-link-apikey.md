@@ -79,13 +79,13 @@ Deberías ver: `nfl-wallet-demo-key-2024`
 
 ```bash
 curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" \
-  https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers
+  https://nfl-wallet.<CLUSTER_DOMAIN>/api/v1/customers
 ```
 
 Resultado esperado: `HTTP Status: 401`
 
 ```bash
-curl -s https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers
+curl -s https://nfl-wallet.<CLUSTER_DOMAIN>/api/v1/customers
 ```
 
 Respuesta esperada:
@@ -97,7 +97,7 @@ Respuesta esperada:
 
 ```bash
 curl -s -H "X-API-Key: nfl-wallet-demo-key-2024" \
-  "https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers" \
+  "https://nfl-wallet.<CLUSTER_DOMAIN>/api/v1/customers" \
   | python3 -m json.tool
 ```
 
@@ -105,7 +105,7 @@ curl -s -H "X-API-Key: nfl-wallet-demo-key-2024" \
 
 ```bash
 curl -s -H "X-API-Key: nfl-wallet-demo-key-2024" \
-  "https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers/1" \
+  "https://nfl-wallet.<CLUSTER_DOMAIN>/api/v1/customers/1" \
   | python3 -m json.tool
 ```
 
@@ -113,7 +113,7 @@ curl -s -H "X-API-Key: nfl-wallet-demo-key-2024" \
 
 ```bash
 curl -s -H "X-API-Key: nfl-wallet-demo-key-2024" \
-  "https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers/1/credit-score" \
+  "https://nfl-wallet.<CLUSTER_DOMAIN>/api/v1/customers/1/credit-score" \
   | python3 -m json.tool
 ```
 
@@ -131,7 +131,7 @@ curl -s -X POST \
     "ciudad": "Miami",
     "pais": "USA"
   }' \
-  "https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers" \
+  "https://nfl-wallet.<CLUSTER_DOMAIN>/api/v1/customers" \
   | python3 -m json.tool
 ```
 
@@ -140,7 +140,7 @@ curl -s -X POST \
 ```bash
 curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" \
   -H "X-API-Key: clave-invalida-12345" \
-  "https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers"
+  "https://nfl-wallet.<CLUSTER_DOMAIN>/api/v1/customers"
 ```
 
 Resultado esperado: `HTTP Status: 401`
@@ -149,7 +149,7 @@ Resultado esperado: `HTTP Status: 401`
 
 ```bash
 curl -s -H "X-API-Key: nfl-wallet-readonly-key-2024" \
-  "https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers" \
+  "https://nfl-wallet.<CLUSTER_DOMAIN>/api/v1/customers" \
   | python3 -m json.tool
 ```
 
@@ -167,7 +167,7 @@ Prueba exceder el límite (en la terminal):
 for i in $(seq 1 130); do
   code=$(curl -s -o /dev/null -w '%{http_code}' \
     -H "X-API-Key: nfl-wallet-demo-key-2024" \
-    "https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers")
+    "https://nfl-wallet.<CLUSTER_DOMAIN>/api/v1/customers")
   echo "Request $i: HTTP $code"
 done
 ```
@@ -196,7 +196,7 @@ Kuadrant detecta automáticamente el nuevo Secret. Prueba tu key:
 MY_KEY=$(oc get secret my-apikey-user1 -n nfl-wallet-prod -o jsonpath='{.data.api_key}' | base64 -d)
 
 curl -s -H "X-API-Key: $MY_KEY" \
-  "https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers" \
+  "https://nfl-wallet.<CLUSTER_DOMAIN>/api/v1/customers" \
   | python3 -m json.tool
 ```
 
@@ -205,7 +205,7 @@ curl -s -H "X-API-Key: $MY_KEY" \
 1. Abre en el navegador:
 
 ```
-https://nfl-wallet.apps.cluster-l9nhj.dynamic.redhatworkshops.io/q/swagger-ui
+https://nfl-wallet.<CLUSTER_DOMAIN>/q/swagger-ui
 ```
 
 2. Haz click en **Authorize** (icono de candado).

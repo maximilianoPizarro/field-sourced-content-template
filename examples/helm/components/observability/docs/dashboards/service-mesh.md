@@ -2,9 +2,9 @@
 
 Dashboard en tiempo real (auto-refresh 30s) del service mesh Istio en modo ambient.
 
-<iframe src="https://grafana-observability.apps.cluster-l9nhj.dynamic.redhatworkshops.io/d/service-mesh-overview?orgId=1&kiosk&theme=light" width="100%" height="900" frameborder="0" style="border:1px solid #ddd; border-radius:8px;"></iframe>
+<iframe src="https://grafana-observability.<CLUSTER_DOMAIN>/d/service-mesh-overview?orgId=1&kiosk&theme=light" width="100%" height="900" frameborder="0" style="border:1px solid #ddd; border-radius:8px;"></iframe>
 
-[Abrir en Grafana :material-open-in-new:](https://grafana-observability.apps.cluster-l9nhj.dynamic.redhatworkshops.io/d/service-mesh-overview){ .md-button }
+[Abrir en Grafana :material-open-in-new:](https://grafana-observability.<CLUSTER_DOMAIN>/d/service-mesh-overview){ .md-button }
 
 ## Paneles incluidos
 

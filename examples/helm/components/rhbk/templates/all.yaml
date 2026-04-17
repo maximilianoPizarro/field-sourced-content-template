@@ -1428,13 +1428,13 @@ spec:
         protocolMapper: oidc-usersessionmodel-note-mapper
       publicClient: false
       redirectUris:
-      - https://backstage-developer-hub-developer-hub.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/auth/oidc/handler/frame
+      - https://backstage-developer-hub-developer-hub.{{ .Values.clusterDomain }}/api/auth/oidc/handler/frame
       secret: FfzjFAAuQUGjZDtKUErTx9fOaqF7RV6m
       serviceAccountsEnabled: true
       standardFlowEnabled: true
       surrogateAuthRequired: false
       webOrigins:
-      - https://backstage-developer-hub-developer-hub.apps.cluster-l9nhj.dynamic.redhatworkshops.io/
+      - https://backstage-developer-hub-developer-hub.{{ .Values.clusterDomain }}/
     - alwaysDisplayInConsole: false
       attributes:
         backchannel.logout.revoke.offline.tokens: "false"
@@ -2440,9 +2440,9 @@ spec:
       name: Frontend Web App
       publicClient: true
       redirectUris:
-      - https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/*
-      - https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/auth/callback
-      rootUrl: https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+      - https://neuralbank.{{ .Values.clusterDomain }}/*
+      - https://neuralbank.{{ .Values.clusterDomain }}/auth/callback
+      rootUrl: https://neuralbank.{{ .Values.clusterDomain }}
       standardFlowEnabled: true
       webOrigins:
       - '*'
@@ -2455,8 +2455,8 @@ spec:
       name: NeuralBank OIDC (API / policy)
       publicClient: false
       redirectUris:
-      - https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/*
-      - https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/auth/callback
+      - https://neuralbank.{{ .Values.clusterDomain }}/*
+      - https://neuralbank.{{ .Values.clusterDomain }}/auth/callback
       standardFlowEnabled: true
       webOrigins:
       - '*'

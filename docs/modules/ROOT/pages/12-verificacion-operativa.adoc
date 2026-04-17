@@ -131,7 +131,7 @@ metadata:
   name: kafka-console
   namespace: kafka-cdc
 spec:
-  hostname: kafka-console-kafka-cdc.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+  hostname: kafka-console-kafka-cdc.<CLUSTER_DOMAIN>
   kafkaClusters:
     - name: cdc-cluster
       namespace: kafka-cdc
@@ -387,16 +387,16 @@ spec:
 |Servicio |URL
 
 |Kafka Console
-|https://kafka-console-kafka-cdc.apps.cluster-l9nhj.dynamic.redhatworkshops.io/
+|https://kafka-console-kafka-cdc.<CLUSTER_DOMAIN>/
 
 |Apicurio Registry
-|https://apicurio-registry-kafka-cdc.apps.cluster-l9nhj.dynamic.redhatworkshops.io/
+|https://apicurio-registry-kafka-cdc.<CLUSTER_DOMAIN>/
 
 |Kafka Bridge REST API
-|https://kafka-bridge-kafka-cdc.apps.cluster-l9nhj.dynamic.redhatworkshops.io/
+|https://kafka-bridge-kafka-cdc.<CLUSTER_DOMAIN>/
 
 |Mailpit
-|https://n8n-mailpit-openshift-lightspeed.apps.cluster-l9nhj.dynamic.redhatworkshops.io/
+|https://n8n-mailpit-openshift-lightspeed.<CLUSTER_DOMAIN>/
 |===
 
 == Verificación End-to-End

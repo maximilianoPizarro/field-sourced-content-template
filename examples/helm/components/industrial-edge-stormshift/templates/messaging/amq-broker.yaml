@@ -14,11 +14,11 @@ spec:
     journalType: nio
     messageMigration: false
   console:
-    expose: true
+    expose: false
   acceptors:
     - name: all
       port: 61616
-      expose: true
+      expose: false
     # - name: amqp
     #   protocols: amqp
     #   port: 5672

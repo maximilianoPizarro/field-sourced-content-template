@@ -13,3 +13,6 @@
 * xref:12-verificacion-operativa.adoc[Verificación Operativa]
 * xref:13-kogito-bpm.adoc[BPM con Kogito / SonataFlow]
 * xref:14-security-governance.adoc[Seguridad y Gobierno]
+
+* xref:15-industrial-edge.adoc[— Industrial Edge Pattern —]
+* xref:16-ie-sizing.adoc[Capacity Planning & Infrastructure]

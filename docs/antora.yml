@@ -1,5 +1,5 @@
 name: ROOT
 version: ~
-title: "Event-Driven Architecture Live"
+title: "Event-Driven Architecture & Industrial Edge"
 nav:
   - modules/ROOT/nav.adoc

@@ -1,0 +1,238 @@
+= Capacity Planning & Infrastructure
+:toc: left
+:toclevels: 3
+
+[.lead]
+Sizing estimates for scaling the Industrial Edge platform from a demo/PoC to a production deployment supporting *20,000 IoT devices*.
+
+== Throughput Baseline (20K Devices)
+
+[cols="1,1", options="header"]
+|===
+| Parameter | Value
+
+| Devices | 20,000 IoT sensors (vibration + temperature)
+| Publish interval | 5 seconds per device
+| Message rate | 8,000 msg/sec
+| Data rate (raw) | 1.6 MB/sec
+| Daily volume | ~138 GB/day (~4.1 TB/month)
+| With RF=3 | ~4.8 MB/sec write, ~414 GB/day on cluster
+|===
+
+== Platform Sizing Summary
+
+=== HA Production (Small) — Current Demo
+
+[cols="1,1,1,1,1", options="header"]
+|===
+| Component | Pods | vCPU (req) | Memory (req) | Storage
+
+| CDC (Component 1) | 8 | 5.5 | 11Gi | 210Gi
+| Industrial Edge (Component 2) | 50 | 29.7 | 54Gi | 1090Gi
+| Mirror (Component 3) | 9 | 6.0 | 12Gi | 360Gi
+| *TOTAL* | *67* | *41.2 vCPU* | *77Gi* | *1660Gi*
+|===
+
+=== Production (20K Devices)
+
+[cols="1,1,1,1,1", options="header"]
+|===
+| Component | Pods | vCPU (req) | Memory (req) | Storage
+
+| CDC (with 5 consumer groups) | 20 | 19.5 | 34Gi | 1000Gi
+| Industrial Edge IoT | 70 | 114.6 | 212Gi | 17618Gi
+| Mirror (with 7 external consumer groups) | 28 | 23.0 | 34.3Gi | 2500Gi
+| *TOTAL* | *118* | *157.1 vCPU* | *280.3Gi* | *~20.6 TiB*
+|===
+
+== Component Sizing (20K)
+
+=== Industrial Edge IoT — Factory Edge
+
+[cols="1,1,1,1,1", options="header"]
+|===
+| Component | Pods | CPU (req/lim) | Memory (req/lim) | Storage
+
+| AMQ Broker (mesh) | 4 | 8000m / 16000m | 16Gi / 32Gi | 80Gi
+| Kafka (5 KRaft nodes) | 5 | 20000m / 40000m | 40Gi / 80Gi | 2500Gi
+| Camel K (MQTT→Kafka) | 4 | 4000m / 8000m | 4Gi / 8Gi | —
+| Sensors (edge gateways) | 10 | 5000m / 10000m | 5Gi / 10Gi | —
+| Dashboard (HPA) | 2 | 2000m / 4000m | 2Gi / 4Gi | —
+| *Edge subtotal* | *25* | *39 vCPU* | *67Gi* | *2580Gi*
+|===
+
+=== Industrial Edge IoT — Central
+
+[cols="1,1,1,1,1", options="header"]
+|===
+| Component | Pods | CPU (req/lim) | Memory (req/lim) | Storage
+
+| Kafka data-lake (5 KRaft) | 5 | 20000m / 40000m | 40Gi / 80Gi | 2500Gi
+| Camel K → S3 | 4 | 4000m / 8000m | 4Gi / 8Gi | —
+| MinIO (8 distributed) | 8 | 16000m / 32000m | 32Gi / 64Gi | 12288Gi
+| ModelMesh | 5 | 10000m / 20000m | 20Gi / 40Gi | —
+| DSPA + pipelines | 3 | 4500m / 9000m | 9Gi / 18Gi | —
+| JupyterLab | 1 | 4000m / 8000m | 8Gi / 16Gi | 20Gi
+| Operators & monitoring | 3 | 9000m / 18000m | 18Gi / 36Gi | —
+| *Central subtotal* | *29* | *67.5 vCPU* | *131Gi* | *14808Gi*
+|===
+
+=== CDC — Producer + Consumer (20K)
+
+[cols="1,1,1,1,1", options="header"]
+|===
+| Component | Pods | CPU (req) | Memory (req) | Purpose
+
+| Kafka CDC (5 KRaft) | 5 | 10 vCPU | 20Gi | CDC event streaming
+| Debezium KafkaConnect | 3 | 3 vCPU | 6Gi | WAL replication
+| Camel K (views) | 3 | 1.5 vCPU | 1.5Gi | Materializes views
+| Notification service | 2 | 0.5 vCPU | 512Mi | Alerts on changes
+| Search indexer | 3 | 3 vCPU | 3Gi | Full-text search
+| Analytics pipeline | 2 | 1 vCPU | 2Gi | Reporting aggregation
+| Audit logger | 2 | 0.5 vCPU | 1Gi | Immutable audit trail
+| *Total CDC* | *20* | *19.5 vCPU* | *34Gi* | —
+|===
+
+=== Mirror — Replication + External Consumers (20K)
+
+[cols="1,1,1,1,1", options="header"]
+|===
+| Component | Pods | CPU (req) | Memory (req) | Purpose
+
+| Kafka Mirror (5 KRaft) | 5 | 10 vCPU | 20Gi | Mirror cluster
+| MirrorMaker2 | 5 | 5 vCPU | 10Gi | Cross-cluster replication
+| Kafka REST Proxy | 3 | 1.5 vCPU | 1Gi | HTTP interface
+| Grafana / dashboards | 2 | 0.5 vCPU | 256Mi | Operational dashboards
+| BI connector (Superset) | 3 | 1.5 vCPU | 1Gi | Analytics / BI
+| Data science consumer | 2 | 1 vCPU | 512Mi | ML training feeds
+| Partner integration | 3 | 1.5 vCPU | 512Mi | External data feeds
+| Audit / compliance | 2 | 0.5 vCPU | 512Mi | Regulatory export
+| DR replication | 3 | 1.5 vCPU | 512Mi | Standby cluster sync
+| *Total Mirror* | *28* | *23 vCPU* | *34.3Gi* | —
+|===
+
+== Cluster Topology Options
+
+=== Option A — Single Cluster (PoC)
+
+[cols="1,1,1,1", options="header"]
+|===
+| Cluster | Workers | vCPU | RAM
+
+| All-in-one | 3 | 24 | 96Gi
+|===
+
+Suitable for demo, dev/test, and single-site deployments.
+
+=== Option B — Hub + Edge (Production 20K)
+
+[cols="1,1,1,1,1", options="header"]
+|===
+| Cluster | Workers | vCPU | RAM | Storage
+
+| Hub (CDC + Data Lake + ML + Mirror) | 12 + 1 GPU | 200 | 832Gi | ~18.5 TiB
+| Edge (Factory IoT) | 5 | 80 | 320Gi | ~2.8 TiB
+| *Total* | *19* | *280* | *1152Gi* | *~21.3 TiB*
+|===
+
+Available on: *AWS (ROSA)*, *Azure (ARO)*, *On-premise* (bare metal / VMware).
+
+=== Option C — Hub + Edge + Data + DR (Enterprise 20K)
+
+[cols="1,1,1,1", options="header"]
+|===
+| Cluster | Workers | vCPU | RAM
+
+| Hub (RHACM + ArgoCD + Developer Hub + CDC) | 6 | 96 | 384Gi
+| Edge (Factory IoT) | 5 | 80 | 320Gi
+| Central Data (Data Lake + MinIO + Mirror) | 8 | 128 | 512Gi
+| DR Standby (passive mirror) | 4 | 64 | 256Gi
+| GPU (on Hub or Central) | 1 | — | —
+| *Total* | *25* | *376* | *1472Gi*
+|===
+
+Available on: *AWS (ROSA)*, *Azure (ARO)*, *On-premise* (bare metal / VMware).
+
+== Key Architecture Decisions
+
+[cols="1,2", options="header"]
+|===
+| Decision | Rationale
+
+| KRaft mode (no ZooKeeper) | Reduces pod count, simplifies operations, removes ZK as SPOF
+| 5 combined broker+controller nodes | Sufficient for 8K msg/sec with RF=3 and 24 partitions
+| 8-node MinIO with erasure coding | EC:2 tolerates 2 failed nodes, 1.5Ti per node for data lake
+| Hub + Edge topology | Network segmentation, edge isolation, independent scaling
+| MirrorMaker2 with 8 tasks/source | Handles 13K msg/sec cross-cluster replication
+| TLS + SCRAM-SHA-512 for Mirror | Secure external access with read-only ACLs
+|===
+
+== KRaft Configuration Example
+
+Kafka clusters at 20K scale use KRaft mode with `KafkaNodePool` (combined broker+controller roles):
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: factory-cluster
+  annotations:
+    strimzi.io/kraft: enabled
+    strimzi.io/node-pools: enabled
+spec:
+  kafka:
+    version: 3.7.0
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+    config:
+      default.replication.factor: 3
+      min.insync.replicas: 2
+      num.partitions: 24
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: combined
+  labels:
+    strimzi.io/cluster: factory-cluster
+spec:
+  replicas: 5
+  roles:
+    - controller
+    - broker
+  storage:
+    type: jbod
+    volumes:
+      - id: 0
+        type: persistent-claim
+        size: 500Gi
+        class: gp3-csi
+        deleteClaim: false
+  resources:
+    requests:
+      cpu: "4"
+      memory: 8Gi
+    limits:
+      cpu: "8"
+      memory: 16Gi
+  jvmOptions:
+    -Xms: 6144m
+    -Xmx: 6144m
+----
+
+== References
+
+* xref:15-industrial-edge.adoc[Industrial Edge Pattern — Overview]
+* https://validatedpatterns.io/patterns/industrial-edge/[Red Hat Validated Patterns — Industrial Edge^]
+* https://strimzi.io/docs/operators/latest/configuring.html#proc-deploy-kraft-str[Strimzi KRaft Documentation^]

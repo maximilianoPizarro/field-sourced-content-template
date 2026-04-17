@@ -68,9 +68,9 @@ This section is hands-on: open the UIs, tail the logs, and trigger changes to se
 | Object storage for the data lake (model training data, artifacts)
 | link:https://minio-console-industrial-edge-ml-workspace.{cluster_domain}[MinIO Console^] (minioadmin / minioadmin)
 
-| Messaging UI (dev)
-| AMQ web console for MQTT inspection
-| link:https://messaging-industrial-edge-tst-all.{cluster_domain}[Messaging UI^]
+| IoT Consumer (messaging)
+| Backend that consumes MQTT sensor data and sends it to the ML inference service
+| Cluster-internal (no web UI)
 |===
 
 == Quick look: are sensors streaming?

@@ -45,14 +45,6 @@ oc get inferenceservice -n industrial-edge-tst-all 2>/dev/null || echo "Inferenc
 oc get pods -l app=anomaly-detection -n industrial-edge-tst-all 2>/dev/null
 ----
 
-== Check the messaging UI
-
-The messaging app provides a web UI to see MQTT messages. Open it:
-
-link:https://messaging-industrial-edge-tst-all.{cluster_domain}[Messaging UI^]
-
-This shows raw MQTT payloads as they arrive from the sensors.
-
 == Compare dev vs factory
 
 Both environments receive the same sensor data types but from different sensor pod instances:
@@ -70,5 +62,5 @@ oc get pods -l app=machine-sensor -n industrial-edge-stormshift-machine-sensor -
 
 * Real-time vibration data streaming on two dashboards (dev + factory)
 * ML anomaly detection generating periodic alerts
-* Raw MQTT messages visible in the messaging UI
+* IoT consumer backend forwarding sensor data to the inference service
 * Identical architecture deployed in dev and factory namespaces

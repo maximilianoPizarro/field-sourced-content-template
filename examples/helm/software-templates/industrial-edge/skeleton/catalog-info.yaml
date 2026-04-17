@@ -63,6 +63,39 @@ spec:
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
+  name: ${{values.uniqueName}}-camel-k
+  description: "Camel K — MQTT→Kafka integration with Kaoto visual designer"
+  annotations:
+    backstage.io/kubernetes-id: mqtt2kafka-integration
+    backstage.io/kubernetes-namespace: ${{values.namespace}}
+    argocd/app-name: ${{values.uniqueName}}
+    argocd/app-namespace: openshift-gitops
+    che.eclipse.org/che-server: https://devspaces.${{values.clusterDomain}}
+    devspaces.io/factory: "https://devspaces.${{values.clusterDomain}}/#https://gitea-gitea.${{values.clusterDomain}}/ws-${{values.owner}}/${{values.name}}"
+  tags:
+    - camel-k
+    - kaoto
+    - integration
+    - industrial-edge
+  links:
+    - url: "https://devspaces.${{values.clusterDomain}}/#https://gitea-gitea.${{values.clusterDomain}}/ws-${{values.owner}}/${{values.name}}"
+      title: Open in DevSpaces (Kaoto)
+      icon: catalog
+      type: ide
+    - url: "https://console-openshift-console.${{values.clusterDomain}}/k8s/ns/${{values.namespace}}/camel.apache.org~v1~Integration"
+      title: Camel Integrations (Console)
+      icon: web
+spec:
+  type: service
+  lifecycle: experimental
+  owner: user:${{values.owner}}
+  system: ${{values.uniqueName}}
+  dependsOn:
+    - component:default/${{values.uniqueName}}-kafka
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
   name: ${{values.uniqueName}}-dashboard
   description: "Line Dashboard — Real-time visualization of sensor data and anomaly alerts"
   annotations:

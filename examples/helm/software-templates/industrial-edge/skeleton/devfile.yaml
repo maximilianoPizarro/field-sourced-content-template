@@ -1,0 +1,74 @@
+schemaVersion: 2.2.2
+metadata:
+  name: ${{values.uniqueName}}
+  version: 1.0.0
+  displayName: "Industrial Edge — ${{values.name}}"
+  description: IoT manufacturing platform with Camel K integrations, Kaoto designer, and JBang
+  language: java
+  projectType: camel
+  tags:
+    - Camel
+    - Kaoto
+    - Industrial-Edge
+    - IoT
+attributes:
+  .vscode/extensions.json: |
+    {
+      "recommendations": [
+        "redhat.vscode-kaoto",
+        "redhat.vscode-apache-camel",
+        "redhat.vscode-yaml",
+        "redhat.java",
+        "redhat.vscode-quarkus",
+        "jbangdev.jbang-vscode",
+        "redhat.vscode-openshift-connector"
+      ]
+    }
+  .vscode/settings.json: |
+    {
+      "kaoto.catalog.version": "4.12.0",
+      "files.associations": {
+        "*.java": "java"
+      }
+    }
+components:
+  - name: tools
+    container:
+      image: registry.redhat.io/devspaces/udi-rhel8:latest
+      memoryLimit: 3Gi
+      cpuLimit: "2"
+      mountSources: true
+      env:
+        - name: MQTT_BROKER_URI
+          value: "tcp://broker-amq-mqtt-all-0-svc.${{values.namespace}}.svc:61616"
+        - name: KAFKA_BROKER_URI
+          value: "${{values.uniqueName}}-cluster-kafka-bootstrap.${{values.namespace}}.svc:9092"
+        - name: NAMESPACE
+          value: "${{values.namespace}}"
+      volumeMounts:
+        - name: m2
+          path: /home/user/.m2
+  - name: m2
+    volume:
+      size: 2Gi
+commands:
+  - id: install-extensions
+    exec:
+      component: tools
+      commandLine: |
+        mkdir -p /home/user/.vsix-cache
+        [ -f /home/user/.vsix-cache/kaoto.vsix ] || \
+          curl -sL "https://redhat.gallerycdn.vsassets.io/extensions/redhat/vscode-kaoto/2.10.2/1775215869920/Microsoft.VisualStudio.Services.VSIXPackage" -o /home/user/.vsix-cache/kaoto.vsix
+        [ -f /home/user/.vsix-cache/camel.vsix ] || \
+          curl -sL "https://redhat.gallerycdn.vsassets.io/extensions/redhat/vscode-apache-camel/1.14.0/1758543062217/Microsoft.VisualStudio.Services.VSIXPackage" -o /home/user/.vsix-cache/camel.vsix
+        [ -f /home/user/.vsix-cache/jbang.vsix ] || \
+          curl -sL "https://jbangdev.gallerycdn.vsassets.io/extensions/jbangdev/jbang-vscode/0.12.0/1734960116430/Microsoft.VisualStudio.Services.VSIXPackage" -o /home/user/.vsix-cache/jbang.vsix
+        which jbang >/dev/null 2>&1 || curl -Ls https://sh.jbang.dev | bash -s - app setup
+  - id: run-camel
+    exec:
+      component: tools
+      commandLine: "jbang -Dcamel.main.routes-include-pattern=file:manifests/mqtt2kafka-integration.yaml camel@apache/camel run"
+      workingDir: ${PROJECT_SOURCE}
+events:
+  postStart:
+    - install-extensions

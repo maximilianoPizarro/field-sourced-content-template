@@ -116,6 +116,9 @@ spec:
     links:
       - title: Repository
         url: ${{ steps['publish'].output.remoteUrl }}
+      - title: Open in DevSpaces (Kaoto)
+        icon: chat
+        url: "https://devspaces.${{ parameters.clusterDomain }}/#https://gitea-gitea.${{ parameters.clusterDomain }}/ws-${{ parameters.owner }}/${{ parameters.name }}"
       - title: Line Dashboard
         icon: dashboard
         url: "https://line-dashboard-${{ parameters.owner }}-${{ parameters.name }}.${{ parameters.clusterDomain }}"

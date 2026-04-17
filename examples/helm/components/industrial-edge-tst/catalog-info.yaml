@@ -116,13 +116,13 @@ metadata:
     - amq-streams
     - event-streaming
   links:
-    - url: https://console-openshift-console.apps.cluster-l9nhj.dynamic.redhatworkshops.io/k8s/ns/industrial-edge-tst-all/strimzi.io~v1beta2~Kafka/dev-cluster
+    - url: https://console-openshift-console.apps.cluster-l9nhj.dynamic.redhatworkshops.io/k8s/ns/industrial-edge-tst-all/kafka.strimzi.io~v1beta2~Kafka/dev-cluster
       title: Dev Kafka Cluster
       icon: web
-    - url: https://console-openshift-console.apps.cluster-l9nhj.dynamic.redhatworkshops.io/k8s/ns/industrial-edge-stormshift-messaging/strimzi.io~v1beta2~Kafka/factory-cluster
+    - url: https://console-openshift-console.apps.cluster-l9nhj.dynamic.redhatworkshops.io/k8s/ns/industrial-edge-stormshift-messaging/kafka.strimzi.io~v1beta2~Kafka/factory-cluster
       title: Factory Kafka Cluster
       icon: web
-    - url: https://console-openshift-console.apps.cluster-l9nhj.dynamic.redhatworkshops.io/k8s/ns/industrial-edge-data-lake/strimzi.io~v1beta2~Kafka/prod-cluster
+    - url: https://console-openshift-console.apps.cluster-l9nhj.dynamic.redhatworkshops.io/k8s/ns/industrial-edge-data-lake/kafka.strimzi.io~v1beta2~Kafka/prod-cluster
       title: Data Lake Kafka Cluster
       icon: web
 spec:

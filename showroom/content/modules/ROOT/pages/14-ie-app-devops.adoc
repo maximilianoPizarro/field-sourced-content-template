@@ -78,10 +78,10 @@ Both environments receive the same sensor data types but from different sensor p
 [source,bash]
 ----
 echo "=== Dev sensors ==="
-oc get pods -l app=machine-sensor -n industrial-edge-tst-all --no-headers
+oc get pods -n industrial-edge-tst-all --no-headers | grep machine-sensor
 
 echo "=== Factory sensors ==="
-oc get pods -l app=machine-sensor -n industrial-edge-stormshift-machine-sensor --no-headers
+oc get pods -n industrial-edge-stormshift-machine-sensor --no-headers | grep machine-sensor
 ----
 
 == Architecture reference

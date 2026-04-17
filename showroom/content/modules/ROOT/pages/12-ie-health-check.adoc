@@ -58,8 +58,8 @@ oc logs -f deploy/machine-sensor-2 -n industrial-edge-stormshift-machine-sensor 
 
 [source,bash]
 ----
-oc get pods -l app=machine-sensor -n industrial-edge-stormshift-machine-sensor
-oc get pods -l app=machine-sensor -n industrial-edge-tst-all
+oc get pods -n industrial-edge-stormshift-machine-sensor --no-headers | grep machine-sensor
+oc get pods -n industrial-edge-tst-all --no-headers | grep machine-sensor
 ----
 
 All should show `Running 1/1`.

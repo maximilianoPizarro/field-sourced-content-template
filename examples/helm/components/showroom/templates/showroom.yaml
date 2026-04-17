@@ -177,10 +177,31 @@ data:
     <head>
     <meta charset="utf-8">
     <title>Event-Driven Architecture Live | Red Hat Demo Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;700&family=Red+Hat+Text:wght@400;500&display=swap" rel="stylesheet">
     <style>
     *{margin:0;padding:0;box-sizing:border-box}
     html,body{height:100%;overflow:hidden;background:#151515}
-    iframe{width:100%;height:100%;border:0}
+    .header{background:#151515;padding:12px 32px;display:flex;align-items:center;gap:16px;height:56px;border-bottom:1px solid #333}
+    .header-logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+    .header-logo img{height:32px;border-radius:6px}
+    .header-logo .logo-text{color:#fff;font-family:'Red Hat Display',sans-serif;font-size:.95rem;line-height:1.2}
+    .header-logo .logo-text span{display:block;font-weight:700}
+    .header h1{color:#fff;font-family:'Red Hat Display',sans-serif;font-size:1.05rem;font-weight:500;margin-left:auto;white-space:nowrap}
+    #eda-user-box{display:flex;align-items:center;gap:10px;padding-left:16px}
+    #eda-user-box .badge{background:#c00;color:#fff;padding:2px 10px;border-radius:3px;font-weight:600;font-size:12px;font-family:'Red Hat Text',sans-serif}
+    #eda-user-box .creds{color:#aaa;font-size:10px;font-family:'Red Hat Text',sans-serif}
+    #eda-user-box .reg-link{color:#ee0;font-size:11px;text-decoration:none;border-left:1px solid #555;padding-left:10px;margin-left:4px;font-weight:500;cursor:pointer;font-family:'Red Hat Text',sans-serif}
+    #eda-user-box .reg-link:hover{color:#ff0}
+    iframe{width:100%;height:calc(100vh - 56px);border:0;display:block}
+    @media (max-width:768px){
+      .header{padding:10px 16px;height:48px}
+      .header-logo img{height:26px}
+      .header-logo .logo-text{font-size:.8rem}
+      .header h1{font-size:.85rem}
+      #eda-user-box .creds{display:none}
+      iframe{height:calc(100vh - 48px)}
+    }
     </style>
     <script>
     (function(){
@@ -204,44 +225,38 @@ data:
     </script>
     </head>
     <body>
+    <div class="header">
+      <a class="header-logo" href="#">
+        <img src="data:image/png;base64,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" alt="Red Hat">
+        <div class="logo-text">Red Hat<span>Demo Platform</span></div>
+      </a>
+      <h1>Event-Driven Architecture Live</h1>
+      <div id="eda-user-box"></div>
+    </div>
     <iframe id="sf" src="/index.html" allow="clipboard-write clipboard-read"></iframe>
     <script>
-    document.getElementById('sf').addEventListener('load', function(){
-      try {
-        var d = this.contentDocument || this.contentWindow.document;
-        var LOGO = 'data:image/png;base64,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';
-        var pp = new URLSearchParams(window.location.search);
-        var u = pp.get('USER_NAME') || '';
-        var domain = '{{ .Values.deployer.domain }}';
-        var imgs = d.querySelectorAll('header img, .topbar img, .navbar img, [class*="brand"] img');
-        imgs.forEach(function(img){ img.src = LOGO; img.style.height='26px'; img.style.borderRadius='4px'; });
-        var hdr = d.querySelector('.topbar, header, .navbar');
-        if (!hdr) return;
-        var existing = hdr.querySelector('#eda-user-box');
-        if (existing) return;
-        var box = d.createElement('div');
-        box.id = 'eda-user-box';
-        box.style.cssText = 'display:flex;align-items:center;gap:10px;padding-right:12px;position:absolute;right:0;top:50%;transform:translateY(-50%);';
-        if (u) {
-          var badge = d.createElement('span');
-          badge.style.cssText = 'background:#c00;color:#fff;padding:2px 10px;border-radius:3px;font-weight:600;font-size:12px;';
-          badge.textContent = u;
-          box.appendChild(badge);
-          var creds = d.createElement('span');
-          creds.style.cssText = 'color:#aaa;font-size:10px;';
-          creds.textContent = 'Pass: Welcome123!';
-          box.appendChild(creds);
-        }
-        var reg = d.createElement('a');
-        reg.href = '#';
-        reg.textContent = 'Registro';
-        reg.style.cssText = 'color:#ee0;font-size:11px;text-decoration:none;border-left:1px solid #555;padding-left:10px;margin-left:4px;font-weight:500;cursor:pointer;';
-        reg.onclick = function(){ sessionStorage.clear(); window.top.location.href='https://workshop-registration.'+domain+'/'; return false; };
-        box.appendChild(reg);
-        hdr.style.position = 'relative';
-        hdr.appendChild(box);
-      } catch(e){}
-    });
+    (function(){
+      var pp = new URLSearchParams(window.location.search);
+      var u = pp.get('USER_NAME') || '';
+      var domain = '{{ .Values.deployer.domain }}';
+      var box = document.getElementById('eda-user-box');
+      if (u) {
+        var badge = document.createElement('span');
+        badge.className = 'badge';
+        badge.textContent = u;
+        box.appendChild(badge);
+        var creds = document.createElement('span');
+        creds.className = 'creds';
+        creds.textContent = 'Pass: Welcome123!';
+        box.appendChild(creds);
+      }
+      var reg = document.createElement('a');
+      reg.href = '#';
+      reg.className = 'reg-link';
+      reg.textContent = 'Registro';
+      reg.onclick = function(){ sessionStorage.clear(); window.top.location.href='https://workshop-registration.'+domain+'/'; return false; };
+      box.appendChild(reg);
+    })();
     </script>
     </body>
     </html>

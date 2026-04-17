@@ -1,0 +1,19 @@
+apiVersion: broker.amq.io/v2alpha4
+kind: ActiveMQArtemis
+metadata:
+  name: broker-amq-mqtt
+  namespace: ${{values.namespace}}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  deploymentPlan:
+    size: 1
+    image: registry.redhat.io/amq7/amq-broker:7.6
+    journalType: nio
+    messageMigration: false
+  console:
+    expose: true
+  acceptors:
+    - name: all
+      port: 61616
+      expose: true

@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: line-dashboard-configmap
+  namespace: ${{values.namespace}}
+data:
+  config.json: |
+    {
+      "websocketHost": "https://messaging-${{values.namespace}}.${{values.clusterDomain}}",
+      "websocketPath": "/api/service-web/socket",
+      "SERVER_TIMEOUT": "20000"
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: line-dashboard
+  namespace: ${{values.namespace}}
+  labels:
+    app: line-dashboard
+    app.kubernetes.io/part-of: ${{values.uniqueName}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: line-dashboard
+  template:
+    metadata:
+      labels:
+        app: line-dashboard
+    spec:
+      containers:
+        - name: line-dashboard
+          image: quay.io/hybridcloudpatterns/iot-frontend:0.4.0
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: http
+          volumeMounts:
+            - mountPath: /var/www/html/conf/
+              name: config-vol
+            - mountPath: /opt/app-root/output/conf
+              name: config-vol
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /home
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /home
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      volumes:
+        - name: config-vol
+          configMap:
+            name: line-dashboard-configmap
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: line-dashboard
+  namespace: ${{values.namespace}}
+spec:
+  selector:
+    app: line-dashboard
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: line-dashboard
+  namespace: ${{values.namespace}}
+spec:
+  to:
+    kind: Service
+    name: line-dashboard
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

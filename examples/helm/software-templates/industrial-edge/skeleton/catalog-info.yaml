@@ -1,0 +1,127 @@
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: ${{values.uniqueName}}
+  description: "${{values.description}}"
+spec:
+  owner: user:${{values.owner}}
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{values.uniqueName}}-sensors
+  description: "Machine Sensors — ${{values.sensorCount}} IoT simulators sending vibration/temperature via MQTT"
+  annotations:
+    backstage.io/kubernetes-id: ${{values.uniqueName}}-sensor-1
+    backstage.io/kubernetes-namespace: ${{values.namespace}}
+    argocd/app-name: ${{values.uniqueName}}
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - iot
+    - sensor
+    - mqtt
+    - industrial-edge
+  links:
+    - url: "https://console-openshift-console.${{values.clusterDomain}}/k8s/ns/${{values.namespace}}/deployments"
+      title: Sensor Deployments
+      icon: web
+spec:
+  type: service
+  lifecycle: experimental
+  owner: user:${{values.owner}}
+  system: ${{values.uniqueName}}
+  providesApis:
+    - ${{values.uniqueName}}-mqtt-api
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{values.uniqueName}}-kafka
+  description: "Kafka Cluster — ${{values.kafkaReplicas}}-node KRaft cluster for IoT event streaming"
+  annotations:
+    backstage.io/kubernetes-id: ${{values.uniqueName}}-cluster
+    backstage.io/kubernetes-namespace: ${{values.namespace}}
+    argocd/app-name: ${{values.uniqueName}}
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - kafka
+    - amq-streams
+    - event-streaming
+    - industrial-edge
+  links:
+    - url: "https://console-openshift-console.${{values.clusterDomain}}/k8s/ns/${{values.namespace}}/kafka.strimzi.io~v1beta2~Kafka/${{values.uniqueName}}-cluster"
+      title: Kafka Cluster
+      icon: web
+spec:
+  type: service
+  lifecycle: experimental
+  owner: user:${{values.owner}}
+  system: ${{values.uniqueName}}
+  dependsOn:
+    - component:default/${{values.uniqueName}}-sensors
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{values.uniqueName}}-dashboard
+  description: "Line Dashboard — Real-time visualization of sensor data and anomaly alerts"
+  annotations:
+    backstage.io/kubernetes-id: ${{values.uniqueName}}-dashboard
+    backstage.io/kubernetes-namespace: ${{values.namespace}}
+    argocd/app-name: ${{values.uniqueName}}
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - dashboard
+    - frontend
+    - websocket
+    - industrial-edge
+  links:
+    - url: "https://line-dashboard-${{values.namespace}}.${{values.clusterDomain}}"
+      title: Line Dashboard
+      icon: dashboard
+spec:
+  type: website
+  lifecycle: experimental
+  owner: user:${{values.owner}}
+  system: ${{values.uniqueName}}
+  dependsOn:
+    - component:default/${{values.uniqueName}}-kafka
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: ${{values.uniqueName}}-mqtt-api
+  description: "MQTT IoT sensor events — vibration and temperature"
+  tags:
+    - mqtt
+    - iot
+    - events
+spec:
+  type: asyncapi
+  lifecycle: experimental
+  owner: user:${{values.owner}}
+  system: ${{values.uniqueName}}
+  definition: |
+    asyncapi: 2.6.0
+    info:
+      title: "${{values.uniqueName}} IoT Sensor Events"
+      version: 1.0.0
+    channels:
+      iot-sensor/sw/vibration:
+        publish:
+          summary: Vibration sensor readings
+          message:
+            payload:
+              type: string
+              description: "CSV: line,pump,value,timestamp"
+      iot-sensor/sw/temperature:
+        publish:
+          summary: Temperature sensor readings
+          message:
+            payload:
+              type: string
+              description: "CSV: line,sensor,value,timestamp"
+    servers:
+      broker:
+        url: "broker-amq-mqtt-all-0-svc.${{values.namespace}}.svc:61616"
+        protocol: mqtt

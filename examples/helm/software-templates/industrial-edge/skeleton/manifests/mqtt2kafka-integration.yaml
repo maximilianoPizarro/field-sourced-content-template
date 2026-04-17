@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mqtt2kafka-config
+  namespace: ${{values.namespace}}
+data:
+  MQTT_BROKER: "tcp://broker-amq-mqtt-all-0-svc.${{values.namespace}}.svc:61616"
+  MQTT_USER: "iotuser"
+  MQTT_PASSWORD: "iotuser"
+  MQTT_CLIENTID: "MQTT2KafkaRoute-${{values.uniqueName}}"
+  MQTT_TOPIC_TEMPERATURE: "iot-sensor/sw/temperature"
+  MQTT_TOPIC_VIBRATION: "iot-sensor/sw/vibration"
+  KAFKA_BROKER: "${{values.uniqueName}}-cluster-kafka-bootstrap.${{values.namespace}}.svc:9092"
+  KAFKA_TOPIC_TEMPERATURE: "iot-sensor-sw-temperature"
+  KAFKA_TOPIC_VIBRATION: "iot-sensor-sw-vibration"
+---
+apiVersion: camel.apache.org/v1
+kind: Integration
+metadata:
+  name: mqtt2kafka-integration
+  namespace: ${{values.namespace}}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  traits:
+    mount:
+      configs:
+        - configmap:mqtt2kafka-config
+  profile: OpenShift
+  sources:
+    - content: |
+        import org.apache.camel.builder.RouteBuilder;
+        public class MQTT2KafkaRoute extends RouteBuilder {
+            @Override
+            public void configure() throws Exception {
+                from("paho:{{MQTT_TOPIC_VIBRATION}}?brokerUrl={{MQTT_BROKER}}&userName={{MQTT_USER}}&password={{MQTT_PASSWORD}}&clientId={{MQTT_CLIENTID}}-vibration")
+                    .log("Vibration: ${body}")
+                    .to("kafka:{{KAFKA_TOPIC_VIBRATION}}?brokers={{KAFKA_BROKER}}");
+                from("paho:{{MQTT_TOPIC_TEMPERATURE}}?brokerUrl={{MQTT_BROKER}}&userName={{MQTT_USER}}&password={{MQTT_PASSWORD}}&clientId={{MQTT_CLIENTID}}-temperature")
+                    .log("Temperature: ${body}")
+                    .to("kafka:{{KAFKA_TOPIC_TEMPERATURE}}?brokers={{KAFKA_BROKER}}");
+            }
+        }
+      name: MQTT2KafkaRoute.java

@@ -1,0 +1,49 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: ${{values.uniqueName}}
+  namespace: ${{values.namespace}}
+  labels:
+    strimzi.io/cluster: ${{values.uniqueName}}-cluster
+spec:
+  replicas: ${{values.kafkaReplicas}}
+  roles:
+    - controller
+    - broker
+  storage:
+    type: jbod
+    volumes:
+      - id: 0
+        type: ephemeral
+        kraftMetadata: shared
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: ${{values.uniqueName}}-cluster
+  namespace: ${{values.namespace}}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    strimzi.io/kraft: enabled
+    strimzi.io/node-pools: enabled
+spec:
+  kafka:
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+    config:
+      offsets.topic.replication.factor: {% if values.kafkaReplicas >= 3 %}3{% else %}1{% endif %}
+
+      transaction.state.log.min.isr: {% if values.kafkaReplicas >= 3 %}2{% else %}1{% endif %}
+
+      transaction.state.log.replication.factor: {% if values.kafkaReplicas >= 3 %}3{% else %}1{% endif %}
+
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}

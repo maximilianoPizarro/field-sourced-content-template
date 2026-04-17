@@ -1,0 +1,41 @@
+apiVersion: camel.apache.org/v1
+kind: IntegrationPlatform
+metadata:
+  name: camel-k
+  namespace: ${{values.namespace}}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  build:
+    registry:
+      address: image-registry.openshift-image-registry.svc:5000
+      organization: ${{values.namespace}}
+      insecure: true
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: camel-k-operator-ip-rb
+  namespace: ${{values.namespace}}
+subjects:
+  - kind: ServiceAccount
+    name: camel-k-operator
+    namespace: openshift-operators
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: camel-k-operator-integration-platform
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: camel-k-operator-custom-rb
+  namespace: ${{values.namespace}}
+subjects:
+  - kind: ServiceAccount
+    name: camel-k-operator
+    namespace: openshift-operators
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: camel-k-operator-custom-resource-definitions

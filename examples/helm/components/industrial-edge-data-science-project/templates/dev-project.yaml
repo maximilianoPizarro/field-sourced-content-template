@@ -153,7 +153,7 @@ spec:
                                   --ServerApp.quit_button=False
                                   --ServerApp.tornado_settings={"user":"user","hub_host":"https://rhods-dashboard-redhat-ods-applications.{{ .Values.clusterDomain }}","hub_prefix":"/projects/ml-development"}
             - name: JUPYTER_IMAGE
-              value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/jupyter-datascience-cpu-py312-ubi9:latest
+              value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/jupyter-datascience-cpu-py312-ubi9:2025.1
             - name: SSL_CERT_FILE
               value: /etc/pki/tls/custom-certs/ca-bundle.crt
             - name: PIPELINES_SSL_SA_CERTS
@@ -184,7 +184,7 @@ spec:
               subPath: ca-bundle.crt
             - mountPath: /opt/app-root/pipeline-runtimes/
               name: runtime-images
-          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/jupyter-datascience-cpu-py312-ubi9:latest
+          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/jupyter-datascience-cpu-py312-ubi9:2025.1
           workingDir: /opt/app-root/src
         - resources:
             limits:

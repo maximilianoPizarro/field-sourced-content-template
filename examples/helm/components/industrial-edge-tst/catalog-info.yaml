@@ -1,4 +1,15 @@
 apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: platform-engineering
+  namespace: default
+  description: "Platform Engineering team — manages infrastructure, GitOps, and developer experience"
+spec:
+  type: team
+  children: []
+
+---
+apiVersion: backstage.io/v1alpha1
 kind: Domain
 metadata:
   name: industrial-edge

@@ -21,7 +21,8 @@ attributes:
         "redhat.vscode-xml",
         "redhat.java",
         "redhat.vscode-quarkus",
-        "jbangdev.jbang-vscode"
+        "jbangdev.jbang-vscode",
+        "redhat.vscode-openshift-connector"
       ]
     }
 components:

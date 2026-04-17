@@ -1,0 +1,38 @@
+# Build
+target/
+build/
+*.class
+*.jar
+*.war
+
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
+
+# IDE
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+.factorypath
+*.swp
+*.swo
+*~
+
+# VS Code (keep .vscode/extensions.json & settings.json from devfile)
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Camel K build artifacts
+.camel-jbang/
+.camel/
+
+# Logs
+*.log

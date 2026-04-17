@@ -4,15 +4,14 @@ metadata:
   name: mqtt2kafka-config
   namespace: ${{values.namespace}}
 data:
-  MQTT_BROKER: "tcp://broker-amq-mqtt-all-0-svc.${{values.namespace}}.svc:61616"
-  MQTT_USER: "iotuser"
-  MQTT_PASSWORD: "iotuser"
-  MQTT_CLIENTID: "MQTT2KafkaRoute-${{values.uniqueName}}"
-  MQTT_TOPIC_TEMPERATURE: "iot-sensor/sw/temperature"
-  MQTT_TOPIC_VIBRATION: "iot-sensor/sw/vibration"
-  KAFKA_BROKER: "${{values.uniqueName}}-cluster-kafka-bootstrap.${{values.namespace}}.svc:9092"
-  KAFKA_TOPIC_TEMPERATURE: "iot-sensor-sw-temperature"
-  KAFKA_TOPIC_VIBRATION: "iot-sensor-sw-vibration"
+  application.properties: |
+    kafka.broker.uri=${{values.uniqueName}}-cluster-kafka-bootstrap.${{values.namespace}}.svc:9092
+    kafka.broker.topic.temperature=iot-sensor-sw-temperature
+    kafka.broker.topic.vibration=iot-sensor-sw-vibration
+    mqtt.broker.uri=tcp://broker-amq-mqtt-all-0-svc.${{values.namespace}}.svc:61616
+    mqtt.broker.clientId=MQTT2KafkaRoute-${{values.uniqueName}}
+    mqtt.broker.topic.temperature=iot-sensor/sw/temperature
+    mqtt.broker.topic.vibration=iot-sensor/sw/vibration
 ---
 apiVersion: camel.apache.org/v1
 kind: Integration
@@ -29,16 +28,36 @@ spec:
   profile: OpenShift
   sources:
     - content: |
+        import org.apache.camel.PropertyInject;
         import org.apache.camel.builder.RouteBuilder;
+        import org.apache.camel.component.kafka.KafkaConstants;
+        import org.apache.camel.model.OnCompletionDefinition;
+
         public class MQTT2KafkaRoute extends RouteBuilder {
+            @PropertyInject("kafka.broker.uri")            private String kafka_broker_uri;
+            @PropertyInject("kafka.broker.topic.temperature") private String kafka_topic_temp;
+            @PropertyInject("kafka.broker.topic.vibration")   private String kafka_topic_vibr;
+            @PropertyInject("mqtt.broker.uri")              private String mqtt_broker_uri;
+            @PropertyInject("mqtt.broker.clientId")         private String mqtt_clientid;
+            @PropertyInject("mqtt.broker.topic.temperature")  private String mqtt_topic_temp;
+            @PropertyInject("mqtt.broker.topic.vibration")    private String mqtt_topic_vibr;
+
             @Override
             public void configure() throws Exception {
-                from("paho:{{MQTT_TOPIC_VIBRATION}}?brokerUrl={{MQTT_BROKER}}&userName={{MQTT_USER}}&password={{MQTT_PASSWORD}}&clientId={{MQTT_CLIENTID}}-vibration")
-                    .log("Vibration: ${body}")
-                    .to("kafka:{{KAFKA_TOPIC_VIBRATION}}?brokers={{KAFKA_BROKER}}");
-                from("paho:{{MQTT_TOPIC_TEMPERATURE}}?brokerUrl={{MQTT_BROKER}}&userName={{MQTT_USER}}&password={{MQTT_PASSWORD}}&clientId={{MQTT_CLIENTID}}-temperature")
-                    .log("Temperature: ${body}")
-                    .to("kafka:{{KAFKA_TOPIC_TEMPERATURE}}?brokers={{KAFKA_BROKER}}");
+                from("paho:" + mqtt_topic_temp + "?brokerUrl=" + mqtt_broker_uri
+                        + "&clientId=" + mqtt_clientid + "-temp")
+                    .log("Temperature MQTT → Kafka: ${body}")
+                    .setHeader(KafkaConstants.KEY, constant("${{values.uniqueName}}"))
+                    .to("kafka:" + kafka_topic_temp + "?brokers=" + kafka_broker_uri);
+
+                from("paho:" + mqtt_topic_vibr + "?brokerUrl=" + mqtt_broker_uri
+                        + "&clientId=" + mqtt_clientid + "-vibr")
+                    .log("Vibration MQTT → Kafka: ${body}")
+                    .setHeader(KafkaConstants.KEY, constant("${{values.uniqueName}}"))
+                    .to("kafka:" + kafka_topic_vibr + "?brokers=" + kafka_broker_uri);
             }
+
+            @Override
+            public OnCompletionDefinition onCompletion() { return super.onCompletion(); }
         }
       name: MQTT2KafkaRoute.java

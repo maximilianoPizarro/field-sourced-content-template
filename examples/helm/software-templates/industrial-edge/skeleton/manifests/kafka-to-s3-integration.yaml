@@ -1,0 +1,105 @@
+{%- if values.anomalyDetection %}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-to-s3-config
+  namespace: ${{values.namespace}}
+data:
+  application.properties: |
+    kafka.broker.uri=${{values.uniqueName}}-cluster-kafka-bootstrap.${{values.namespace}}.svc:9092
+    kafka.broker.topic.temperature=iot-sensor-sw-temperature
+    kafka.broker.topic.vibration=iot-sensor-sw-vibration
+    s3.region=none
+    s3.bucket.name=sensor-data
+    s3.message.aggregation.count=5
+    s3.custom.endpoint.enabled=true
+    s3.custom.endpoint.url=http://minio.${{values.namespace}}.svc:9000
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: s3-anomaly
+  namespace: ${{values.namespace}}
+type: Opaque
+stringData:
+  application.properties: |
+    AWS_ACCESS_KEY_ID=minio
+    AWS_SECRET_ACCESS_KEY=minio123
+---
+apiVersion: camel.apache.org/v1
+kind: Integration
+metadata:
+  name: kafka-to-s3-integration
+  namespace: ${{values.namespace}}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  traits:
+    mount:
+      configs:
+        - configmap:kafka-to-s3-config
+        - secret:s3-anomaly
+  profile: OpenShift
+  sources:
+    - content: |
+        import java.io.ByteArrayInputStream;
+        import java.util.Iterator;
+        import java.util.List;
+        import org.apache.camel.Exchange;
+        import org.apache.camel.Processor;
+        import org.apache.camel.PropertyInject;
+        import org.apache.camel.builder.RouteBuilder;
+        import org.apache.camel.component.aws2.s3.AWS2S3Constants;
+        import org.apache.camel.model.OnCompletionDefinition;
+        import org.apache.camel.processor.aggregate.GroupedBodyAggregationStrategy;
+
+        public class Kafka2S3Route extends RouteBuilder {
+            @PropertyInject("kafka.broker.uri")       private String kafka_broker_uri;
+            @PropertyInject("kafka.broker.topic.vibration")    private String kafka_topic_vibration;
+            @PropertyInject("kafka.broker.topic.temperature")  private String kafka_topic_temperature;
+            @PropertyInject("s3.custom.endpoint.enabled")      private String s3_override;
+            @PropertyInject("s3.custom.endpoint.url")          private String s3_url;
+            @PropertyInject("AWS_ACCESS_KEY_ID")               private String s3_key;
+            @PropertyInject("AWS_SECRET_ACCESS_KEY")           private String s3_secret;
+            @PropertyInject("s3.message.aggregation.count")    private String s3_agg;
+            @PropertyInject("s3.bucket.name")                  private String s3_bucket;
+            @PropertyInject("s3.region")                       private String s3_region;
+
+            @Override
+            public void configure() throws Exception {
+                String s3p = "accessKey=RAW(" + s3_key + ")&overrideEndpoint=" + s3_override
+                    + "&forcePathStyle=true&uriEndpointOverride=" + s3_url
+                    + "&secretKey=RAW(" + s3_secret + ")&region=" + s3_region;
+
+                from("kafka:" + kafka_topic_vibration + "?brokers=" + kafka_broker_uri)
+                    .convertBodyTo(String.class)
+                    .aggregate(simple("true"), new GroupedBodyAggregationStrategy()).completionSize(s3_agg)
+                    .process(exchange -> {
+                        List data = exchange.getIn().getBody(List.class);
+                        StringBuilder sb = new StringBuilder();
+                        for (Object o : data) sb.append(o).append("\n");
+                        exchange.getIn().setBody(new ByteArrayInputStream(sb.toString().getBytes()));
+                    })
+                    .setHeader(AWS2S3Constants.KEY, simple("${{values.uniqueName}}-vibration-${date:now}.txt"))
+                    .to("aws2-s3://" + s3_bucket + "?" + s3p)
+                    .log("Uploaded vibration dataset to S3");
+
+                from("kafka:" + kafka_topic_temperature + "?brokers=" + kafka_broker_uri)
+                    .convertBodyTo(String.class)
+                    .aggregate(simple("true"), new GroupedBodyAggregationStrategy()).completionSize(s3_agg)
+                    .process(exchange -> {
+                        List data = exchange.getIn().getBody(List.class);
+                        StringBuilder sb = new StringBuilder();
+                        for (Object o : data) sb.append(o).append("\n");
+                        exchange.getIn().setBody(new ByteArrayInputStream(sb.toString().getBytes()));
+                    })
+                    .setHeader(AWS2S3Constants.KEY, simple("${{values.uniqueName}}-temperature-${date:now}.txt"))
+                    .to("aws2-s3://" + s3_bucket + "?" + s3p)
+                    .log("Uploaded temperature dataset to S3");
+            }
+
+            @Override
+            public OnCompletionDefinition onCompletion() { return super.onCompletion(); }
+        }
+      name: Kafka2S3Route.java
+{%- endif %}

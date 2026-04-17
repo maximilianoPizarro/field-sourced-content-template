@@ -70,6 +70,7 @@ metadata:
     backstage.io/kubernetes-namespace: ${{values.namespace}}
     argocd/app-name: ${{values.uniqueName}}
     argocd/app-namespace: openshift-gitops
+    kafka.apache.org/consumer-groups: ${{values.uniqueName}}-cluster/mqtt2kafka-integration
     che.eclipse.org/che-server: https://devspaces.${{values.clusterDomain}}
     devspaces.io/factory: "https://devspaces.${{values.clusterDomain}}/#https://gitea-gitea.${{values.clusterDomain}}/ws-${{values.owner}}/${{values.name}}"
   tags:
@@ -90,6 +91,10 @@ spec:
   lifecycle: experimental
   owner: user:${{values.owner}}
   system: ${{values.uniqueName}}
+  consumesApis:
+    - ${{values.uniqueName}}-mqtt-api
+  providesApis:
+    - ${{values.uniqueName}}-kafka-api
   dependsOn:
     - component:default/${{values.uniqueName}}-kafka
 ---
@@ -119,6 +124,36 @@ spec:
   system: ${{values.uniqueName}}
   dependsOn:
     - component:default/${{values.uniqueName}}-kafka
+{%- if values.anomalyDetection %}
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{values.uniqueName}}-kafka-to-s3
+  description: "Kafka→S3 — Streams sensor data from Kafka topics to MinIO for ML training"
+  annotations:
+    backstage.io/kubernetes-id: kafka-to-s3-integration
+    backstage.io/kubernetes-namespace: ${{values.namespace}}
+    argocd/app-name: ${{values.uniqueName}}
+    argocd/app-namespace: openshift-gitops
+    kafka.apache.org/consumer-groups: ${{values.uniqueName}}-cluster/kafka-to-s3-integration
+  tags:
+    - camel-k
+    - s3
+    - data-lake
+    - industrial-edge
+  links:
+    - url: "https://console-openshift-console.${{values.clusterDomain}}/k8s/ns/${{values.namespace}}/camel.apache.org~v1~Integration/kafka-to-s3-integration"
+      title: Kafka→S3 Integration (Console)
+      icon: web
+spec:
+  type: service
+  lifecycle: experimental
+  owner: user:${{values.owner}}
+  system: ${{values.uniqueName}}
+  dependsOn:
+    - component:default/${{values.uniqueName}}-kafka
+{%- endif %}
 ---
 apiVersion: backstage.io/v1alpha1
 kind: API
@@ -158,3 +193,42 @@ spec:
       broker:
         url: "broker-amq-mqtt-all-0-svc.${{values.namespace}}.svc:61616"
         protocol: mqtt
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: ${{values.uniqueName}}-kafka-api
+  description: "Kafka IoT sensor topics — vibration and temperature streams"
+  tags:
+    - kafka
+    - iot
+    - streaming
+spec:
+  type: asyncapi
+  lifecycle: experimental
+  owner: user:${{values.owner}}
+  system: ${{values.uniqueName}}
+  definition: |
+    asyncapi: 2.6.0
+    info:
+      title: "${{values.uniqueName}} Kafka Streams"
+      version: 1.0.0
+    channels:
+      iot-sensor-sw-vibration:
+        subscribe:
+          summary: Vibration sensor readings bridged from MQTT
+          message:
+            payload:
+              type: string
+              description: "CSV: line,pump,value,timestamp"
+      iot-sensor-sw-temperature:
+        subscribe:
+          summary: Temperature sensor readings bridged from MQTT
+          message:
+            payload:
+              type: string
+              description: "CSV: line,sensor,value,timestamp"
+    servers:
+      kafka:
+        url: "${{values.uniqueName}}-cluster-kafka-bootstrap.${{values.namespace}}.svc:9092"
+        protocol: kafka

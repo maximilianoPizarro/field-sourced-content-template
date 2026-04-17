@@ -72,13 +72,13 @@ This deployment provisions a full Neuralbank developer workshop environment on O
 | **OLS (Lightspeed)** | AI assistant with MCP Gateway integration |
 | **LiteMaaS** | LLM proxy for model access |
 
-### Industrial Edge / Manuela Stack
+### Industrial Edge / Industrial Edge Stack
 
 Integrated from the [Red Hat Validated Patterns Industrial Edge](https://github.com/validatedpatterns/industrial-edge) pattern, adapted for single-cluster deployment without Vault, ACM, or ODF.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    Manuela IoT Manufacturing Demo                    │
+│                    Industrial Edge IoT Manufacturing Demo                    │
 │                                                                     │
 │  ┌──────────────────────────┐  ┌──────────────────────────────┐    │
 │  │  Factory (Stormshift)     │  │  Datacenter                  │    │
@@ -112,16 +112,16 @@ Integrated from the [Red Hat Validated Patterns Industrial Edge](https://github.
 
 | Component | Chart | Purpose |
 |-----------|-------|---------|
-| **Machine Sensors** | `manuela-stormshift` | Simulated IoT sensors (temperature + vibration) publishing via MQTT |
-| **AMQ Broker + Kafka** | `manuela-stormshift` | MQTT broker + Kafka cluster for factory-side event streaming |
-| **Line Dashboard** | `manuela-stormshift` | Real-time IoT data visualization web app |
-| **Kafka MirrorMaker2** | `manuela-stormshift` | Replicates factory Kafka topics to datacenter data lake |
-| **Kafka Data Lake** | `manuela-data-lake` | Central Kafka cluster + Camel K S3 integration |
-| **MinIO** | `manuela-minio` | S3-compatible object storage (replaces ODF) for ML models and data |
-| **OpenShift AI** | `manuela-data-science-cluster` | DataScienceCluster CR, custom notebooks, serving runtimes |
-| **ML Workspace** | `manuela-data-science-project` | ML pipelines, model serving, S3 data connections |
-| **Anomaly Detection** | `manuela-tst` / `manuela-stormshift` | ModelMesh inference service for vibration anomaly detection |
-| **CI/CD Pipelines** | `manuela-pipelines` | Tekton pipelines for building IoT components |
+| **Machine Sensors** | `industrial-edge-stormshift` | Simulated IoT sensors (temperature + vibration) publishing via MQTT |
+| **AMQ Broker + Kafka** | `industrial-edge-stormshift` | MQTT broker + Kafka cluster for factory-side event streaming |
+| **Line Dashboard** | `industrial-edge-stormshift` | Real-time IoT data visualization web app |
+| **Kafka MirrorMaker2** | `industrial-edge-stormshift` | Replicates factory Kafka topics to datacenter data lake |
+| **Kafka Data Lake** | `industrial-edge-data-lake` | Central Kafka cluster + Camel K S3 integration |
+| **MinIO** | `industrial-edge-minio` | S3-compatible object storage (replaces ODF) for ML models and data |
+| **OpenShift AI** | `industrial-edge-data-science-cluster` | DataScienceCluster CR, custom notebooks, serving runtimes |
+| **ML Workspace** | `industrial-edge-data-science-project` | ML pipelines, model serving, S3 data connections |
+| **Anomaly Detection** | `industrial-edge-tst` / `industrial-edge-stormshift` | ModelMesh inference service for vibration anomaly detection |
+| **CI/CD Pipelines** | `industrial-edge-pipelines` | Tekton pipelines for building IoT components |
 
 **Additional resources**: ~16 vCPU, ~34 Gi RAM, ~102 GB disk (see [Deployment Profiles](#deployment-profiles)).
 
@@ -334,7 +334,7 @@ helm install field-content examples/helm -f examples/helm/values.yaml
 | Metric | Value |
 |--------|-------|
 | Fixed infra (platform + all components) | ~66 vCPU, ~122 Gi RAM, ~570 GB disk |
-| Manuela stack alone | ~16 vCPU, ~34 Gi RAM, ~102 GB disk |
+| Industrial Edge stack alone | ~16 vCPU, ~34 Gi RAM, ~102 GB disk |
 | Per user (with DevSpaces) | ~3.5 vCPU, ~4.5 Gi RAM |
 | Per user (no DevSpaces) | ~1.5 vCPU, ~1.5 Gi RAM |
 | Recommended for 200 users | 10–14 workers m5.8xlarge |
@@ -559,13 +559,13 @@ field-content/
 │   │   ├── components/                    # Per-component Helm sub-charts
 │   │   │   ├── connectivity-link-*/       # Infrastructure components
 │   │   │   ├── connectivity-link-workshop-registration/  # Self-service registration portal
-│   │   │   ├── manuela-tst/              # IoT test env (sensors, messaging, dashboard)
-│   │   │   ├── manuela-data-lake/        # Central Kafka + Camel K S3 integration
-│   │   │   ├── manuela-stormshift/       # Factory edge (sensors, MirrorMaker2, dashboard)
-│   │   │   ├── manuela-data-science-cluster/  # RHODS DataScienceCluster
-│   │   │   ├── manuela-data-science-project/  # ML workspace + pipelines
-│   │   │   ├── manuela-pipelines/        # Tekton CI/CD for IoT components
-│   │   │   ├── manuela-minio/            # MinIO S3 storage (replaces ODF)
+│   │   │   ├── industrial-edge-tst/              # IoT test env (sensors, messaging, dashboard)
+│   │   │   ├── industrial-edge-data-lake/        # Central Kafka + Camel K S3 integration
+│   │   │   ├── industrial-edge-stormshift/       # Factory edge (sensors, MirrorMaker2, dashboard)
+│   │   │   ├── industrial-edge-data-science-cluster/  # RHODS DataScienceCluster
+│   │   │   ├── industrial-edge-data-science-project/  # ML workspace + pipelines
+│   │   │   ├── industrial-edge-pipelines/        # Tekton CI/CD for IoT components
+│   │   │   ├── industrial-edge-minio/            # MinIO S3 storage (replaces ODF)
 │   │   │   ├── showroom/                  # Workshop lab guide
 │   │   │   └── ...
 │   │   └── software-templates/            # Backstage scaffolder templates

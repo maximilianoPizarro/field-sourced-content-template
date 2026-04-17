@@ -1,5 +1,0 @@
-clusterDomain: apps.cluster.example.com
-
-s3:
-  default_endpoint: http://minio.manuela-ml-workspace.svc:9000
-  default_region: us-east-1

@@ -23,7 +23,7 @@
   "multiCluster": false,
   "profiles": {
     "full": {
-      "description": "All components enabled — AI/ML, Service Mesh, Observability, DevSpaces, BPM, Industrial Edge (Manuela)",
+      "description": "All components enabled — AI/ML, Service Mesh, Observability, DevSpaces, BPM, Industrial Edge (Industrial Edge)",
       "valuesFiles": ["examples/helm/values.yaml"],
       "estimatedResources": {
         "fixedCPU": "66 vCPU",

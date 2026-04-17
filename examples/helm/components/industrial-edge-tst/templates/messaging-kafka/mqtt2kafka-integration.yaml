@@ -1,0 +1,17 @@
+apiVersion: camel.apache.org/v1
+kind: Integration
+metadata:
+  name: mqtt2kafka-integration
+  namespace: industrial-edge-tst-all
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  traits:
+    mount:
+      configs:
+        - configmap:mqtt2kafka-config
+  profile: OpenShift
+  sources:
+    - content: |-
+{{ .Files.Get "MQTT2KafkaRoute.java" | indent 8 }}
+      name: MQTT2KafkaRoute.java

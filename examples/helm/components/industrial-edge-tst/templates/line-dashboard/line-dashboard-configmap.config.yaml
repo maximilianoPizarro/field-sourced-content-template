@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: line-dashboard-configmap
+  namespace: industrial-edge-tst-all
+  labels:
+    app.kubernetes.io/instance: industrial-edge-tst-all
+data:
+  "config.json": |-
+    {
+      "websocketHost": "http://messaging-industrial-edge-tst-all.{{ .Values.global.localClusterDomain }}",
+      "websocketPath": "/api/service-web/socket",
+      "SERVER_TIMEOUT": "20000"
+    }

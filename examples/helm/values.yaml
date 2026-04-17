@@ -37,9 +37,9 @@ connectivityLink:
         namespace: openshift-operators
         channel: stable
         source: redhat-operators
-      # --- Industrial Edge / Manuela operators ---
+      # --- Industrial Edge / Industrial Edge operators ---
       - name: amq-broker-rhel8
-        namespace: manuela-tst-all
+        namespace: industrial-edge-tst-all
         channel: 7.12.x
         source: redhat-operators
       - name: camel-k
@@ -325,59 +325,59 @@ connectivityLink:
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: false
-    # --- Industrial Edge / Manuela Stack ---
-    - id: manuela-minio
+    # --- Industrial Edge / Industrial Edge Stack ---
+    - id: industrial-edge-minio
       enabled: true
-      path: manuela-minio
-      destinationNamespace: manuela-ml-workspace
+      path: industrial-edge-minio
+      destinationNamespace: industrial-edge-ml-workspace
       syncWave: "5"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
-    - id: manuela-data-science-cluster
+    - id: industrial-edge-data-science-cluster
       enabled: true
-      path: manuela-data-science-cluster
+      path: industrial-edge-data-science-cluster
       destinationNamespace: redhat-ods-applications
       syncWave: "6"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
-    - id: manuela-data-science-project
+    - id: industrial-edge-data-science-project
       enabled: true
-      path: manuela-data-science-project
+      path: industrial-edge-data-science-project
       destinationNamespace: ml-development
       syncWave: "7"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
-    - id: manuela-data-lake
+    - id: industrial-edge-data-lake
       enabled: true
-      path: manuela-data-lake
-      destinationNamespace: manuela-data-lake
+      path: industrial-edge-data-lake
+      destinationNamespace: industrial-edge-data-lake
       syncWave: "6"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
-    - id: manuela-tst
+    - id: industrial-edge-tst
       enabled: true
-      path: manuela-tst
-      destinationNamespace: manuela-tst-all
+      path: industrial-edge-tst
+      destinationNamespace: industrial-edge-tst-all
       syncWave: "7"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
-    - id: manuela-stormshift
+    - id: industrial-edge-stormshift
       enabled: true
-      path: manuela-stormshift
-      destinationNamespace: manuela-stormshift-messaging
+      path: industrial-edge-stormshift
+      destinationNamespace: industrial-edge-stormshift-messaging
       syncWave: "8"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
-    - id: manuela-pipelines
+    - id: industrial-edge-pipelines
       enabled: true
-      path: manuela-pipelines
-      destinationNamespace: manuela-ci
+      path: industrial-edge-pipelines
+      destinationNamespace: industrial-edge-ci
       syncWave: "7"
       prune: true
       selfHeal: true

@@ -1,0 +1,14 @@
+clusterDomain: apps.cluster.example.com
+
+kafka:
+  s3:
+    bucket: anomaly-detection
+    endpointurl: http://minio.industrial-edge-ml-workspace.svc:9000
+    message:
+      aggregation:
+        count: 50
+  broker:
+    uri: "prod-cluster-kafka-bootstrap.industrial-edge-data-lake.svc:9092"
+    topic:
+      temperature: "factory-cluster.industrial-edge-stormshift-messaging.iot-sensor-sw-temperature"
+      vibration: "factory-cluster.industrial-edge-stormshift-messaging.iot-sensor-sw-vibration"

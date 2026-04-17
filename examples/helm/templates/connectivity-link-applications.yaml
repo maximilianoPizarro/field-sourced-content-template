@@ -237,7 +237,7 @@ spec:
     helm:
       valuesObject:
         clusterDomain: {{ $domain }}
-    {{- else if has .path (list "manuela-tst" "manuela-stormshift" "manuela-data-lake" "manuela-data-science-project" "manuela-pipelines" "manuela-minio" "manuela-data-science-cluster") }}
+    {{- else if has .path (list "industrial-edge-tst" "industrial-edge-stormshift" "industrial-edge-data-lake" "industrial-edge-data-science-project" "industrial-edge-pipelines" "industrial-edge-minio" "industrial-edge-data-science-cluster") }}
     helm:
       valuesObject:
         clusterDomain: {{ $domain }}

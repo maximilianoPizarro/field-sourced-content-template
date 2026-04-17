@@ -12,6 +12,15 @@ spec:
     - name: cdc-cluster
       namespace: kafka-cdc
       listener: plain
+    - name: dev-cluster
+      namespace: industrial-edge-tst-all
+      listener: plain
+    - name: factory-cluster
+      namespace: industrial-edge-stormshift-messaging
+      listener: plain
+    - name: prod-cluster
+      namespace: industrial-edge-data-lake
+      listener: plain
   kafkaConnectClusters:
     - name: cdc-connect
       namespace: kafka-cdc
@@ -45,4 +54,97 @@ subjects:
 roleRef:
   kind: Role
   name: kafka-console-connect-access
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kafka-console-kafka-access
+  namespace: industrial-edge-tst-all
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+rules:
+  - apiGroups: ["kafka.strimzi.io"]
+    resources: ["kafkas", "kafkatopics", "kafkausers"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["secrets", "configmaps"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kafka-console-kafka-access
+  namespace: industrial-edge-tst-all
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+subjects:
+  - kind: ServiceAccount
+    name: kafka-console-console-serviceaccount
+    namespace: kafka-cdc
+roleRef:
+  kind: Role
+  name: kafka-console-kafka-access
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kafka-console-kafka-access
+  namespace: industrial-edge-stormshift-messaging
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+rules:
+  - apiGroups: ["kafka.strimzi.io"]
+    resources: ["kafkas", "kafkatopics", "kafkausers"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["secrets", "configmaps"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kafka-console-kafka-access
+  namespace: industrial-edge-stormshift-messaging
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+subjects:
+  - kind: ServiceAccount
+    name: kafka-console-console-serviceaccount
+    namespace: kafka-cdc
+roleRef:
+  kind: Role
+  name: kafka-console-kafka-access
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kafka-console-kafka-access
+  namespace: industrial-edge-data-lake
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+rules:
+  - apiGroups: ["kafka.strimzi.io"]
+    resources: ["kafkas", "kafkatopics", "kafkausers"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["secrets", "configmaps"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kafka-console-kafka-access
+  namespace: industrial-edge-data-lake
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+subjects:
+  - kind: ServiceAccount
+    name: kafka-console-console-serviceaccount
+    namespace: kafka-cdc
+roleRef:
+  kind: Role
+  name: kafka-console-kafka-access
   apiGroup: rbac.authorization.k8s.io

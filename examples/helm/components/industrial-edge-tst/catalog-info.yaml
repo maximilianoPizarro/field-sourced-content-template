@@ -110,7 +110,7 @@ metadata:
     argocd/app-name: field-content-industrial-edge-tst
     argocd/app-namespace: openshift-gitops
     backstage.io/techdocs-ref: dir:.
-    kafka.apache.org/consumer-groups: mqtt2kafka-integration
+    kafka.apache.org/consumer-groups: '["mqtt2kafka-integration"]'
   tags:
     - kafka
     - amq-streams

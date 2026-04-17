@@ -53,7 +53,7 @@ Para que el plugin de Kafka aparezca en una entity page, agrega la siguiente ano
 ----
 metadata:
   annotations:
-    kafka.apache.org/consumer-groups: camel-cdc-consumer
+    kafka.apache.org/consumer-groups: '["camel-cdc-consumer"]'
 ----
 
 Esto hace que Developer Hub muestre los offsets y lag del consumer group `camel-cdc-consumer` directamente en la vista del componente.

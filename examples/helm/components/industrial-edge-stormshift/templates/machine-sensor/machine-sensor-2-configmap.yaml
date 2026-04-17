@@ -4,8 +4,8 @@ metadata:
   name: machine-sensor-2
   namespace: industrial-edge-stormshift-machine-sensor
 data:
-  MQTT_HOSTNAME: "broker-amq-mqtt-all-0-svc-rte-industrial-edge-stormshift-messaging.{{ .Values.global.localClusterDomain }}"
-  MQTT_PORT: "{{ .Values.machineSensor2.port }}"
+  MQTT_HOSTNAME: "broker-amq-mqtt-all-0-svc.industrial-edge-stormshift-messaging.svc"
+  MQTT_PORT: "61616"
   APP_NAME: "iot-sensor"
   DEVICE_ID: "pump-2"
   DEVICE_METRICS: "temperature,vibration,gps,light"

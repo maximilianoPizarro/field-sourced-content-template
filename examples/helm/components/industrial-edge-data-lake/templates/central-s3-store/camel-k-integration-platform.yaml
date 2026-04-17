@@ -13,7 +13,7 @@ spec:
   build:
     registry:
       address: image-registry.openshift-image-registry.svc:5000
-      secret: ocp-registry
+      insecure: true
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1

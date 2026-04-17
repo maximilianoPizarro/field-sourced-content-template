@@ -9,3 +9,11 @@
 * xref:08-reliability.adoc[7. Reliability & DRP]
 * xref:09-operations.adoc[8. Operations]
 * xref:10-devspaces.adoc[9. Self-Service IDE]
+
+.Industrial Edge Pattern
+* xref:11-industrial-edge.adoc[10. Industrial Edge Overview]
+* xref:12-ie-health-check.adoc[11. Health Check]
+* xref:13-ie-config-gitops.adoc[12. Configuration with GitOps]
+* xref:14-ie-app-devops.adoc[13. Application with DevOps]
+* xref:15-ie-mlops.adoc[14. AI/ML with MLOps]
+* xref:16-ie-troubleshooting.adoc[Troubleshooting]

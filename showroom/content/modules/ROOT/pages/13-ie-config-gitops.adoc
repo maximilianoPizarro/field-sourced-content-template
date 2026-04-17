@@ -1,0 +1,130 @@
+= Step 11: Configuration Changes with GitOps
+
+++++
+<div id="scene-gitops" style="width:100%;min-height:350px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../../_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-gitops', {height:350, camY:10, camZ:20});
+  if(!ctx) return;
+  var git  = ThreeHelper.createNode(ctx.scene,'Gitea',0xF57C00,-8,0,0);
+  var argo = ThreeHelper.createNode(ctx.scene,'ArgoCD',0x0066CC,-2,0,0);
+  var cm   = ThreeHelper.createNode(ctx.scene,'ConfigMap',0x4CAF50,4,0,-2);
+  var pod  = ThreeHelper.createNode(ctx.scene,'Sensor Pod',0x231F20,4,0,2);
+  var dash = ThreeHelper.createNode(ctx.scene,'Dashboard',0x1A73E8,10,0,0);
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,git,argo,0xF57C00,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,argo,cm,0x0066CC,{speed:0.01}),
+    ThreeHelper.createEdge(ctx.scene,cm,pod,0x4CAF50,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,pod,dash,0x231F20,{speed:0.009})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
+This demo shows how to change the configuration of edge devices using GitOps. You will enable temperature sensor data (which is initially disabled) by modifying a `ConfigMap` through Git — and watch ArgoCD propagate the change to the running pods.
+
+== Scenario
+
+The machine sensors in the Industrial Edge demo can report both *vibration* and *temperature* data. By default, temperature reporting is disabled. In this exercise, you will:
+
+. Edit the sensor configuration in the Git repository
+. Watch ArgoCD detect and sync the change
+. See temperature data appear on the Line Dashboard
+
+== Step 1: Open the current Line Dashboard
+
+Access the Line Dashboard to see the current state:
+
+[source,bash,subs=attributes+]
+----
+echo "https://$(oc get route line-dashboard -n industrial-edge-tst-all -o jsonpath='{.spec.host}')"
+----
+
+Click *Realtime Data* in the left navigation. Note that only *vibration* data is currently streaming.
+
+== Step 2: Locate the sensor ConfigMap
+
+The machine sensor configuration is defined in ConfigMaps. View the current configuration:
+
+[source,bash]
+----
+oc get configmap machine-sensor-1 -n industrial-edge-tst-all -o yaml
+----
+
+Look for the `SENSOR_TEMPERATURE_ENABLED` field — it should be `false`.
+
+== Step 3: Edit the configuration via Git
+
+Open your Gitea instance and navigate to the repository. Find the sensor ConfigMap template:
+
+`examples/helm/components/industrial-edge-tst/templates/machine-sensor/machine-sensor-1-configmap.yaml`
+
+Change the temperature setting from `false` to `true`:
+
+[source,yaml]
+----
+data:
+  SENSOR_TEMPERATURE_ENABLED: "true"
+----
+
+Commit the change with a descriptive message like: `Enable temperature sensor on machine-sensor-1`.
+
+TIP: You can also make this change from the terminal using `oc edit` for immediate testing, but the GitOps approach (committing to Git) is the recommended production workflow.
+
+== Step 4: Watch ArgoCD sync
+
+After committing, ArgoCD will detect the change within its polling interval (typically 3 minutes, or you can trigger a manual sync).
+
+Monitor the sync from the terminal:
+
+[source,bash]
+----
+oc get application field-content-industrial-edge-tst -n openshift-gitops -w
+----
+
+Or trigger a manual sync:
+
+[source,bash]
+----
+oc annotate application field-content-industrial-edge-tst -n openshift-gitops \
+  argocd.argoproj.io/refresh=hard --overwrite
+----
+
+== Step 5: Verify the change
+
+Once ArgoCD syncs, the sensor pod will pick up the new ConfigMap. Verify:
+
+[source,bash]
+----
+oc get configmap machine-sensor-1 -n industrial-edge-tst-all -o jsonpath='{.data.SENSOR_TEMPERATURE_ENABLED}'
+----
+
+The sensor pod may need a restart to pick up the ConfigMap change:
+
+[source,bash]
+----
+oc rollout restart deployment/machine-sensor-1 -n industrial-edge-tst-all
+----
+
+== Step 6: Observe temperature data
+
+Return to the *Line Dashboard* and click *Realtime Data*. You should now see both:
+
+* *Vibration* data (as before)
+* *Temperature* data (newly enabled)
+
+== Key takeaways
+
+* *Declarative configuration* — The desired state lives in Git, not in imperative commands
+* *Automated reconciliation* — ArgoCD continuously ensures the cluster matches the Git state
+* *Audit trail* — Every configuration change is a Git commit with author, timestamp, and message
+* *Rollback* — Reverting a configuration change is as simple as reverting the Git commit
+* *Scale* — The same GitOps workflow applies whether you manage 1 factory or 1,000
+
+== Next
+
+xref:14-ie-app-devops.adoc[Application changes with DevOps] — Modify the dashboard application code, rebuild, and redeploy.

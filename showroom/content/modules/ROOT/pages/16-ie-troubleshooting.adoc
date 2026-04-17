@@ -1,0 +1,264 @@
+= Industrial Edge — Troubleshooting
+
+This page covers common issues you may encounter with the Industrial Edge components and their resolutions.
+
+== ArgoCD applications
+
+=== Symptom: Application shows `OutOfSync` or `Unknown`
+
+*Cause:* A recent commit may have introduced invalid YAML or a template rendering error.
+
+*Resolution:*
+
+. Check the ArgoCD application details for the specific error message:
++
+[source,bash]
+----
+oc get application field-content-industrial-edge-tst -n openshift-gitops \
+  -o jsonpath='{.status.conditions[*].message}'
+----
+
+. If the error mentions invalid YAML, review the recent commits in the repository
+. Fix the YAML issue, commit, and push — ArgoCD will auto-reconcile
+
+=== Symptom: Application is `Synced` but `Degraded` or `Progressing` indefinitely
+
+*Cause:* A Kubernetes resource failed to reach a healthy state (e.g., pod crash loop, missing image, insufficient resources).
+
+*Resolution:*
+
+[source,bash]
+----
+oc get pods -n industrial-edge-tst-all --field-selector status.phase!=Running
+oc describe pod <failing-pod> -n industrial-edge-tst-all
+oc logs <failing-pod> -n industrial-edge-tst-all
+----
+
+== Pipeline failures
+
+=== Symptom: Intermittent failures in pipeline stages
+
+*Common errors:*
+
+[source,text]
+----
+level=error msg="Error while applying layer: ApplyLayer io: read/write on closed pipe"
+error creating build container: Error committing the finished image
+----
+
+*Cause:* Buildah/Podman resource contention or transient registry issues.
+
+*Resolution:*
+
+. Cancel the failed pipeline run
+. Re-run the specific pipeline:
++
+[source,bash]
+----
+oc create -f examples/helm/components/industrial-edge-pipelines/extra/seed-run.yaml \
+  -n industrial-edge-ci
+----
+
+IMPORTANT: Avoid running multiple pipelines concurrently — they may conflict when pushing to the same Git repository.
+
+=== Symptom: `push-*` pipeline tasks fail
+
+*Cause:* Multiple processes attempted concurrent Git changes, resulting in a non-fast-forward push.
+
+*Resolution:* Re-run the failed pipeline. Ensure only one pipeline runs at a time.
+
+=== Symptom: Pipelines application perpetually `Progressing`
+
+*Cause:* The application is missing container images that should have been built by the seed pipeline.
+
+*Resolution:*
+
+[source,bash]
+----
+oc create -f examples/helm/components/industrial-edge-pipelines/extra/seed-run.yaml \
+  -n industrial-edge-ci
+----
+
+This rebuilds all images and deploys them to test and production.
+
+== Sensor and messaging issues
+
+=== Symptom: No data appears on the Line Dashboard
+
+*Possible causes and checks:*
+
+. *Sensor pods not running:*
++
+[source,bash]
+----
+oc get pods -n industrial-edge-tst-all -l app=machine-sensor
+----
+
+. *AMQ Broker not ready:*
++
+[source,bash]
+----
+oc get activemqartemis -n industrial-edge-tst-all
+----
+
+. *Kafka cluster not ready:*
++
+[source,bash]
+----
+oc get kafka -n industrial-edge-tst-all
+oc get pods -n industrial-edge-tst-all -l strimzi.io/kind=Kafka
+----
+
+. *Camel K integration not running:*
++
+[source,bash]
+----
+oc get integration -n industrial-edge-tst-all
+----
+
+=== Symptom: Only vibration data appears (no temperature)
+
+*Cause:* Temperature sensors are disabled by default.
+
+*Resolution:* Follow the xref:13-ie-config-gitops.adoc[GitOps configuration demo] to enable temperature data.
+
+== Kafka and data lake issues
+
+=== Symptom: KafkaMirrorMaker2 fails to replicate
+
+*Cause:* In the single-cluster deployment, MirrorMaker2 connects to Kafka clusters via internal service DNS.
+
+*Resolution:*
+
+[source,bash]
+----
+oc get kafkamirrormaker2 -n industrial-edge-data-lake
+oc describe kafkamirrormaker2 -n industrial-edge-data-lake
+----
+
+Verify that the source cluster bootstrap address resolves:
+
+[source,bash]
+----
+oc exec -n industrial-edge-data-lake -it <mirrormaker-pod> -- \
+  nslookup industrial-edge-kafka-cluster-kafka-bootstrap.industrial-edge-stormshift-messaging.svc
+----
+
+=== Symptom: Kafka-to-S3 integration fails
+
+*Cause:* MinIO credentials or endpoint misconfiguration.
+
+*Resolution:*
+
+[source,bash]
+----
+oc get secret s3-anomaly -n industrial-edge-data-lake -o yaml
+oc get integration -n industrial-edge-data-lake
+oc logs -n industrial-edge-data-lake -l camel.apache.org/integration
+----
+
+Verify MinIO is accessible:
+
+[source,bash]
+----
+oc get pods -n industrial-edge-ml-workspace -l app=minio
+oc get svc minio -n industrial-edge-ml-workspace
+----
+
+== MinIO issues
+
+=== Symptom: Buckets not created
+
+*Cause:* The PostSync Job that creates buckets may have failed.
+
+*Resolution:*
+
+[source,bash]
+----
+oc get jobs -n industrial-edge-ml-workspace
+oc logs job/minio-create-buckets -n industrial-edge-ml-workspace
+----
+
+Manually create buckets if needed:
+
+[source,bash]
+----
+oc exec -n industrial-edge-ml-workspace deploy/minio -- \
+  mc alias set local http://localhost:9000 minioadmin minioadmin
+oc exec -n industrial-edge-ml-workspace deploy/minio -- \
+  mc mb local/pipeline-bucket local/user-bucket local/anomaly-models --ignore-existing
+----
+
+== OpenShift AI issues
+
+=== Symptom: DataScienceCluster not ready
+
+*Cause:* RHODS operator may still be installing or has insufficient resources.
+
+*Resolution:*
+
+[source,bash]
+----
+oc get datasciencecluster -A
+oc get csv -n redhat-ods-operator | grep rhods
+oc get pods -n redhat-ods-operator
+----
+
+If the operator CSV is not in `Succeeded` state, check operator events:
+
+[source,bash]
+----
+oc get events -n redhat-ods-operator --sort-by='.lastTimestamp' | tail -20
+----
+
+=== Symptom: JupyterLab workbench fails to start
+
+*Cause:* Insufficient resources or missing S3 data connections.
+
+*Resolution:*
+
+[source,bash]
+----
+oc get pods -n industrial-edge-ml-workspace -l app=jupyterlab
+oc describe pod <jupyter-pod> -n industrial-edge-ml-workspace
+----
+
+== Operator issues
+
+=== Symptom: Required operator not installed
+
+Check that all three Industrial Edge operators are present:
+
+[source,bash]
+----
+oc get subscriptions -A | grep -E "amq-broker|camel-k|rhods"
+----
+
+If missing, verify the operator subscriptions in the `connectivity-link-operators` component:
+
+[source,bash]
+----
+oc get application field-content-connectivity-link-operators -n openshift-gitops \
+  -o jsonpath='{.status.sync.status}'
+----
+
+== Useful diagnostic commands
+
+Quick health overview of all Industrial Edge namespaces:
+
+[source,bash]
+----
+for ns in industrial-edge-tst-all industrial-edge-ci industrial-edge-data-lake \
+           industrial-edge-ml-workspace industrial-edge-stormshift-messaging \
+           industrial-edge-stormshift-machine-sensor industrial-edge-stormshift-line-dashboard \
+           industrial-edge-inference; do
+  echo "=== $ns ==="
+  oc get pods -n $ns --no-headers 2>/dev/null | awk '{print $1, $3}' || echo "(namespace not found)"
+  echo
+done
+----
+
+== References
+
+* https://validatedpatterns.io/patterns/industrial-edge/troubleshooting/[Validated Patterns Troubleshooting^]
+* https://validatedpatterns.io/patterns/industrial-edge/cluster-sizing/[Cluster Sizing Guide^]

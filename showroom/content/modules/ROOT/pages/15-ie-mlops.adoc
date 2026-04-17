@@ -1,0 +1,158 @@
+= Step 13: AI/ML Model Changes with MLOps
+
+++++
+<div id="scene-mlops" style="width:100%;min-height:350px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../../_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-mlops', {height:350, camY:10, camZ:22});
+  if(!ctx) return;
+  var s3    = ThreeHelper.createNode(ctx.scene,'MinIO S3',0x00BCD4,-10,0,0);
+  var nb    = ThreeHelper.createNode(ctx.scene,'Jupyter',0xF57C00,-4,0,0);
+  var train = ThreeHelper.createNode(ctx.scene,'Training',0xEE0000,2,0,-2);
+  var pipe  = ThreeHelper.createNode(ctx.scene,'Pipeline',0x0066CC,2,0,2);
+  var model = ThreeHelper.createNode(ctx.scene,'Model',0x4CAF50,8,0,-2);
+  var serve = ThreeHelper.createNode(ctx.scene,'Inference',0x7B1FA2,8,0,2);
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,s3,nb,0x00BCD4,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,nb,train,0xF57C00,{speed:0.01}),
+    ThreeHelper.createEdge(ctx.scene,nb,pipe,0xF57C00,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,train,model,0xEE0000,{speed:0.009}),
+    ThreeHelper.createEdge(ctx.scene,pipe,model,0x0066CC,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,model,serve,0x4CAF50,{speed:0.008})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
+This demo explores how data scientists use OpenShift AI to develop, train, and deploy anomaly detection models — completing the MLOps lifecycle from data exploration to live inference at the factory edge.
+
+== Prerequisites
+
+Before starting this demo, ensure:
+
+* The xref:12-ie-health-check.adoc[health check] passes
+* OpenShift AI (RHODS) is deployed and healthy
+* MinIO S3 buckets are created (`pipeline-bucket`, `user-bucket`, `anomaly-models`)
+
+== Step 1: Access OpenShift AI
+
+Open the OpenShift AI console:
+
+[source,bash,subs=attributes+]
+----
+echo "https://$(oc get route rhods-dashboard -n redhat-ods-applications -o jsonpath='{.spec.host}' 2>/dev/null || echo 'rhods-dashboard-redhat-ods-applications.{cluster_domain}')"
+----
+
+Alternatively, click the nine-box menu (grid icon) in the OpenShift Console and select *Red Hat OpenShift AI*.
+
+== Step 2: Open the Data Science Project
+
+. In the OpenShift AI dashboard, click *Data Science Projects* in the left sidebar
+. Select the `ml-development` project
+. You should see:
+** *Workbenches* — JupyterLab environments for interactive development
+** *Models* — Deployed anomaly detection model
+** *Pipelines* — Automated training workflows
+** *Data connections* — S3 connections to MinIO
+
+== Step 3: Interactive model development
+
+Click on the *JupyterLab* workbench to open the notebook environment.
+
+In the file browser on the left, navigate to `manuela-dev/ml-models/anomaly-detection/`. You will find Jupyter notebooks (`.ipynb` files) that implement the model training workflow:
+
+[cols="1,2", options="header"]
+|===
+| Notebook | Purpose
+
+| `01_Data_Ingestion.ipynb`
+| Load raw sensor data from S3
+
+| `02_Data_Exploration.ipynb`
+| Visualize and analyze sensor patterns
+
+| `03_Feature_Engineering.ipynb`
+| Prepare features for model training
+
+| `04_Model_Training.ipynb`
+| Train the anomaly detection model
+
+| `05_Model_Evaluation.ipynb`
+| Evaluate model accuracy and performance
+
+| `06_Model_Deployment.ipynb`
+| Package and push the model for serving
+|===
+
+Walk through each notebook by pressing *Play* (▶) to execute cells sequentially. The notebooks are interactive — you can modify parameters and re-run to experiment.
+
+TIP: Running through all six notebooks will regenerate the anomaly model, prepare training data, and push the updated model to Gitea so the inference service can pick it up.
+
+== Step 4: Automated model CI/CD with pipelines
+
+For production use, model training should be automated rather than run interactively. The `pipelines` folder contains Python modules corresponding to each notebook, wired together in an Elyra pipeline definition.
+
+. In the JupyterLab file browser, open the `pipelines` folder
+. Double-click `training.pipeline` to open the Elyra pipeline editor
+. The visual editor shows the pipeline steps and their execution order
+
+To submit the pipeline:
+
+. Click the *Run Pipeline* (▶ play icon) in the top left corner of the Elyra editor
+. Select *OK* to confirm
+. After a few seconds, a confirmation message appears
+. Click *Run Details* to monitor the pipeline in OpenShift AI
+
+== Step 5: Monitor the training pipeline
+
+Back in the OpenShift AI dashboard, you can watch the pipeline run in real-time:
+
+. Navigate to *Pipelines* → *Runs*
+. Select the active run
+. Click individual tasks to view logs and details
+
+The pipeline stages mirror the notebooks:
+
+. Data ingestion from S3
+. Feature engineering
+. Model training
+. Model evaluation
+. Model packaging and push to Git
+
+== Step 6: Verify model deployment
+
+Once the pipeline completes:
+
+. Check Gitea for a new commit indicating a model update
+. ArgoCD will detect the change and update the inference service
+. The anomaly detection model in the test and production environments will be refreshed
+
+[source,bash]
+----
+oc get inferenceservice -n industrial-edge-inference
+oc get pods -n industrial-edge-inference
+----
+
+== Step 7: Observe improved inference
+
+Return to the Line Dashboard. The updated model should now be performing anomaly detection with the newly trained weights. You can compare:
+
+* *Before* — Anomaly alerts based on the original model
+* *After* — Anomaly alerts using the retrained model (may show different sensitivity)
+
+== Key takeaways
+
+* *Notebook-first development* — Data scientists work in familiar Jupyter environments
+* *S3 data lake* — Training data lives in MinIO, decoupled from compute
+* *Pipeline automation* — Elyra/Kubeflow pipelines automate the full training lifecycle
+* *GitOps model delivery* — Trained models flow through the same Git → ArgoCD path as application code
+* *Model versioning* — Each model update is a traceable Git commit
+* *Live inference* — KServe provides scalable, low-latency model serving at the edge
+
+== Next
+
+xref:16-ie-troubleshooting.adoc[Troubleshooting] — Common issues and resolutions for the Industrial Edge components.

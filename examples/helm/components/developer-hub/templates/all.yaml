@@ -429,10 +429,6 @@ data:
         - type: url
           target: https://github.com/maximilianoPizarro/field-sourced-content-template/blob/main/examples/helm/software-templates/templates-catalog.yaml
         - type: url
-          target: https://github.com/maximilianoPizarro/field-sourced-content-template/blob/main/examples/helm/components/neuralbank-stack/catalog-info.yaml
-        - type: url
-          target: https://github.com/maximilianoPizarro/field-sourced-content-template/blob/main/examples/helm/components/nfl-wallet/catalog-info.yaml
-        - type: url
           target: https://github.com/maximilianoPizarro/field-sourced-content-template/blob/main/examples/helm/components/observability/catalog-info.yaml
         - type: url
           target: https://github.com/maximilianoPizarro/field-sourced-content-template/blob/main/examples/helm/components/mailpit/catalog-info.yaml

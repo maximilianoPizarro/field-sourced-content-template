@@ -41,41 +41,6 @@ connectivityLink:
         channel: stable-2.25
         source: redhat-operators
 
-  neuralbank:
-    global:
-      postgresql:
-        auth:
-          postgresPassword: "supersecretpassword"
-          username: "neuralbank"
-          password: "neuralbank123!"
-          database: "neuralbank"
-    backend:
-      image:
-        repository: quay.io/maximilianopizarro/neuralbank-backend
-        tag: "latest"
-        pullPolicy: Always
-      service:
-        port: 8080
-      replicaCount: 1
-    frontend:
-      image:
-        repository: quay.io/maximilianopizarro/neuralbank-front
-        tag: "pkce"
-        pullPolicy: Always
-      service:
-        port: 8080
-      replicaCount: 1
-    keycloak:
-      clientId: "neuralbank-frontend"
-      clientSecret: ""
-      issuerUrl: ""
-      authorizationEndpoint: ""
-      redirectUri: ""
-      tokenEndpoint: ""
-      postLogoutRedirectUri: ""
-    api:
-      baseUrl: "/api"
-
   # ArgoCD Applications — full profile (all components enabled)
   # For lite profile, use values-lite.yaml overlay to disable heavy components
   apps:
@@ -189,14 +154,6 @@ connectivityLink:
       selfHeal: true
       skipDryRunOnMissingResource: true
     # --- Demo applications ---
-    - id: neuralbank-stack
-      enabled: true
-      path: neuralbank-stack
-      destinationNamespace: neuralbank-stack
-      syncWave: "5"
-      prune: true
-      selfHeal: true
-      skipDryRunOnMissingResource: true
     - id: ols
       enabled: true
       path: openshift-lightspeed
@@ -234,14 +191,6 @@ connectivityLink:
       path: oauth-users
       destinationNamespace: openshift-config
       syncWave: "2"
-      prune: true
-      selfHeal: true
-      skipDryRunOnMissingResource: true
-    - id: nfl-wallet
-      enabled: true
-      path: nfl-wallet
-      destinationNamespace: nfl-wallet-prod
-      syncWave: "7"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true

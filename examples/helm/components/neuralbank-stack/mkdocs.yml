@@ -1,9 +1,0 @@
-site_name: Neuralbank Stack
-site_description: Plataforma financiera de demostración — Backend + Frontend + Database con OIDC y Rate Limiting
-nav:
-  - Home: index.md
-  - Arquitectura: architecture.md
-  - API REST: api.md
-  - Autenticación OIDC: oidc-auth.md
-plugins:
-  - techdocs-core

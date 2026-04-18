@@ -2,7 +2,7 @@ schemaVersion: 2.2.2
 metadata:
   name: ${{values.name}}
   version: 1.0.0
-  displayName: "${{values.name}} - Neuralbank MCP"
+  displayName: "${{values.name}} - Developer Hub MCP"
   description: ${{values.description}}
   language: Java
   projectType: Quarkus

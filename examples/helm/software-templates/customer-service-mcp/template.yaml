@@ -1,14 +1,13 @@
 apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
-  name: neuralbank-customer-service-mcp
-  title: "Neuralbank: Customer Service MCP"
-  description: "Creates an MCP (Model Context Protocol) server with Quarkus for Neuralbank's customer service. Includes tools for credit inquiry, customer information, and status updates. Automatically generates Gateway, OIDCPolicy, RateLimitPolicy, Tekton CI/CD pipeline, and ArgoCD auto-deployment via ApplicationSet. Webhooks are created automatically by a background CronJob."
+  name: customer-service-mcp
+  title: "Customer Service MCP"
+  description: "Creates an MCP (Model Context Protocol) server with Quarkus for Developer Hub's customer service. Includes tools for credit inquiry, customer information, and status updates. Automatically generates Gateway, OIDCPolicy, RateLimitPolicy, Tekton CI/CD pipeline, and ArgoCD auto-deployment via ApplicationSet. Webhooks are created automatically by a background CronJob."
   tags:
     - java
     - quarkus
     - mcp
-    - neuralbank
     - recommended
 spec:
   owner: platform-engineering
@@ -29,14 +28,14 @@ spec:
         description:
           title: Description
           type: string
-          default: "MCP customer service server for Neuralbank"
+          default: "MCP customer service server for Developer Hub"
         owner:
           title: User (OpenShift username)
           type: string
-          description: "Your OpenShift username. Defines the deploy namespace: <username>-neuralbank"
+          description: "Your OpenShift username. Defines the deploy namespace: <username>-apps"
           default: ${{ user.entity.metadata.name }}
           pattern: "^user[0-9]+$"
-          ui:help: "E.g.: user1 → namespace user1-neuralbank"
+          ui:help: "E.g.: user1 → namespace user1-apps"
         clusterDomain:
           title: Cluster Domain
           type: string
@@ -53,7 +52,7 @@ spec:
           uniqueName: "${{ parameters.owner }}-${{ parameters.name }}"
           owner: ${{ parameters.owner }}
           description: ${{ parameters.description }}
-          namespace: "${{ parameters.owner }}-neuralbank"
+          namespace: "${{ parameters.owner }}-apps"
           imageRegistry: "image-registry.openshift-image-registry.svc:5000"
           clusterDomain: ${{ parameters.clusterDomain }}
     - id: publish
@@ -85,9 +84,9 @@ spec:
           To:
             - Email: "${{ parameters.owner }}@redhat.local"
               Name: "${{ parameters.owner }}"
-          Subject: "Neuralbank Platform — MCP Server Deployed"
-          Text: "Neuralbank Platform Notification — Your MCP server ${{ parameters.owner }}-${{ parameters.name }} has been provisioned in namespace ${{ parameters.owner }}-neuralbank. The CI/CD pipeline is now building and deploying your application. Repository: ws-${{ parameters.owner }}/${{ parameters.name }}"
-          HTML: "<div style='font-family:Red Hat Text,Helvetica,Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden'><div style='background:#EE0000;padding:24px 32px;text-align:center'><h1 style='color:#fff;margin:0;font-size:22px;font-weight:600;letter-spacing:0.5px'>Neuralbank Platform</h1><p style='color:#ffcccc;margin:4px 0 0;font-size:12px'>Red Hat Developer Hub</p></div><div style='padding:32px'><h2 style='color:#151515;margin:0 0 16px;font-size:18px'>MCP Server Deployed</h2><p style='color:#6a6e73;font-size:14px;line-height:1.6;margin:0 0 20px'>Your Model Context Protocol server has been successfully provisioned on the Neuralbank platform.</p><table style='width:100%;border-collapse:collapse;font-size:14px;margin-bottom:24px'><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:10px 0;color:#6a6e73;width:140px'>Component</td><td style='padding:10px 0;color:#151515;font-weight:500'>${{ parameters.owner }}-${{ parameters.name }}</td></tr><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:10px 0;color:#6a6e73'>Namespace</td><td style='padding:10px 0;color:#151515;font-weight:500'>${{ parameters.owner }}-neuralbank</td></tr><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:10px 0;color:#6a6e73'>Repository</td><td style='padding:10px 0;color:#151515;font-weight:500'>ws-${{ parameters.owner }}/${{ parameters.name }}</td></tr><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:10px 0;color:#6a6e73'>MCP Endpoint</td><td style='padding:10px 0;color:#151515;font-weight:500'>/mcp/sse</td></tr><tr><td style='padding:10px 0;color:#6a6e73'>Pipeline</td><td style='padding:10px 0;color:#151515;font-weight:500'><span style='background:#faeae8;color:#c9190b;padding:2px 8px;border-radius:12px;font-size:12px'>Building</span></td></tr></table><p style='color:#6a6e73;font-size:13px;line-height:1.5;margin:0 0 24px'>The CI/CD pipeline (Tekton) is compiling, building the container image, and deploying to your namespace. You can monitor progress from the <strong>CI</strong> tab in Developer Hub.</p></div><div style='background:#f0f0f0;padding:16px 32px;text-align:center;font-size:11px;color:#6a6e73'>Neuralbank Platform &bull; Powered by Red Hat Developer Hub</div></div>"
+          Subject: "Developer Hub Platform — MCP Server Deployed"
+          Text: "Developer Hub Platform Notification — Your MCP server ${{ parameters.owner }}-${{ parameters.name }} has been provisioned in namespace ${{ parameters.owner }}-apps. The CI/CD pipeline is now building and deploying your application. Repository: ws-${{ parameters.owner }}/${{ parameters.name }}"
+          HTML: "<div style='font-family:Red Hat Text,Helvetica,Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden'><div style='background:#EE0000;padding:24px 32px;text-align:center'><h1 style='color:#fff;margin:0;font-size:22px;font-weight:600;letter-spacing:0.5px'>Developer Hub Platform</h1><p style='color:#ffcccc;margin:4px 0 0;font-size:12px'>Red Hat Developer Hub</p></div><div style='padding:32px'><h2 style='color:#151515;margin:0 0 16px;font-size:18px'>MCP Server Deployed</h2><p style='color:#6a6e73;font-size:14px;line-height:1.6;margin:0 0 20px'>Your Model Context Protocol server has been successfully provisioned on the Developer Hub platform.</p><table style='width:100%;border-collapse:collapse;font-size:14px;margin-bottom:24px'><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:10px 0;color:#6a6e73;width:140px'>Component</td><td style='padding:10px 0;color:#151515;font-weight:500'>${{ parameters.owner }}-${{ parameters.name }}</td></tr><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:10px 0;color:#6a6e73'>Namespace</td><td style='padding:10px 0;color:#151515;font-weight:500'>${{ parameters.owner }}-apps</td></tr><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:10px 0;color:#6a6e73'>Repository</td><td style='padding:10px 0;color:#151515;font-weight:500'>ws-${{ parameters.owner }}/${{ parameters.name }}</td></tr><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:10px 0;color:#6a6e73'>MCP Endpoint</td><td style='padding:10px 0;color:#151515;font-weight:500'>/mcp/sse</td></tr><tr><td style='padding:10px 0;color:#6a6e73'>Pipeline</td><td style='padding:10px 0;color:#151515;font-weight:500'><span style='background:#faeae8;color:#c9190b;padding:2px 8px;border-radius:12px;font-size:12px'>Building</span></td></tr></table><p style='color:#6a6e73;font-size:13px;line-height:1.5;margin:0 0 24px'>The CI/CD pipeline (Tekton) is compiling, building the container image, and deploying to your namespace. You can monitor progress from the <strong>CI</strong> tab in Developer Hub.</p></div><div style='background:#f0f0f0;padding:16px 32px;text-align:center;font-size:11px;color:#6a6e73'>Developer Hub Platform &bull; Powered by Red Hat Developer Hub</div></div>"
   output:
     links:
       - title: Repository

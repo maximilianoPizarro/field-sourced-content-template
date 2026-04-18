@@ -143,14 +143,6 @@ connectivityLink:
       skipDryRunOnMissingResource: true
 
     # --- Demo app + workshop ---
-    - id: neuralbank-stack
-      enabled: true
-      path: neuralbank-stack
-      destinationNamespace: neuralbank-stack
-      syncWave: "5"
-      prune: true
-      selfHeal: true
-      skipDryRunOnMissingResource: true
     - id: console-links
       enabled: true
       path: console-links
@@ -255,14 +247,6 @@ connectivityLink:
       path: mcp-gateway
       destinationNamespace: mcp-system
       syncWave: "9"
-      prune: true
-      selfHeal: true
-      skipDryRunOnMissingResource: true
-    - id: nfl-wallet
-      enabled: false
-      path: nfl-wallet
-      destinationNamespace: nfl-wallet-prod
-      syncWave: "7"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true

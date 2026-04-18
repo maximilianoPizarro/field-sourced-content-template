@@ -28,11 +28,10 @@ examples/helm/
     ├── rhcl-operator/
     ├── developer-hub/
     ├── observability/
-    ├── neuralbank-stack/
     └── …                              # see values.yaml → connectivityLink.apps
 ```
 
-Connectivity-link manifests are **vendored** from [connectivity-link](https://gitlab.com/maximilianoPizarro/connectivity-link): plain YAML directories were rendered with `kubectl kustomize` into `templates/all.yaml` where applicable; the `operators` and `neuralbank-stack` upstream Helm charts were copied as subcharts.
+Connectivity-link manifests are **vendored** from [connectivity-link](https://gitlab.com/maximilianoPizarro/connectivity-link): plain YAML directories were rendered with `kubectl kustomize` into `templates/all.yaml` where applicable; the `operators` upstream Helm charts were copied as subcharts.
 
 ## Configuration
 
@@ -41,8 +40,7 @@ Connectivity-link manifests are **vendored** from [connectivity-link](https://gi
 | `gitops.repoUrl`, `gitops.revision`, `gitops.basePath` | Git source Argo CD uses for every child `Application` |
 | `connectivityLink.apps[]` | Toggle each connectivity-link app, destination namespace, prune, sync-wave |
 | `connectivityLink.operators` | `channel`, `version`, `subscriptions` passed to `operators` |
-| `connectivityLink.neuralbank` | Values merged into `neuralbank-stack`; Keycloak URLs are overridden from `deployer.domain` |
-| `litemaas.*` | Optional RHDP injection; when `litemaas.apiUrl` is set, neuralbank `api.baseUrl` can follow it |
+| `litemaas.*` | Optional RHDP injection for LLM model serving |
 | `components.showroom` | Showroom content repo, nookbag, terminal (default: showroom-from-zero-to-hero) |
 
 **Note:** LiteMaaS-related YAML in `litemaas` still contains cluster-specific URLs from the upstream snapshot. For a new cluster, adjust `cluster-config` / domain handling in that chart or maintain a fork.

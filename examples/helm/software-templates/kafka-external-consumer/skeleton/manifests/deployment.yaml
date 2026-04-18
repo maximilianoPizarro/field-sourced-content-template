@@ -6,7 +6,7 @@ metadata:
   labels:
     app: ${{ values.uniqueName }}
     app.kubernetes.io/name: ${{ values.uniqueName }}
-    app.kubernetes.io/part-of: ${{ values.owner }}-neuralbank
+    app.kubernetes.io/part-of: ${{ values.owner }}-apps
     backstage.io/kubernetes-id: ${{ values.uniqueName }}
 spec:
   replicas: 1

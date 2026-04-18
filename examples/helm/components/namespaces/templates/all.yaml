@@ -110,13 +110,6 @@ metadata:
   labels:
     managed-by: n8n-workflow
     purpose: test-databases
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: neuralbank-stack
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
 # ============================================================
 # Industrial Edge / Industrial Edge Namespaces
 # ============================================================
@@ -210,14 +203,14 @@ metadata:
 # Per-User Namespaces (dynamic, driven by .Values.userCount)
 # Each user gets two namespaces:
 #   - userN-devspaces  (developer workspace)
-#   - userN-neuralbank (application deployments)
+#   - userN-apps       (application deployments)
 # Each namespace includes: admin RoleBinding + ArgoCD RoleBinding + pipeline RoleBinding
 # ============================================================
 {{- $userCount := .Values.userCount | default 200 | int }}
 {{- range $i := until $userCount }}
 {{- $user := printf "user%d" (add1 $i) }}
 {{- $devNs := printf "%s-devspaces" $user }}
-{{- $appNs := printf "%s-neuralbank" $user }}
+{{- $appNs := printf "%s-apps" $user }}
 ---
 apiVersion: v1
 kind: Namespace

@@ -29,10 +29,10 @@ spec:
         owner:
           title: User (OpenShift username)
           type: string
-          description: "Your OpenShift username. Defines the deploy namespace: <username>-neuralbank"
+          description: "Your OpenShift username. Defines the deploy namespace: <username>-apps"
           default: ${{ user.entity.metadata.name }}
           pattern: "^user[0-9]+$"
-          ui:help: "E.g.: user1 → namespace user1-neuralbank"
+          ui:help: "E.g.: user1 → namespace user1-apps"
         description:
           title: Description
           type: string
@@ -66,7 +66,7 @@ spec:
           description: ${{ parameters.description }}
           kafkaBootstrap: ${{ parameters.kafkaBootstrap }}
           kafkaTopic: ${{ parameters.kafkaTopic }}
-          namespace: "${{ parameters.owner }}-neuralbank"
+          namespace: "${{ parameters.owner }}-apps"
           clusterDomain: ${{ parameters.clusterDomain }}
 
     - id: publish

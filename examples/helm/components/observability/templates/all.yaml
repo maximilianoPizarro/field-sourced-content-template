@@ -77,9 +77,6 @@ metadata:
 spec:
   namespaceSelector:
     matchNames:
-    - nfl-wallet-prod
-    - nfl-wallet-test
-    - neuralbank-stack
     - litemaas
     - istio-system
   podMetricsEndpoints:
@@ -93,106 +90,6 @@ spec:
     matchExpressions:
     - key: gateway.istio.io/managed
       operator: Exists
----
-apiVersion: monitoring.rhobs/v1
-kind: PodMonitor
-metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
-  labels:
-    app.kubernetes.io/component: gateway
-    openshift.io/user-monitoring: "true"
-  name: nfl-wallet-prod-gateway-alt
-  namespace: openshift-cluster-observability-operator
-spec:
-  namespaceSelector:
-    matchNames:
-    - nfl-wallet-prod
-  podMetricsEndpoints:
-  - interval: 30s
-    path: /stats/prometheus
-    port: http-envoy-prom
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: gateway
----
-apiVersion: monitoring.rhobs/v1
-kind: PodMonitor
-metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
-  labels:
-    app.kubernetes.io/component: gateway
-    openshift.io/user-monitoring: "true"
-  name: nfl-wallet-prod-gateway-pods
-  namespace: openshift-cluster-observability-operator
-spec:
-  namespaceSelector:
-    matchNames:
-    - nfl-wallet-prod
-  podMetricsEndpoints:
-  - interval: 30s
-    path: /stats/prometheus
-    port: "15090"
-  selector:
-    matchExpressions:
-    - key: gateway.networking.k8s.io/gateway-name
-      operator: In
-      values:
-      - nfl-wallet-gateway
-      - nfl-wallet-gateway-istio
-    matchLabels:
-      app.kubernetes.io/component: gateway
----
-apiVersion: monitoring.rhobs/v1
-kind: PodMonitor
-metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
-  labels:
-    app.kubernetes.io/component: gateway
-    openshift.io/user-monitoring: "true"
-  name: nfl-wallet-test-gateway-alt
-  namespace: openshift-cluster-observability-operator
-spec:
-  namespaceSelector:
-    matchNames:
-    - nfl-wallet-test
-  podMetricsEndpoints:
-  - interval: 30s
-    path: /stats/prometheus
-    port: http-envoy-prom
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: gateway
----
-apiVersion: monitoring.rhobs/v1
-kind: PodMonitor
-metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
-  labels:
-    app.kubernetes.io/component: gateway
-    openshift.io/user-monitoring: "true"
-  name: nfl-wallet-test-gateway-pods
-  namespace: openshift-cluster-observability-operator
-spec:
-  namespaceSelector:
-    matchNames:
-    - nfl-wallet-test
-  podMetricsEndpoints:
-  - interval: 30s
-    path: /stats/prometheus
-    port: http-envoy-prom
-  selector:
-    matchExpressions:
-    - key: gateway.networking.k8s.io/gateway-name
-      operator: In
-      values:
-      - nfl-wallet-gateway
-      - nfl-wallet-gateway-istio
-    matchLabels:
-      app.kubernetes.io/component: gateway
 ---
 apiVersion: monitoring.rhobs/v1
 kind: ServiceMonitor
@@ -246,124 +143,6 @@ spec:
   selector:
     matchLabels:
       gateway.networking.k8s.io/gateway-name: litemaas-gateway
----
-apiVersion: monitoring.rhobs/v1
-kind: ServiceMonitor
-metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
-  labels:
-    app.kubernetes.io/component: gateway
-    openshift.io/user-monitoring: "true"
-  name: neuralbank-gateway-metrics
-  namespace: openshift-cluster-observability-operator
-spec:
-  endpoints:
-  - interval: 30s
-    path: /stats/prometheus
-    port: "15090"
-  namespaceSelector:
-    matchNames:
-    - neuralbank-stack
-  selector:
-    matchLabels:
-      gateway.networking.k8s.io/gateway-name: neuralbank-gateway
----
-apiVersion: monitoring.rhobs/v1
-kind: ServiceMonitor
-metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
-  labels:
-    app.kubernetes.io/component: gateway
-    openshift.io/user-monitoring: "true"
-  name: nfl-wallet-prod-gateway-metrics
-  namespace: openshift-cluster-observability-operator
-spec:
-  endpoints:
-  - interval: 30s
-    path: /stats/prometheus
-    port: http-envoy-prom
-  namespaceSelector:
-    matchNames:
-    - nfl-wallet-prod
-  selector:
-    matchExpressions:
-    - key: gateway.networking.k8s.io/gateway-name
-      operator: In
-      values:
-      - nfl-wallet-gateway
-      - nfl-wallet-gateway-istio
----
-apiVersion: monitoring.rhobs/v1
-kind: ServiceMonitor
-metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
-  labels:
-    app.kubernetes.io/component: waypoint
-    openshift.io/user-monitoring: "true"
-  name: nfl-wallet-prod-waypoint-metrics
-  namespace: openshift-cluster-observability-operator
-spec:
-  endpoints:
-  - interval: 30s
-    path: /stats/prometheus
-    port: "15021"
-  namespaceSelector:
-    matchNames:
-    - nfl-wallet-prod
-  selector:
-    matchLabels:
-      gateway.networking.k8s.io/gateway-name: nfl-wallet-waypoint
----
-apiVersion: monitoring.rhobs/v1
-kind: ServiceMonitor
-metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
-  labels:
-    app.kubernetes.io/component: gateway
-    openshift.io/user-monitoring: "true"
-  name: nfl-wallet-test-gateway-metrics
-  namespace: openshift-cluster-observability-operator
-spec:
-  endpoints:
-  - interval: 30s
-    path: /stats/prometheus
-    port: http-envoy-prom
-  namespaceSelector:
-    matchNames:
-    - nfl-wallet-test
-  selector:
-    matchExpressions:
-    - key: gateway.networking.k8s.io/gateway-name
-      operator: In
-      values:
-      - nfl-wallet-gateway
-      - nfl-wallet-gateway-istio
----
-apiVersion: monitoring.rhobs/v1
-kind: ServiceMonitor
-metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
-  labels:
-    app.kubernetes.io/component: waypoint
-    openshift.io/user-monitoring: "true"
-  name: nfl-wallet-test-waypoint-metrics
-  namespace: openshift-cluster-observability-operator
-spec:
-  endpoints:
-  - interval: 30s
-    path: /stats/prometheus
-    port: "15021"
-  namespaceSelector:
-    matchNames:
-    - nfl-wallet-test
-  selector:
-    matchLabels:
-      gateway.networking.k8s.io/gateway-name: nfl-wallet-waypoint
 ---
 apiVersion: monitoring.rhobs/v1alpha1
 kind: MonitoringStack
@@ -1089,30 +868,12 @@ data:
   generate.sh: |
     #!/bin/sh
     DOMAIN="{{ .Values.clusterDomain | default "{{ .Values.clusterDomain }}" }}"
-    NB_HOST="neuralbank.${DOMAIN}"
-    NFL_HOST="nfl-wallet.${DOMAIN}"
     LM_HOST="litemaas.${DOMAIN}"
-    NFL_KEY="nfl-wallet-demo-key-2024"
 
     echo "=== Mesh Traffic Generator ==="
     echo "Interval: ${INTERVAL:-5}s"
 
     while true; do
-      # Neuralbank via gateway (OIDC 302, L7 waypoint metrics)
-      curl -sk -o /dev/null -w "%{http_code} nb-gw/q/health\n" --connect-timeout 2 --max-time 4 \
-        -H "Host: $NB_HOST" "http://neuralbank-gateway-istio.neuralbank-stack.svc:8080/q/health" &
-      curl -sk -o /dev/null -w "%{http_code} nb-gw/api/v1/customers\n" --connect-timeout 2 --max-time 4 \
-        -H "Host: $NB_HOST" "http://neuralbank-gateway-istio.neuralbank-stack.svc:8080/api/v1/customers" &
-      # Neuralbank direct backend (200, L4 ztunnel metrics)
-      curl -sk -o /dev/null -w "%{http_code} nb-svc/q/health\n" --connect-timeout 2 --max-time 4 \
-        "http://neuralbank-backend-svc.neuralbank-stack.svc:8080/q/health" &
-      # NFL Wallet via gateway with API key (200, L7 waypoint metrics)
-      curl -sk -o /dev/null -w "%{http_code} nfl-gw/api/v1/customers\n" --connect-timeout 2 --max-time 4 \
-        -H "Host: $NFL_HOST" -H "X-API-Key: $NFL_KEY" \
-        "http://nfl-wallet-gateway-istio.nfl-wallet-prod.svc:8080/api/v1/customers" &
-      # NFL Wallet direct backend (200, L4 ztunnel metrics)
-      curl -sk -o /dev/null -w "%{http_code} nfl-svc/q/health\n" --connect-timeout 2 --max-time 4 \
-        "http://nfl-wallet-api.nfl-wallet-prod.svc:8080/q/health" &
       # LiteMaaS via gateway (200, L7 waypoint metrics)
       curl -sk -o /dev/null -w "%{http_code} lm-gw/\n" --connect-timeout 2 --max-time 4 \
         -H "Host: $LM_HOST" "http://litemaas-gateway-istio.litemaas.svc:8080/" &

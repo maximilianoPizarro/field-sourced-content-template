@@ -30,6 +30,6 @@ spec:
   type: service
   lifecycle: experimental
   owner: user:${{ values.owner }}
-  system: ${{ values.owner }}-neuralbank
+  system: ${{ values.owner }}-apps
   consumesApis:
     - cdc-cluster-kafka

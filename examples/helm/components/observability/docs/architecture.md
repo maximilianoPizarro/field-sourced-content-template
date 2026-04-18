@@ -23,9 +23,9 @@
 │              scrape metrics│                  ▼                   │
 │  ┌────────────┬────────────┼────────────┬──────────────┐        │
 │  │            │            │            │              │        │
-│  │ nfl-wallet │ neuralbank │  litemaas  │  kuadrant    │        │
-│  │ gateways   │ gateway    │  gateway   │  controller  │        │
-│  │ + ztunnel  │ + ztunnel  │ + ztunnel  │              │        │
+│  │  litemaas  │  kuadrant    │                            │        │
+│  │  gateway   │  controller  │                            │        │
+│  │ + ztunnel  │              │                            │        │
 │  └────────────┴────────────┴────────────┴──────────────┘        │
 └──────────────────────────────────────────────────────────────────┘
 ```
@@ -54,9 +54,6 @@
 Los `PodMonitor` y `ServiceMonitor` configurados recolectan métricas de:
 
 - `ztunnel` — L4 TCP metrics del data plane ambient mesh
-- `nfl-wallet-prod` — Gateway, waypoints e Istio pods de producción
-- `nfl-wallet-test` — Gateway, waypoints e Istio pods de testing
-- `neuralbank-stack` — Gateway de la aplicación Neuralbank
 - `litemaas` — Gateway de LiteLLM/MaaS
 - `istio-system` — Kuadrant controller y Authorino
 
@@ -67,7 +64,7 @@ Un Deployment ligero que envía requests HTTP periódicos a los gateways interno
 - **Imagen**: `ubi9/ubi-minimal` (curl)
 - **Intervalo**: ~10s + jitter aleatorio (0-5s)
 - **Recursos**: 10m CPU / 32Mi RAM (requests), 50m CPU / 64Mi RAM (limits)
-- **Targets**: health endpoints + API endpoints de neuralbank, nfl-wallet (prod/test) y litemaas
+- **Targets**: health endpoints + API endpoints de litemaas
 - **Genera**: mix de 200 (health), 401/403 (API sin auth) y 429 (rate limited) para datos variados en los dashboards
 
 ## Retención de datos

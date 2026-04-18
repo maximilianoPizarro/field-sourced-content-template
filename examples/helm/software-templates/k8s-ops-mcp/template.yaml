@@ -34,10 +34,10 @@ spec:
         owner:
           title: User (OpenShift username)
           type: string
-          description: "Your OpenShift username. Defines the deploy namespace: <username>-neuralbank"
+          description: "Your OpenShift username. Defines the deploy namespace: <username>-apps"
           default: ${{ user.entity.metadata.name }}
           pattern: "^user[0-9]+$"
-          ui:help: "E.g.: user1 → namespace user1-neuralbank"
+          ui:help: "E.g.: user1 → namespace user1-apps"
         targetNamespaces:
           title: Target Namespaces
           type: string
@@ -59,7 +59,7 @@ spec:
           uniqueName: "${{ parameters.owner }}-${{ parameters.name }}"
           owner: ${{ parameters.owner }}
           description: ${{ parameters.description }}
-          namespace: "${{ parameters.owner }}-neuralbank"
+          namespace: "${{ parameters.owner }}-apps"
           targetNamespaces: ${{ parameters.targetNamespaces }}
           imageRegistry: "image-registry.openshift-image-registry.svc:5000"
           clusterDomain: ${{ parameters.clusterDomain }}

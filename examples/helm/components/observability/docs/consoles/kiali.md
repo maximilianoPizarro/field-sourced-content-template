@@ -19,8 +19,5 @@ Consola de observabilidad de Istio Service Mesh con visualización de tráfico e
 
 ## Namespaces en el mesh
 
-- `nfl-wallet-prod` — NFL Wallet producción (con waypoint proxy)
-- `nfl-wallet-test` — NFL Wallet testing
-- `neuralbank-stack` — Neuralbank backend
 - `litemaas` — LiteLLM/MaaS gateway
 - `istio-system` — Control plane, Kuadrant, Authorino

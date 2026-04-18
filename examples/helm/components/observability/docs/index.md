@@ -32,4 +32,4 @@ El stack recolecta métricas de:
 - **Gateways Istio**: latencia, tráfico, errores y saturación (RED metrics)
 - **Kuadrant**: rate limiting, auth policies, estado de policies
 - **Waypoints**: métricas de ambient mesh
-- **Aplicaciones**: neuralbank-stack, nfl-wallet, litemaas
+- **Aplicaciones**: litemaas

@@ -165,7 +165,7 @@ spec:
                   for i in $(seq 1 $USER_COUNT); do
                     USER="user${i}"
                     ORG="ws-${USER}"
-                    NS="${USER}-neuralbank"
+                    NS="${USER}-apps"
 
                     REPOS=$(curl -sS -u "${ADMIN_USER}:${ADMIN_PASS}" \
                       "${GITEA}/api/v1/orgs/${ORG}/repos?limit=50" 2>/dev/null \
@@ -237,7 +237,7 @@ spec:
         path: manifests
       destination:
         server: https://kubernetes.default.svc
-        namespace: {{ $user }}-neuralbank
+        namespace: {{ $user }}-apps
       syncPolicy:
         automated:
           prune: true

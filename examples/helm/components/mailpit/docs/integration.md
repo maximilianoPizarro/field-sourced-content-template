@@ -22,8 +22,6 @@ Templates use the `http:backstage:request` scaffolder action to send emails. Thi
 
 | Template | Notification Trigger |
 |----------|---------------------|
-| `neuralbank-backend` | Component scaffolded successfully |
-| `neuralbank-frontend` | Component scaffolded successfully |
 | `customer-service-mcp` | MCP service scaffolded successfully |
 | `remove-component` | Component removed from catalog |
 

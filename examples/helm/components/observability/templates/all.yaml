@@ -77,7 +77,6 @@ metadata:
 spec:
   namespaceSelector:
     matchNames:
-    - litemaas
     - mcp-system
     - istio-system
   podMetricsEndpoints:
@@ -119,28 +118,6 @@ spec:
       - kuadrant-controller-manager
       - kuadrant
       - authorino
----
-apiVersion: monitoring.rhobs/v1
-kind: ServiceMonitor
-metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
-  labels:
-    app.kubernetes.io/component: gateway
-    openshift.io/user-monitoring: "true"
-  name: litemaas-gateway-metrics
-  namespace: openshift-cluster-observability-operator
-spec:
-  endpoints:
-  - interval: 30s
-    path: /stats/prometheus
-    port: "15090"
-  namespaceSelector:
-    matchNames:
-    - litemaas
-  selector:
-    matchLabels:
-      gateway.networking.k8s.io/gateway-name: litemaas-gateway
 ---
 apiVersion: monitoring.rhobs/v1alpha1
 kind: MonitoringStack
@@ -865,16 +842,13 @@ metadata:
 data:
   generate.sh: |
     #!/bin/sh
-    DOMAIN="{{ .Values.clusterDomain | default "{{ .Values.clusterDomain }}" }}"
-    LM_HOST="litemaas.${DOMAIN}"
-
     echo "=== Mesh Traffic Generator ==="
     echo "Interval: ${INTERVAL:-5}s"
 
     while true; do
-      # LiteMaaS via gateway (200, L7 waypoint metrics)
-      curl -sk -o /dev/null -w "%{http_code} lm-gw/\n" --connect-timeout 2 --max-time 4 \
-        -H "Host: $LM_HOST" "http://litemaas-gateway-istio.litemaas.svc:8080/" &
+      # MCP gateway (L7 waypoint metrics)
+      curl -sk -o /dev/null -w "%{http_code} mcp-gw/\n" --connect-timeout 2 --max-time 4 \
+        "http://mcp-gateway-istio.mcp-system.svc:8080/" &
       wait
       sleep $(( ${INTERVAL:-5} + RANDOM % 3 ))
     done

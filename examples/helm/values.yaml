@@ -134,7 +134,7 @@ connectivityLink:
       selfHeal: true
       skipDryRunOnMissingResource: true
     - id: litemaas
-      enabled: true
+      enabled: false
       path: litemaas
       destinationNamespace: litemaas
       syncWave: "7"

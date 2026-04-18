@@ -148,9 +148,9 @@ spec:
         version: {{ $.Values.connectivityLink.operators.version | quote }}
         subscriptions: {{ $.Values.connectivityLink.operators.subscriptions | toJson }}
     {{- else if eq .path "openshift-lightspeed" }}
-    {{- $llmKey := $.Values.lightspeed.llmApiKey | default $.Values.litemaas.apiKey }}
-    {{- $llmEndpoint := $.Values.lightspeed.llmEndpoint | default $.Values.litemaas.apiUrl }}
-    {{- $llmModel := $.Values.lightspeed.model | default $.Values.litemaas.model | default "granite-3-2-8b-instruct" }}
+    {{- $llmKey := $.Values.lightspeed.llmApiKey | default "" }}
+    {{- $llmEndpoint := $.Values.lightspeed.llmEndpoint | default "" }}
+    {{- $llmModel := $.Values.lightspeed.model | default "granite-3-2-8b-instruct" }}
     helm:
       valuesObject:
         clusterDomain: {{ $domain }}
@@ -237,7 +237,7 @@ spec:
     helm:
       valuesObject:
         clusterDomain: {{ $domain }}
-    {{- else if has .path (list "opentelemetry" "kiali" "litemaas" "rhcl-operator" "observability") }}
+    {{- else if has .path (list "opentelemetry" "kiali" "rhcl-operator" "observability") }}
     helm:
       valuesObject:
         clusterDomain: {{ $domain }}

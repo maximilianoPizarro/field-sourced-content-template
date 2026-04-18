@@ -17,7 +17,7 @@ rules:
 - apiGroups:
   - ""
   resourceNames:
-  - litemaas-gateway-istio
+  - mcp-gateway-istio
   resources:
   - services
   verbs:
@@ -212,7 +212,7 @@ spec:
           NS=istio-system
           API="https://kubernetes.default.svc/api/v1/namespaces/${NS}/services"
           PATCH='{"metadata":{"annotations":{"argocd.argoproj.io/compare-options":"IgnoreExtraneous"}}}'
-          for SVC in litemaas-gateway-istio; do
+          for SVC in mcp-gateway-istio; do
             curl -sS -k -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/strategic-merge-patch+json" \
               --cacert "$CA" -d "$PATCH" "${API}/${SVC}" || true
           done

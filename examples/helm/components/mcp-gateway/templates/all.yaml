@@ -897,10 +897,7 @@ spec:
             - name: KAFKA_BOOTSTRAP
               value: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093
             - name: KAFKA_USER
-              valueFrom:
-                secretKeyRef:
-                  name: cdc-user
-                  key: username
+              value: cdc-user
             - name: KAFKA_PASSWORD
               valueFrom:
                 secretKeyRef:

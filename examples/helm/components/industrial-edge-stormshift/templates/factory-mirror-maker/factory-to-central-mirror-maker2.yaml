@@ -4,7 +4,7 @@ metadata:
   name: factory-to-central-mm2
   namespace: industrial-edge-stormshift-messaging
 spec:
-  version: 3.7.0
+  version: 4.0.0
   replicas: 1
   connectCluster: production-kafka-cluster
   clusters:

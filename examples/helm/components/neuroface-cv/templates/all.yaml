@@ -39,36 +39,38 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 data:
-  cv-face-poller.camel.yaml: |
+  cv-ovms-poller.camel.yaml: |
     - route:
-        id: cv-labels-poller
-        description: "Polls NeuroFace /api/labels every 30s to detect trained persons, then publishes each to Kafka"
+        id: cv-ovms-status
+        description: "Polls OVMS /v1/config every 30s to track model server status and loaded models"
         from:
-          uri: timer:cv-poll
+          uri: timer:ovms-poll
           parameters:
             period: "30000"
+            delay: "10000"
         steps:
           - setHeader:
               name: CamelHttpMethod
               constant: GET
-          - to:
-              uri: http://neuroface-backend.neuroface.svc:8080/api/labels
-          - unmarshal:
-              json:
-                library: jackson
-          - split:
-              jsonpath: "$.labels"
+          - doTry:
               steps:
+                - to:
+                    uri: http://neuroface-ovms.neuroface.svc:8000/v1/config
+                - unmarshal:
+                    json:
+                      library: jackson
                 - setBody:
                     simple: >
                       {
-                        "person_name": "${body[name]}",
-                        "face_count": ${body[face_count]},
-                        "camera_id": "neuroface-poller",
-                        "confidence": 1.0,
+                        "event_type": "ovms_model_status",
+                        "source": "openvino-model-server",
+                        "model_name": "face-detection-retail-0005",
+                        "model_server": "ovms",
+                        "ovms_response": ${body},
+                        "camera_id": "ovms-monitor",
                         "timestamp": "${date:now:yyyy-MM-dd'T'HH:mm:ss.SSSZ}",
-                        "event_type": "label_detected",
-                        "detection_method": "lbph"
+                        "person_name": "system",
+                        "confidence": 1.0
                       }
                 - marshal:
                     json:
@@ -83,14 +85,22 @@ data:
                       sslTruststoreLocation: /etc/kafka-certs/ca.crt
                       sslTruststoreType: PEM
                 - log:
-                    message: "Published label to Kafka: ${body}"
+                    message: "OVMS model status published to Kafka"
+              doCatch:
+                - exceptions:
+                    - java.lang.Exception
+                  steps:
+                    - log:
+                        message: "OVMS not reachable: ${exception.message}"
+  cv-labels-poller.camel.yaml: |
     - route:
-        id: cv-ready-poller
-        description: "Polls NeuroFace /api/ready every 60s and publishes OVMS + model status changes to Kafka"
+        id: cv-labels-poller
+        description: "Polls NeuroFace /api/labels every 30s to detect trained persons, publishes each to Kafka"
         from:
-          uri: timer:cv-health
+          uri: timer:labels-poll
           parameters:
-            period: "60000"
+            period: "30000"
+            delay: "15000"
         steps:
           - setHeader:
               name: CamelHttpMethod
@@ -98,41 +108,39 @@ data:
           - doTry:
               steps:
                 - to:
-                    uri: http://neuroface-backend.neuroface.svc:8080/api/ready
+                    uri: http://neuroface-backend.neuroface.svc:8080/api/labels
                 - unmarshal:
                     json:
                       library: jackson
-                - choice:
-                    when:
-                      - simple: "${body[model_trained]} == true"
-                        steps:
-                          - setBody:
-                              simple: >
-                                {
-                                  "person_name": "system-health",
-                                  "confidence": 1.0,
-                                  "camera_id": "health-check",
-                                  "timestamp": "${date:now:yyyy-MM-dd'T'HH:mm:ss.SSSZ}",
-                                  "event_type": "health_status",
-                                  "detection_method": "${body[detection_method]}",
-                                  "ovms_status": "${body[ovms_status]}",
-                                  "model_trained": true,
-                                  "labels_count": ${body[labels_count]}
-                                }
-                          - marshal:
-                              json:
-                                library: jackson
-                          - to:
-                              uri: kafka:cv.face.detections
-                              parameters:
-                                brokers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093
-                                securityProtocol: SASL_SSL
-                                saslMechanism: SCRAM-SHA-512
-                                saslJaasConfig: "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"${env:KAFKA_USER}\" password=\"${env:KAFKA_PASSWORD}\";"
-                                sslTruststoreLocation: /etc/kafka-certs/ca.crt
-                                sslTruststoreType: PEM
-                          - log:
-                              message: "Health status published to Kafka"
+                - split:
+                    jsonpath: "$.labels"
+                    steps:
+                      - setBody:
+                          simple: >
+                            {
+                              "event_type": "person_registered",
+                              "source": "neuroface-lbph",
+                              "person_name": "${body[name]}",
+                              "face_count": ${body[face_count]},
+                              "confidence": 1.0,
+                              "camera_id": "label-registry",
+                              "timestamp": "${date:now:yyyy-MM-dd'T'HH:mm:ss.SSSZ}",
+                              "detection_method": "lbph"
+                            }
+                      - marshal:
+                          json:
+                            library: jackson
+                      - to:
+                          uri: kafka:cv.face.detections
+                          parameters:
+                            brokers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093
+                            securityProtocol: SASL_SSL
+                            saslMechanism: SCRAM-SHA-512
+                            saslJaasConfig: "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"${env:KAFKA_USER}\" password=\"${env:KAFKA_PASSWORD}\";"
+                            sslTruststoreLocation: /etc/kafka-certs/ca.crt
+                            sslTruststoreType: PEM
+                      - log:
+                          message: "Person registered event: ${body}"
               doCatch:
                 - exceptions:
                     - java.lang.Exception
@@ -169,27 +177,50 @@ data:
                   message: "CV error sent to DLQ: ${exception.message}"
         steps:
           - log:
-              message: "Face detection event received: ${body}"
+              message: "CV event received: ${body}"
           - unmarshal:
               json:
                 library: jackson
-          - setBody:
-              simple: >
-                {
-                  "from": {"name": "NeuroFace CV Pipeline", "email": "neuroface@neuralbank.io"},
-                  "to": [{"name": "Security Admin", "email": "admin@neuralbank.io"}],
-                  "subject": "Face Detected: ${body[person_name]}",
-                  "html": "<h2>Face Detection Alert</h2><p><b>Person:</b> ${body[person_name]}</p><p><b>Confidence:</b> ${body[confidence]}</p><p><b>Camera:</b> ${body[camera_id]}</p><p><b>Timestamp:</b> ${body[timestamp]}</p><hr><p style='color:#666;font-size:12px'>NeuroFace OpenVINO Pipeline &mdash; Event-Driven Architecture</p>"
-                }
-          - marshal:
-              json:
-                library: jackson
-          - to:
-              uri: http://n8n-mailpit.openshift-lightspeed.svc:8025/api/v1/send
-              parameters:
-                httpMethod: POST
-          - log:
-              message: "Face detection notification sent for: ${body}"
+          - choice:
+              when:
+                - simple: "${body[event_type]} == 'person_registered'"
+                  steps:
+                    - setBody:
+                        simple: >
+                          {
+                            "from": {"name": "NeuroFace CV Pipeline", "email": "neuroface@neuralbank.io"},
+                            "to": [{"name": "Security Admin", "email": "admin@neuralbank.io"}],
+                            "subject": "Person Registered: ${body[person_name]}",
+                            "html": "<h2>New Person Registered</h2><p><b>Name:</b> ${body[person_name]}</p><p><b>Face samples:</b> ${body[face_count]}</p><p><b>Model:</b> ${body[detection_method]}</p><p><b>Timestamp:</b> ${body[timestamp]}</p><hr><p style='color:#666;font-size:12px'>NeuroFace LBPH &mdash; Event-Driven Architecture</p>"
+                          }
+                    - marshal:
+                        json:
+                          library: jackson
+                    - to:
+                        uri: http://n8n-mailpit.openshift-lightspeed.svc:8025/api/v1/send
+                        parameters:
+                          httpMethod: POST
+                    - log:
+                        message: "Person registration email sent for: ${body}"
+                - simple: "${body[event_type]} == 'ovms_model_status'"
+                  steps:
+                    - setBody:
+                        simple: >
+                          {
+                            "from": {"name": "NeuroFace CV Pipeline", "email": "neuroface@neuralbank.io"},
+                            "to": [{"name": "ML Ops", "email": "mlops@neuralbank.io"}],
+                            "subject": "OVMS Model Status: ${body[model_name]}",
+                            "html": "<h2>OpenVINO Model Server Status</h2><p><b>Model:</b> ${body[model_name]}</p><p><b>Server:</b> ${body[model_server]}</p><p><b>Timestamp:</b> ${body[timestamp]}</p><hr><p style='color:#666;font-size:12px'>OVMS Monitor &mdash; Event-Driven Architecture</p>"
+                          }
+                    - marshal:
+                        json:
+                          library: jackson
+                    - to:
+                        uri: http://n8n-mailpit.openshift-lightspeed.svc:8025/api/v1/send
+                        parameters:
+                          httpMethod: POST
+                    - log:
+                        message: "OVMS status email sent"
 ---
 apiVersion: apps/v1
 kind: Deployment

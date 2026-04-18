@@ -997,6 +997,49 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "6"
   labels:
+    k8s-app: kafka-bridge-metrics
+    openshift.io/user-monitoring: "true"
+  name: kafka-bridge-metrics
+  namespace: openshift-cluster-observability-operator
+spec:
+  namespaceSelector:
+    matchNames:
+    - kafka-cdc
+  podMetricsEndpoints:
+  - interval: 30s
+    port: tcp-prometheus
+  selector:
+    matchLabels:
+      strimzi.io/cluster: cdc-bridge
+      strimzi.io/kind: KafkaBridge
+---
+apiVersion: monitoring.rhobs/v1
+kind: PodMonitor
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  labels:
+    k8s-app: mm2-metrics
+    openshift.io/user-monitoring: "true"
+  name: mm2-metrics
+  namespace: openshift-cluster-observability-operator
+spec:
+  namespaceSelector:
+    matchNames:
+    - industrial-edge-stormshift-messaging
+  podMetricsEndpoints:
+  - interval: 30s
+    port: tcp-prometheus
+  selector:
+    matchLabels:
+      strimzi.io/kind: KafkaMirrorMaker2
+---
+apiVersion: monitoring.rhobs/v1
+kind: PodMonitor
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  labels:
     k8s-app: iot-kafka-cluster-metrics
     openshift.io/user-monitoring: "true"
   name: iot-kafka-cluster-metrics
@@ -1293,7 +1336,7 @@ spec:
           "gridPos": {"h": 4, "w": 4, "x": 16, "y": 0},
           "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}},
           "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
-          "targets": [{"expr": "kafka_connect_worker_connector_count{namespace=~\"industrial-edge.*\"}", "instant": true}]
+          "targets": [{"expr": "count(kafka_connect_worker_connector_total_task_count{namespace=~\"industrial-edge.*|kafka-cdc\"})", "instant": true}]
         },
         {
           "title": "Under-Replicated",
@@ -1410,7 +1453,7 @@ spec:
           "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
           "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}},
           "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
-          "targets": [{"expr": "count(up{namespace=\"kafka-cdc\", job=~\".*bridge.*\"})", "instant": true}]
+          "targets": [{"expr": "count(up{namespace=\"kafka-cdc\", pod=~\".*bridge.*\"}) or vector(0)", "instant": true}]
         },
         {
           "title": "External Consumer Groups",
@@ -1497,7 +1540,9 @@ spec:
           "type": "timeseries",
           "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
           "targets": [
-            {"expr": "sum(rate(strimzi_bridge_http_server_requests_total{namespace=\"kafka-cdc\"}[5m])) by (method, uri)", "legendFormat": "{{`{{method}}`}} {{`{{uri}}`}}"}
+            {"expr": "sum(rate(strimzi_bridge_http_server_requests_total{namespace=\"kafka-cdc\"}[5m])) by (method, uri)", "legendFormat": "{{`{{method}}`}} {{`{{uri}}`}}"},
+            {"expr": "sum(rate(strimzi_bridge_http_server_requestMeterCount_total{namespace=\"kafka-cdc\"}[5m])) by (method)", "legendFormat": "bridge: {{`{{method}}`}}"}
+          
           ],
           "fieldConfig": {"defaults": {"unit": "reqps", "custom": {"fillOpacity": 15, "lineWidth": 2, "showPoints": "never"}}}
         }

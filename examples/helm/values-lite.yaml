@@ -18,7 +18,7 @@
 #   30 users:    2-3 workers m5.4xlarge (16 vCPU, 64 Gi)
 #
 # What stays:  Kafka CDC pipeline, Developer Hub, Keycloak, Gitea,
-#              ApplicationSets, Neuralbank demo, Showroom, Registration
+#              ApplicationSets, Showroom, Registration
 # What's off:  AI/ML, DevSpaces, Service Mesh, Observability stack,
 #              MCP Gateway, Kuadrant, BPM workflows
 # =============================================================================

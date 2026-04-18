@@ -256,6 +256,14 @@ connectivityLink:
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
+    # --- Mailpit Email Testing ---
+    - id: mailpit
+      enabled: true
+      path: mailpit
+      destinationNamespace: openshift-lightspeed
+      syncWave: "7"
+      prune: true
+      selfHeal: true
     # --- NeuroFace Computer Vision Pipeline ---
     - id: neuroface-cv
       enabled: true

@@ -28,7 +28,7 @@ metadata:
     - fastapi
     - angular
   links:
-    - url: https://neuroface-frontend-neuroface.apps.cluster-msf9p.dynamic.redhatworkshops.io
+    - url: https://neuroface-neuroface.apps.cluster-msf9p.dynamic.redhatworkshops.io
       title: NeuroFace Web App
       icon: dashboard
     - url: https://neuroface-ovms-neuroface.apps.cluster-msf9p.dynamic.redhatworkshops.io/v1/config
@@ -59,7 +59,7 @@ metadata:
     - opencv
     - facial-recognition
   links:
-    - url: https://neuroface-frontend-neuroface.apps.cluster-msf9p.dynamic.redhatworkshops.io
+    - url: https://neuroface-neuroface.apps.cluster-msf9p.dynamic.redhatworkshops.io
       title: NeuroFace Frontend
       icon: dashboard
     - url: https://console-openshift-console.apps.cluster-msf9p.dynamic.redhatworkshops.io/k8s/ns/neuroface/deployments

@@ -379,6 +379,44 @@ data:
                     - log:
                         message: "OVMS status email sent"
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: camel-k-operator-registry-editor
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: registry-editor
+subjects:
+  - kind: ServiceAccount
+    name: camel-k-operator
+    namespace: kafka-cdc
+  - kind: ServiceAccount
+    name: default
+    namespace: kafka-cdc
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: camel-k-operator-registry-viewer
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: registry-viewer
+subjects:
+  - kind: ServiceAccount
+    name: camel-k-operator
+    namespace: kafka-cdc
+  - kind: ServiceAccount
+    name: default
+    namespace: kafka-cdc
+---
 apiVersion: camel.apache.org/v1
 kind: IntegrationPlatform
 metadata:
@@ -389,9 +427,15 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   build:
+    baseImage: registry.access.redhat.com/ubi9/openjdk-17-runtime:latest
     registry:
       address: image-registry.openshift-image-registry.svc:5000
+      insecure: true
+      organization: kafka-cdc
     publishStrategy: Jib
+  configuration:
+    - type: repository
+      value: https://maven.repository.redhat.com/earlyaccess/all@id=redhat.ea
 ---
 apiVersion: camel.apache.org/v1
 kind: Integration

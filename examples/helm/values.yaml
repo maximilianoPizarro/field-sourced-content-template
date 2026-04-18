@@ -406,6 +406,28 @@ connectivityLink:
             username: gitea_admin
             password: openshift
             email: admin@gitea.local
+          config:
+            server:
+              ROOT_URL: ""
+        image:
+          rootless: true
+        podSecurityContext:
+          fsGroup: null
+        containerSecurityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+        initContainers:
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
         postgresql-ha:
           enabled: false
         postgresql:

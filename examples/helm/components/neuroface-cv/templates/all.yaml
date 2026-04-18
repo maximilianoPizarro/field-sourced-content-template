@@ -402,12 +402,18 @@ spec:
     spec:
       containers:
         - name: camel
-          image: docker.io/apache/camel-jbang:4.8.5
+          image: docker.io/apache/camel-jbang:4.18.0
           command: ["/bin/sh", "-c"]
           args:
             - |
-              cp -a /.jbang /tmp/.jbang 2>/dev/null || true
+              echo "=== Checking JBang dirs ==="
+              ls -la /.jbang/ 2>&1 || echo "No /.jbang"
+              ls -la /root/.jbang/ 2>&1 || echo "No /root/.jbang"
+              echo "=== HOME=$HOME JBANG_DIR=$JBANG_DIR ==="
+              cp -a /.jbang/* /tmp/.jbang/ 2>/dev/null || true
+              cp -a /root/.jbang/* /tmp/.jbang/ 2>/dev/null || true
               jbang trust add '*'
+              jbang --verbose version 2>&1 || true
               camel run /config/cv-ovms-poller.camel.yaml /config/cv-labels-poller.camel.yaml /config/cv-face-to-mail.camel.yaml --max-seconds=0
           env:
             - name: JBANG_DIR

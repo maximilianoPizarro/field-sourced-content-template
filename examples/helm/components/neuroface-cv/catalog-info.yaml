@@ -47,15 +47,16 @@ kind: Component
 metadata:
   name: neuroface-app
   namespace: default
-  description: "NeuroFace Backend — FastAPI facial recognition service with OpenCV and OpenVINO inference"
+  description: "NeuroFace — FastAPI backend + Angular frontend for facial recognition with OpenCV and OpenVINO inference"
   annotations:
     backstage.io/kubernetes-id: neuroface-backend
     backstage.io/kubernetes-namespace: neuroface
-    backstage.io/kubernetes-label-selector: app.kubernetes.io/name=neuroface-backend
+    backstage.io/kubernetes-label-selector: app.kubernetes.io/part-of=neuroface
     argocd/app-name: field-content-helm-neuroface
     argocd/app-namespace: openshift-gitops
   tags:
     - fastapi
+    - angular
     - python
     - opencv
     - facial-recognition
@@ -264,6 +265,66 @@ spec:
     - component:default/neuroface-ovms
     - component:default/neuroface-app
     - component:default/cv-kafka-streaming
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: neuroface-llm
+  namespace: default
+  description: "Granite LLM Server — llama.cpp inference server for NeuroFace chat functionality"
+  annotations:
+    backstage.io/kubernetes-id: granite-llm-server
+    backstage.io/kubernetes-namespace: neuroface
+    backstage.io/kubernetes-label-selector: app=granite-llm-server
+    argocd/app-name: field-content-helm-neuroface
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - llm
+    - granite
+    - inference
+    - chat
+  links:
+    - url: https://rhods-dashboard-redhat-ods-applications.apps.cluster-msf9p.dynamic.redhatworkshops.io/projects/neuroface
+      title: OpenShift AI Project
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+  dependsOn:
+    - component:default/neuroface-app
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: neuroface-kserve
+  namespace: default
+  description: "KServe InferenceService — face-detection-retail-0005 model served via OpenVINO runtime"
+  annotations:
+    backstage.io/kubernetes-id: face-detection-retail-0005-predictor
+    backstage.io/kubernetes-namespace: neuroface
+    backstage.io/kubernetes-label-selector: serving.kserve.io/inferenceservice=face-detection-retail-0005
+    argocd/app-name: field-content-neuroface-cv
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - kserve
+    - openvino
+    - inference
+    - ml
+  links:
+    - url: https://rhods-dashboard-redhat-ods-applications.apps.cluster-msf9p.dynamic.redhatworkshops.io/projects/neuroface?section=model-server
+      title: Model Servers
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+  dependsOn:
+    - component:default/neuroface-ovms
 
 ---
 apiVersion: backstage.io/v1alpha1

@@ -166,7 +166,7 @@ metadata:
   annotations:
     backstage.io/kubernetes-id: mqtt2kafka-integration
     backstage.io/kubernetes-namespace: industrial-edge-tst-all
-    backstage.io/kubernetes-label-selector: camel.apache.org/integration=mqtt2kafka-integration
+    backstage.io/kubernetes-label-selector: camel.apache.org/integration
     argocd/app-name: field-content-industrial-edge-tst
     argocd/app-namespace: openshift-gitops
     che.eclipse.org/che-server: https://devspaces.apps.cluster-msf9p.dynamic.redhatworkshops.io
@@ -324,6 +324,83 @@ spec:
   system: industrial-edge-system
   dependsOn:
     - component:default/ie-amq-broker
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ie-factory-camel-k
+  namespace: default
+  description: "Factory Camel K — MQTT→Kafka bridge integration in the factory environment"
+  annotations:
+    backstage.io/kubernetes-id: mqtt2kafka-integration
+    backstage.io/kubernetes-namespace: industrial-edge-stormshift-messaging
+    backstage.io/kubernetes-label-selector: camel.apache.org/integration
+    argocd/app-name: field-content-industrial-edge-stormshift
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - camel-k
+    - integration
+    - factory
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: industrial-edge-system
+  dependsOn:
+    - component:default/ie-amq-broker
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ie-factory-amq-broker
+  namespace: default
+  description: "Factory AMQ Broker — MQTT broker receiving sensor data at the factory edge"
+  annotations:
+    backstage.io/kubernetes-id: broker-amq-mqtt-ss
+    backstage.io/kubernetes-namespace: industrial-edge-stormshift-messaging
+    backstage.io/kubernetes-label-selector: application=broker-amq-mqtt-app
+    argocd/app-name: field-content-industrial-edge-stormshift
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - amq
+    - mqtt
+    - broker
+    - factory
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: industrial-edge-system
+  dependsOn:
+    - component:default/ie-machine-sensors
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ie-mirrormaker2
+  namespace: default
+  description: "MirrorMaker 2 — Replicates IoT topics from factory Kafka cluster to central data lake"
+  annotations:
+    backstage.io/kubernetes-id: factory-to-central-mm2
+    backstage.io/kubernetes-namespace: industrial-edge-stormshift-messaging
+    backstage.io/kubernetes-label-selector: strimzi.io/kind=KafkaMirrorMaker2
+    argocd/app-name: field-content-industrial-edge-stormshift
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - kafka
+    - mirrormaker2
+    - replication
+    - factory
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: industrial-edge-system
+  dependsOn:
+    - component:default/ie-kafka-event-streaming
 
 ---
 apiVersion: backstage.io/v1alpha1

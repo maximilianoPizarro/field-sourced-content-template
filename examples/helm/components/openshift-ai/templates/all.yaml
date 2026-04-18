@@ -65,18 +65,7 @@ spec:
   name: serverless-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace
----
-apiVersion: operators.coreos.com/v1alpha1
-kind: Subscription
-metadata:
-  name: rhods-operator
-  namespace: redhat-ods-operator
-spec:
-  channel: stable
-  installPlanApproval: Automatic
-  name: rhods-operator
-  source: redhat-operators
-  sourceNamespace: openshift-marketplace
+## rhods-operator Subscription removed — already managed by connectivityLink.operators.subscriptions in values.yaml (channel stable-2.25)
 ## ---
 ## vLLM CPU model commented out to free cluster resources
 ## ---

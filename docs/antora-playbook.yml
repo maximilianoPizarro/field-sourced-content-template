@@ -220,19 +220,27 @@ ui:
         }
         .fullscreen-btn {
           position: absolute;
-          top: 8px;
-          right: 8px;
+          top: 10px;
+          right: 10px;
           z-index: 100;
-          background: rgba(0,0,0,0.7);
+          background: rgba(0,0,0,0.75);
           color: #fff;
-          border: 1px solid #555;
-          border-radius: 4px;
-          padding: 4px 10px;
+          border: 1px solid rgba(255,255,255,0.25);
+          border-radius: 6px;
+          padding: 6px 14px;
           cursor: pointer;
-          font-size: 13px;
-          transition: background 0.2s;
+          font-size: 14px;
+          transition: background 0.2s, border-color 0.2s, transform 0.15s;
+          backdrop-filter: blur(4px);
+          display: flex;
+          align-items: center;
+          gap: 6px;
         }
-        .fullscreen-btn:hover { background: rgba(80,80,80,0.9); }
+        .fullscreen-btn:hover {
+          background: rgba(0,102,204,0.8);
+          border-color: rgba(255,255,255,0.5);
+          transform: scale(1.05);
+        }
         .doc .imageblock img { cursor: pointer; transition: transform 0.2s; border-radius: 6px; }
         .doc .imageblock img:hover { transform: scale(1.02); }
         .img-overlay {
@@ -256,7 +264,20 @@ ui:
           background: #0a0a1a;
           width: 100vw !important;
           height: 100vh !important;
-          border-radius: 0;
+          border: none !important;
+          border-radius: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        :fullscreen .fullscreen-btn {
+          top: 16px;
+          right: 16px;
+          padding: 8px 18px;
+          font-size: 15px;
+        }
+        :fullscreen canvas {
+          width: 100vw !important;
+          height: 100vh !important;
         }
         @media (max-width: 768px) {
           .body.has-toc .nav-container {
@@ -348,20 +369,38 @@ ui:
 
             var fsBtn = document.createElement('button');
             fsBtn.className = 'fullscreen-btn';
-            fsBtn.textContent = '\u26F6 Fullscreen';
-            fsBtn.onclick = function() {
-              if (container.requestFullscreen) container.requestFullscreen();
-              else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
-            };
-            container.appendChild(fsBtn);
+            fsBtn.innerHTML = '\u26F6 Fullscreen';
+            var isFullscreen = false;
 
-            window.addEventListener('resize', function() {
-              var nw = container.clientWidth;
-              var nh = document.fullscreenElement === container ? window.innerHeight : h;
+            function resizeRenderer() {
+              var fs = document.fullscreenElement === container || document.webkitFullscreenElement === container;
+              var nw = fs ? window.innerWidth : container.clientWidth;
+              var nh = fs ? window.innerHeight : h;
               camera.aspect = nw / nh;
               camera.updateProjectionMatrix();
               renderer.setSize(nw, nh);
-            });
+            }
+
+            fsBtn.onclick = function() {
+              if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                if (container.requestFullscreen) container.requestFullscreen();
+                else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
+              } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+              }
+            };
+            container.appendChild(fsBtn);
+
+            function onFullscreenChange() {
+              var fs = document.fullscreenElement === container || document.webkitFullscreenElement === container;
+              isFullscreen = fs;
+              fsBtn.innerHTML = fs ? '\u2715 Exit' : '\u26F6 Fullscreen';
+              setTimeout(resizeRenderer, 50);
+            }
+            document.addEventListener('fullscreenchange', onFullscreenChange);
+            document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+            window.addEventListener('resize', resizeRenderer);
 
             return { scene: scene, camera: camera, renderer: renderer, controls: controls };
           },
@@ -478,17 +517,34 @@ ui:
           }
 
           document.querySelectorAll('.three-container, [id^="scene-"]').forEach(function(el) {
-            if (!el.querySelector('.fullscreen-btn')) {
-              var btn = document.createElement('button');
-              btn.className = 'fullscreen-btn';
-              btn.textContent = '\u26F6 Fullscreen';
-              btn.onclick = function() {
+            if (el.querySelector('.fullscreen-btn')) return;
+            el.style.position = el.style.position || 'relative';
+            var btn = document.createElement('button');
+            btn.className = 'fullscreen-btn';
+            btn.innerHTML = '\u26F6 Fullscreen';
+            btn.onclick = function() {
+              if (!document.fullscreenElement && !document.webkitFullscreenElement) {
                 if (el.requestFullscreen) el.requestFullscreen();
                 else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-              };
-              el.style.position = 'relative';
-              el.appendChild(btn);
+              } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+              }
+            };
+            el.appendChild(btn);
+            function onFsChange() {
+              var fs = document.fullscreenElement === el || document.webkitFullscreenElement === el;
+              btn.innerHTML = fs ? '\u2715 Exit' : '\u26F6 Fullscreen';
+              var canvas = el.querySelector('canvas');
+              if (canvas) {
+                var nw = fs ? window.innerWidth : el.clientWidth;
+                var nh = fs ? window.innerHeight : (parseInt(el.style.height) || 400);
+                canvas.style.width = nw + 'px';
+                canvas.style.height = nh + 'px';
+              }
             }
+            document.addEventListener('fullscreenchange', onFsChange);
+            document.addEventListener('webkitfullscreenchange', onFsChange);
           });
         });
 

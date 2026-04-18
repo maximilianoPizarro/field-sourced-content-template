@@ -1,0 +1,183 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: cv.face.detections
+  namespace: kafka-cdc
+  labels:
+    strimzi.io/cluster: cdc-cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: 604800000
+    cleanup.policy: delete
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: dlq.cv-errors
+  namespace: kafka-cdc
+  labels:
+    strimzi.io/cluster: cdc-cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: 2592000000
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: camel-cv-route
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+data:
+  cv-face-to-mail.camel.yaml: |
+    - route:
+        id: cv-face-notification
+        from:
+          uri: kafka:cv.face.detections
+          parameters:
+            brokers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093
+            groupId: camel-cv-consumer
+            autoOffsetReset: latest
+            valueDeserializer: org.apache.kafka.common.serialization.StringDeserializer
+            securityProtocol: SASL_SSL
+            saslMechanism: SCRAM-SHA-512
+            saslJaasConfig: "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"${env:KAFKA_USER}\" password=\"${env:KAFKA_PASSWORD}\";"
+            sslTruststoreLocation: /etc/kafka-certs/ca.crt
+            sslTruststoreType: PEM
+        onException:
+          - exceptions:
+              - java.lang.Exception
+            handled:
+              constant: true
+            steps:
+              - to:
+                  uri: kafka:dlq.cv-errors
+                  parameters:
+                    brokers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092
+              - log:
+                  message: "CV error sent to DLQ: ${exception.message}"
+        steps:
+          - log:
+              message: "Face detection event received: ${body}"
+          - unmarshal:
+              json:
+                library: jackson
+          - setBody:
+              simple: >
+                {
+                  "from": {"name": "NeuroFace CV Pipeline", "email": "neuroface@neuralbank.io"},
+                  "to": [{"name": "Security Admin", "email": "admin@neuralbank.io"}],
+                  "subject": "Face Detected: ${body[person_name]}",
+                  "html": "<h2>Face Detection Alert</h2><p><b>Person:</b> ${body[person_name]}</p><p><b>Confidence:</b> ${body[confidence]}</p><p><b>Camera:</b> ${body[camera_id]}</p><p><b>Timestamp:</b> ${body[timestamp]}</p><hr><p style='color:#666;font-size:12px'>NeuroFace OpenVINO Pipeline &mdash; Event-Driven Architecture</p>"
+                }
+          - marshal:
+              json:
+                library: jackson
+          - to:
+              uri: http://n8n-mailpit.openshift-lightspeed.svc:8025/api/v1/send
+              parameters:
+                httpMethod: POST
+          - log:
+              message: "Face detection notification sent for: ${body}"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: camel-cv-processor
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  labels:
+    app: camel-cv-processor
+    app.kubernetes.io/part-of: neuroface-cv
+    app.openshift.io/runtime: camel
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: camel-cv-processor
+  template:
+    metadata:
+      labels:
+        app: camel-cv-processor
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: /q/metrics
+    spec:
+      containers:
+        - name: camel
+          image: quay.io/quarkus/quarkus-micro-image:2.0
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          env:
+            - name: CAMEL_MAIN_ROUTES_INCLUDE_PATTERN
+              value: "file:/config/*.camel.yaml"
+            - name: KAFKA_USER
+              value: cdc-user
+            - name: KAFKA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cdc-user
+                  key: password
+          volumeMounts:
+            - name: route-config
+              mountPath: /config
+            - name: kafka-ca-cert
+              mountPath: /etc/kafka-certs
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /q/health/live
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /q/health/ready
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      volumes:
+        - name: route-config
+          configMap:
+            name: camel-cv-route
+        - name: kafka-ca-cert
+          secret:
+            secretName: cdc-cluster-cluster-ca-cert
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: camel-cv-processor
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  labels:
+    app: camel-cv-processor
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: camel-cv-processor

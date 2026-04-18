@@ -259,7 +259,7 @@ apiVersion: sailoperator.io/v1
 kind: IstioCNI
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-wave: "5"
   name: default
   namespace: istio-system
 spec:
@@ -275,7 +275,7 @@ apiVersion: sailoperator.io/v1alpha1
 kind: ZTunnel
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-wave: "6"
   name: default
   namespace: istio-system
 spec:

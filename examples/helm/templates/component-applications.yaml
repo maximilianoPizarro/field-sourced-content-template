@@ -233,6 +233,10 @@ spec:
     helm:
       valuesObject:
         clusterDomain: {{ $domain }}
+    {{- else if eq .path "neuroface-cv" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
     {{- else if has .path (list "opentelemetry" "kiali" "litemaas" "rhcl-operator" "observability") }}
     helm:
       valuesObject:

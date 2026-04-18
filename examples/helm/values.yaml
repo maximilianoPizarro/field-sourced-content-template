@@ -137,7 +137,7 @@ connectivityLink:
       enabled: true
       path: litemaas
       destinationNamespace: litemaas
-      syncWave: "6"
+      syncWave: "7"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -145,7 +145,7 @@ connectivityLink:
       enabled: true
       path: openshift-ai
       destinationNamespace: openshift-ai
-      syncWave: "6"
+      syncWave: "7"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -154,7 +154,7 @@ connectivityLink:
       enabled: true
       path: devspaces
       destinationNamespace: devspaces
-      syncWave: "7"
+      syncWave: "8"
       prune: false
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -162,7 +162,7 @@ connectivityLink:
       enabled: true
       path: openshift-lightspeed
       destinationNamespace: openshift-lightspeed
-      syncWave: "8"
+      syncWave: "9"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -170,7 +170,7 @@ connectivityLink:
       enabled: true
       path: mcp-gateway
       destinationNamespace: mcp-system
-      syncWave: "9"
+      syncWave: "10"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -202,7 +202,7 @@ connectivityLink:
       enabled: true
       path: workshop-registration
       destinationNamespace: showroom
-      syncWave: "10"
+      syncWave: "11"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: false
@@ -235,7 +235,7 @@ connectivityLink:
       enabled: true
       path: cdc-demo
       destinationNamespace: kafka-cdc
-      syncWave: "6"
+      syncWave: "7"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -243,7 +243,7 @@ connectivityLink:
       enabled: true
       path: camel-cdc
       destinationNamespace: kafka-cdc
-      syncWave: "7"
+      syncWave: "8"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -252,7 +252,16 @@ connectivityLink:
       enabled: true
       path: kogito-bpm
       destinationNamespace: kogito-bpm
-      syncWave: "8"
+      syncWave: "9"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
+    # --- NeuroFace Computer Vision Pipeline ---
+    - id: neuroface-cv
+      enabled: true
+      path: neuroface-cv
+      destinationNamespace: kafka-cdc
+      syncWave: "11"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -261,7 +270,7 @@ connectivityLink:
       enabled: true
       path: console-links
       destinationNamespace: openshift-gitops
-      syncWave: "10"
+      syncWave: "11"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: false
@@ -270,7 +279,7 @@ connectivityLink:
       enabled: true
       path: cleanup
       destinationNamespace: kafka-cdc
-      syncWave: "9"
+      syncWave: "10"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: false
@@ -295,7 +304,7 @@ connectivityLink:
       enabled: true
       path: industrial-edge-data-science-project
       destinationNamespace: ml-development
-      syncWave: "7"
+      syncWave: "8"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -303,7 +312,7 @@ connectivityLink:
       enabled: true
       path: industrial-edge-data-lake
       destinationNamespace: industrial-edge-data-lake
-      syncWave: "6"
+      syncWave: "7"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -311,7 +320,7 @@ connectivityLink:
       enabled: true
       path: industrial-edge-tst
       destinationNamespace: industrial-edge-tst-all
-      syncWave: "7"
+      syncWave: "8"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -319,7 +328,7 @@ connectivityLink:
       enabled: true
       path: industrial-edge-stormshift
       destinationNamespace: industrial-edge-stormshift-messaging
-      syncWave: "8"
+      syncWave: "9"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -327,7 +336,7 @@ connectivityLink:
       enabled: true
       path: industrial-edge-pipelines
       destinationNamespace: industrial-edge-ci
-      syncWave: "7"
+      syncWave: "8"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -391,6 +400,26 @@ connectivityLink:
           http:
             type: ClusterIP
             port: 3000
+
+    - id: neuroface
+      enabled: true
+      repoURL: "https://maximilianopizarro.github.io/neuroface/"
+      chart: neuroface
+      targetRevision: "1.2.1"
+      destinationNamespace: neuroface
+      syncWave: "10"
+      values:
+        ovms:
+          enabled: true
+          modelmesh:
+            enabled: false
+        litellm:
+          enabled: false
+        chat:
+          enabled: false
+        persistence:
+          enabled: true
+          size: 1Gi
 
 # ============================================================
 # Lightspeed / MCP — LLM provider config for OLS component
@@ -480,7 +509,7 @@ components:
 # Values injected by field content workload (do not modify)
 # ============================================================
 deployer:
-  domain: "apps.cluster-7kkgs.dynamic.redhatworkshops.io"
+  domain: "apps.cluster-msf9p.dynamic.redhatworkshops.io"
   apiUrl: ""
 
 fieldContent:

@@ -1,0 +1,218 @@
+apiVersion: backstage.io/v1alpha1
+kind: Domain
+metadata:
+  name: computer-vision
+  namespace: default
+  description: "Computer Vision — Facial recognition, OpenVINO inference, and event-driven notifications"
+  tags:
+    - computer-vision
+    - ml
+    - openvino
+    - facial-recognition
+spec:
+  owner: platform-engineering
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: neuroface-system
+  namespace: default
+  description: "NeuroFace — Facial recognition with OpenVINO Model Server, Kafka event streaming, and CDC email notifications"
+  tags:
+    - neuroface
+    - openvino
+    - kafka
+    - fastapi
+    - angular
+  links:
+    - url: https://neuroface-frontend-neuroface.<CLUSTER_DOMAIN>
+      title: NeuroFace Web App
+      icon: dashboard
+    - url: https://neuroface-ovms-neuroface.<CLUSTER_DOMAIN>/v1/config
+      title: OpenVINO Model Server
+      icon: web
+    - url: https://n8n-mailpit-openshift-lightspeed.<CLUSTER_DOMAIN>/
+      title: Mailpit — CV Notifications
+      icon: email
+spec:
+  owner: platform-engineering
+  domain: computer-vision
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: neuroface-app
+  namespace: default
+  description: "NeuroFace Backend — FastAPI facial recognition service with OpenCV and OpenVINO inference"
+  annotations:
+    backstage.io/kubernetes-id: neuroface-backend
+    backstage.io/kubernetes-namespace: neuroface
+    argocd/app-name: field-content-helm-neuroface
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - fastapi
+    - python
+    - opencv
+    - facial-recognition
+  links:
+    - url: https://neuroface-frontend-neuroface.<CLUSTER_DOMAIN>
+      title: NeuroFace Frontend
+      icon: dashboard
+    - url: https://console-openshift-console.<CLUSTER_DOMAIN>/k8s/ns/neuroface/deployments
+      title: OpenShift Console
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+  dependsOn:
+    - component:default/neuroface-ovms
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: neuroface-ovms
+  namespace: default
+  description: "OpenVINO Model Server — face-detection-retail-0005 model serving via REST/gRPC"
+  annotations:
+    backstage.io/kubernetes-id: neuroface-ovms
+    backstage.io/kubernetes-namespace: neuroface
+    argocd/app-name: field-content-helm-neuroface
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - openvino
+    - model-server
+    - inference
+    - ml
+  links:
+    - url: https://neuroface-ovms-neuroface.<CLUSTER_DOMAIN>/v1/config
+      title: OVMS Config Endpoint
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: cv-kafka-streaming
+  namespace: default
+  description: "CV Kafka Topic — cv.face.detections topic on cdc-cluster for face detection events"
+  annotations:
+    backstage.io/kubernetes-id: cdc-cluster
+    backstage.io/kubernetes-namespace: kafka-cdc
+    argocd/app-name: field-content-neuroface-cv
+    argocd/app-namespace: openshift-gitops
+    kafka.apache.org/consumer-groups: cdc-cluster/camel-cv-consumer
+  tags:
+    - kafka
+    - event-streaming
+    - computer-vision
+  links:
+    - url: https://console-openshift-console.<CLUSTER_DOMAIN>/k8s/ns/kafka-cdc/kafka.strimzi.io~v1beta2~KafkaTopic/cv.face.detections
+      title: Kafka Topic
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+  dependsOn:
+    - component:default/neuroface-app
+  providesApis:
+    - cv-face-detection-events
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: cv-face-notifier
+  namespace: default
+  description: "CV Face Notifier — Camel route consuming face detections and sending email via Mailpit"
+  annotations:
+    backstage.io/kubernetes-id: camel-cv-processor
+    backstage.io/kubernetes-namespace: kafka-cdc
+    argocd/app-name: field-content-neuroface-cv
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - camel
+    - notification
+    - email
+    - cdc
+  links:
+    - url: https://n8n-mailpit-openshift-lightspeed.<CLUSTER_DOMAIN>/
+      title: Mailpit Inbox
+      icon: email
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+  dependsOn:
+    - component:default/cv-kafka-streaming
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: cv-face-detection-events
+  namespace: default
+  description: "Face detection events published to Kafka topic cv.face.detections"
+  tags:
+    - kafka
+    - asyncapi
+    - computer-vision
+spec:
+  type: asyncapi
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+  definition: |
+    asyncapi: 2.6.0
+    info:
+      title: NeuroFace Detection Events
+      version: 1.0.0
+      description: Face detection events from NeuroFace OpenVINO pipeline
+    channels:
+      cv.face.detections:
+        publish:
+          summary: Face detection result from OpenVINO inference
+          message:
+            payload:
+              type: object
+              properties:
+                person_name:
+                  type: string
+                  description: Name of the detected person (if recognized)
+                confidence:
+                  type: number
+                  description: Detection confidence score (0-1)
+                camera_id:
+                  type: string
+                  description: Identifier of the camera source
+                timestamp:
+                  type: string
+                  format: date-time
+                  description: ISO 8601 detection timestamp
+                bounding_box:
+                  type: object
+                  properties:
+                    x:
+                      type: integer
+                    y:
+                      type: integer
+                    w:
+                      type: integer
+                    h:
+                      type: integer
+    servers:
+      cdc-cluster:
+        url: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092
+        protocol: kafka

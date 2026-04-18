@@ -412,7 +412,7 @@ connectivityLink:
         ovms:
           enabled: true
           modelmesh:
-            enabled: true
+            enabled: false
         litellm:
           enabled: false
         chat:

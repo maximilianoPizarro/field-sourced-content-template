@@ -39,46 +39,106 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 data:
-  cv-face-ingress.camel.yaml: |
+  cv-face-poller.camel.yaml: |
     - route:
-        id: cv-face-ingress
-        description: "Webhook receiver — accepts face detection results from NeuroFace and publishes to Kafka"
+        id: cv-labels-poller
+        description: "Polls NeuroFace /api/labels every 30s to detect trained persons, then publishes each to Kafka"
         from:
-          uri: platform-http:/cv/detection
+          uri: timer:cv-poll
           parameters:
-            httpMethodRestrict: POST
+            period: "30000"
         steps:
-          - log:
-              message: "Received face detection webhook: ${body}"
+          - setHeader:
+              name: CamelHttpMethod
+              constant: GET
+          - to:
+              uri: http://neuroface-backend.neuroface.svc:8080/api/labels
           - unmarshal:
               json:
                 library: jackson
-          - setBody:
-              simple: >
-                {
-                  "person_name": "${body[person_name]}",
-                  "confidence": ${body[confidence]},
-                  "camera_id": "${body[camera_id]}",
-                  "timestamp": "${date:now:yyyy-MM-dd'T'HH:mm:ss.SSSZ}",
-                  "bounding_box": ${body[bounding_box]},
-                  "detection_method": "${body[detection_method]}"
-                }
-          - marshal:
-              json:
-                library: jackson
-          - to:
-              uri: kafka:cv.face.detections
-              parameters:
-                brokers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093
-                securityProtocol: SASL_SSL
-                saslMechanism: SCRAM-SHA-512
-                saslJaasConfig: "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"${env:KAFKA_USER}\" password=\"${env:KAFKA_PASSWORD}\";"
-                sslTruststoreLocation: /etc/kafka-certs/ca.crt
-                sslTruststoreType: PEM
-          - setBody:
-              constant: '{"status":"ok","topic":"cv.face.detections"}'
-          - log:
-              message: "Face detection event published to Kafka"
+          - split:
+              jsonpath: "$.labels"
+              steps:
+                - setBody:
+                    simple: >
+                      {
+                        "person_name": "${body[name]}",
+                        "face_count": ${body[face_count]},
+                        "camera_id": "neuroface-poller",
+                        "confidence": 1.0,
+                        "timestamp": "${date:now:yyyy-MM-dd'T'HH:mm:ss.SSSZ}",
+                        "event_type": "label_detected",
+                        "detection_method": "lbph"
+                      }
+                - marshal:
+                    json:
+                      library: jackson
+                - to:
+                    uri: kafka:cv.face.detections
+                    parameters:
+                      brokers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093
+                      securityProtocol: SASL_SSL
+                      saslMechanism: SCRAM-SHA-512
+                      saslJaasConfig: "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"${env:KAFKA_USER}\" password=\"${env:KAFKA_PASSWORD}\";"
+                      sslTruststoreLocation: /etc/kafka-certs/ca.crt
+                      sslTruststoreType: PEM
+                - log:
+                    message: "Published label to Kafka: ${body}"
+    - route:
+        id: cv-ready-poller
+        description: "Polls NeuroFace /api/ready every 60s and publishes OVMS + model status changes to Kafka"
+        from:
+          uri: timer:cv-health
+          parameters:
+            period: "60000"
+        steps:
+          - setHeader:
+              name: CamelHttpMethod
+              constant: GET
+          - doTry:
+              steps:
+                - to:
+                    uri: http://neuroface-backend.neuroface.svc:8080/api/ready
+                - unmarshal:
+                    json:
+                      library: jackson
+                - choice:
+                    when:
+                      - simple: "${body[model_trained]} == true"
+                        steps:
+                          - setBody:
+                              simple: >
+                                {
+                                  "person_name": "system-health",
+                                  "confidence": 1.0,
+                                  "camera_id": "health-check",
+                                  "timestamp": "${date:now:yyyy-MM-dd'T'HH:mm:ss.SSSZ}",
+                                  "event_type": "health_status",
+                                  "detection_method": "${body[detection_method]}",
+                                  "ovms_status": "${body[ovms_status]}",
+                                  "model_trained": true,
+                                  "labels_count": ${body[labels_count]}
+                                }
+                          - marshal:
+                              json:
+                                library: jackson
+                          - to:
+                              uri: kafka:cv.face.detections
+                              parameters:
+                                brokers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093
+                                securityProtocol: SASL_SSL
+                                saslMechanism: SCRAM-SHA-512
+                                saslJaasConfig: "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"${env:KAFKA_USER}\" password=\"${env:KAFKA_PASSWORD}\";"
+                                sslTruststoreLocation: /etc/kafka-certs/ca.crt
+                                sslTruststoreType: PEM
+                          - log:
+                              message: "Health status published to Kafka"
+              doCatch:
+                - exceptions:
+                    - java.lang.Exception
+                  steps:
+                    - log:
+                        message: "NeuroFace backend not ready: ${exception.message}"
   cv-face-to-mail.camel.yaml: |
     - route:
         id: cv-face-notification

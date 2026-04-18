@@ -399,7 +399,7 @@ data:
                 })
             except Exception as e:
                 log.warning("OVMS not reachable: %s", e)
-            time.sleep(30)
+            time.sleep(60)
 
     def poll_labels():
         seen = set()
@@ -424,6 +424,17 @@ data:
                             "timestamp":        datetime.now(timezone.utc).isoformat(),
                             "detection_method": "lbph",
                         })
+                    publish({
+                        "event_type":       "person_detected",
+                        "source":           "neuroface-lbph",
+                        "person_name":      name,
+                        "face_count":       face_count,
+                        "confidence":       1.0,
+                        "camera_id":        "label-registry",
+                        "timestamp":        datetime.now(timezone.utc).isoformat(),
+                        "detection_method": "lbph",
+                        "total_labels":     len(labels),
+                    })
             except Exception as e:
                 log.warning("NeuroFace backend not ready: %s", e)
             time.sleep(30)
@@ -498,6 +509,35 @@ data:
                 "from": {"name": "NeuroFace CV Pipeline", "email": "neuroface@neuralbank.io"},
                 "to":   [{"name": "Security Admin", "email": "admin@neuralbank.io"}],
                 "subject": f"\U0001f6a8 Person Registered: {name}",
+                "html": html,
+            }
+        elif etype == "person_detected":
+            name = event.get("person_name", "Unknown")
+            rows = [
+                ("Person Detected", f'<span style="font-size:15px;font-weight:700;color:#0a6640">{name}</span>'),
+                ("Detection Method", event.get("detection_method", "lbph").upper()),
+                ("Confidence", f'{event.get("confidence", 0):.0%}'),
+                ("Total Identities", str(event.get("total_labels", "N/A"))),
+                ("Source", event.get("source", "neuroface-lbph")),
+                ("Camera / Registry", event.get("camera_id", "label-registry")),
+                ("Timestamp", event.get("timestamp", "")),
+                ("Kafka Topic", "cv.face.detections"),
+            ]
+            html = _corporate_template(
+                title=f"Face Detected: {name}",
+                icon="&#128247;",
+                accent="#0a6640",
+                rows=rows,
+                footer_note=(
+                    f'<strong>Detection Alert:</strong> The identity "<strong>{name}</strong>" '
+                    'is currently registered in the LBPH facial recognition model. '
+                    'This event is published every 30s while the label is active in the system.'
+                ),
+            )
+            mail = {
+                "from": {"name": "NeuroFace CV Pipeline", "email": "neuroface@neuralbank.io"},
+                "to":   [{"name": "Security Operations", "email": "security@neuralbank.io"}],
+                "subject": f"\U0001f4f7 Face Detected: {name}",
                 "html": html,
             }
         elif etype == "ovms_model_status":

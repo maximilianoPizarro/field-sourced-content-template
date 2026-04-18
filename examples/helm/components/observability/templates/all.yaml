@@ -1009,10 +1009,6 @@ spec:
   - interval: 30s
     port: rest-api
     path: /metrics
-    relabelings:
-    - sourceLabels: [__name__]
-      action: keep
-      regex: strimzi_bridge.*|jvm_.*
   selector:
     matchLabels:
       strimzi.io/name: cdc-bridge-bridge
@@ -1458,7 +1454,7 @@ spec:
           "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
           "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}},
           "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
-          "targets": [{"expr": "vector(1)", "instant": true}]
+          "targets": [{"expr": "count(up{job=~\".*kafka-bridge.*\"})", "instant": true}]
         },
         {
           "title": "External Consumer Groups",

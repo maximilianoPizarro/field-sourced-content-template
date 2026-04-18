@@ -425,7 +425,9 @@ connectivityLink:
         litellm:
           enabled: false
         chat:
-          enabled: false
+          enabled: true
+          modelEndpoint: "http://granite-llm-server.neuroface.svc:8080"
+          modelName: "granite-3.1-2b-instruct"
         persistence:
           enabled: true
           size: 1Gi

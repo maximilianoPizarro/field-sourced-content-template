@@ -641,3 +641,171 @@ spec:
         - name: neuroface-workbench
           persistentVolumeClaim:
             claimName: neuroface-workbench
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: granite-model-pvc
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: download-granite-model
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: downloader
+          image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+          command:
+            - sh
+            - -c
+            - |
+              MODEL_DIR=/models
+              MODEL_FILE="$MODEL_DIR/granite-3.1-2b-instruct-Q4_K_M.gguf"
+              if [ -f "$MODEL_FILE" ]; then
+                echo "Model already exists, skipping download"
+                exit 0
+              fi
+              microdnf install -y curl && \
+              curl -L -o "$MODEL_FILE" \
+                "https://huggingface.co/bartowski/granite-3.1-2b-instruct-GGUF/resolve/main/granite-3.1-2b-instruct-Q4_K_M.gguf" && \
+              ls -lh "$MODEL_FILE" && \
+              echo "Download complete"
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 1Gi
+          volumeMounts:
+            - name: model-storage
+              mountPath: /models
+      volumes:
+        - name: model-storage
+          persistentVolumeClaim:
+            claimName: granite-model-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: granite-llm-server
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    app: granite-llm-server
+    app.kubernetes.io/part-of: neuroface
+    app.openshift.io/runtime: python
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: granite-llm-server
+  template:
+    metadata:
+      labels:
+        app: granite-llm-server
+    spec:
+      containers:
+        - name: llama-server
+          image: ghcr.io/ggerganov/llama.cpp:server
+          args:
+            - "--model"
+            - "/models/granite-3.1-2b-instruct-Q4_K_M.gguf"
+            - "--host"
+            - "0.0.0.0"
+            - "--port"
+            - "8080"
+            - "--ctx-size"
+            - "2048"
+            - "--threads"
+            - "8"
+            - "--parallel"
+            - "2"
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          resources:
+            requests:
+              cpu: "4"
+              memory: 4Gi
+            limits:
+              cpu: "8"
+              memory: 8Gi
+          volumeMounts:
+            - name: model-storage
+              mountPath: /models
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 12
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+      volumes:
+        - name: model-storage
+          persistentVolumeClaim:
+            claimName: granite-model-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: granite-llm-server
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    app: granite-llm-server
+spec:
+  selector:
+    app: granite-llm-server
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: granite-llm
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    app: granite-llm-server
+spec:
+  to:
+    kind: Service
+    name: granite-llm-server
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

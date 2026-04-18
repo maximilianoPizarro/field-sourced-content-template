@@ -282,3 +282,70 @@ spec:
       {{- end }}
 {{- end }}
 {{- end }}
+# ============================================================
+# Helm Chart Applications — third-party charts from external repos
+# ============================================================
+{{- if .Values.connectivityLink.helmApps }}
+{{- range .Values.connectivityLink.helmApps }}
+{{- if and . .enabled }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $.Release.Name }}-helm-{{ .id }}
+  namespace: {{ $.Values.argocd.namespace }}
+  labels:
+    demo.redhat.com/application: "field-content"
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .syncWave | quote }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $.Values.argocd.project }}
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/volumeClaimTemplates
+        - /spec/template/metadata/annotations
+        - /spec/template/metadata/labels
+        - /spec/persistentVolumeClaimRetentionPolicy
+        - /spec/updateStrategy
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/metadata/annotations
+    - group: ""
+      kind: Service
+      jsonPointers:
+        - /spec/clusterIP
+        - /spec/clusterIPs
+        - /spec/ipFamilies
+        - /spec/ipFamilyPolicy
+        - /spec/internalTrafficPolicy
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data
+  source:
+    repoURL: {{ .repoURL }}
+    chart: {{ .chart }}
+    targetRevision: {{ .targetRevision }}
+    helm:
+      releaseName: {{ .chart }}
+      valuesObject:
+        {{- toYaml .values | nindent 8 }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .destinationNamespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+{{- end }}
+{{- end }}
+{{- end }}

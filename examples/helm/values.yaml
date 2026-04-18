@@ -385,6 +385,44 @@ connectivityLink:
       skipDryRunOnMissingResource: true
 
 # ============================================================
+# Helm Chart Applications (deployed via ArgoCD Helm source)
+# These install third-party charts from external Helm repos
+# ============================================================
+  helmApps:
+    - id: gitea
+      enabled: true
+      repoURL: "https://dl.gitea.com/charts/"
+      chart: gitea
+      targetRevision: "12.5.0"
+      destinationNamespace: gitea
+      syncWave: "3"
+      values:
+        global:
+          compatibility:
+            openshift:
+              adaptSecurityContext: force
+        gitea:
+          admin:
+            username: gitea_admin
+            password: openshift
+            email: admin@gitea.local
+        postgresql-ha:
+          enabled: false
+        postgresql:
+          enabled: true
+        redis-cluster:
+          enabled: false
+        redis:
+          enabled: true
+        persistence:
+          enabled: true
+          size: 10Gi
+        service:
+          http:
+            type: ClusterIP
+            port: 3000
+
+# ============================================================
 # Lightspeed / MCP — LLM provider config for OLS component
 # Keys are injected at deploy time (RHDP or --set), NOT in git
 # ============================================================

@@ -31,12 +31,24 @@ spec:
     roles:
       - name: admin
         rules:
-          - resources: ["kafkas", "topics", "consumerGroups", "acls"]
-            privileges: ["ALL"]
+          - resources:
+              - kafkas
+              - topics
+              - topics/records
+              - consumerGroups
+              - rebalances
+            privileges:
+              - ALL
       - name: viewer
         rules:
-          - resources: ["kafkas", "topics", "consumerGroups"]
-            privileges: ["GET", "LIST"]
+          - resources:
+              - kafkas
+              - topics
+              - topics/records
+              - consumerGroups
+            privileges:
+              - GET
+              - LIST
     subjects:
       - claim: "preferred_username"
         include: ["platformadmin", "maximilianopizarro"]

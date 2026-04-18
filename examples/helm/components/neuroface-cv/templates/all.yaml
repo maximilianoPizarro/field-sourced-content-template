@@ -652,6 +652,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: ocs-external-storagecluster-ceph-rbd-immediate
   resources:
     requests:
       storage: 5Gi
@@ -666,27 +667,28 @@ metadata:
     argocd.argoproj.io/hook: Skip
 spec:
   backoffLimit: 3
-  ttlSecondsAfterFinished: 300
+  ttlSecondsAfterFinished: 600
   template:
     spec:
       restartPolicy: OnFailure
       containers:
         - name: downloader
-          image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+          image: registry.access.redhat.com/ubi9/ubi:latest
           command:
-            - sh
+            - bash
             - -c
             - |
               MODEL_DIR=/models
               MODEL_FILE="$MODEL_DIR/granite-3.1-2b-instruct-Q4_K_M.gguf"
               if [ -f "$MODEL_FILE" ]; then
                 echo "Model already exists, skipping download"
+                ls -lh "$MODEL_FILE"
                 exit 0
               fi
-              microdnf install -y curl && \
-              curl -L -o "$MODEL_FILE" \
-                "https://huggingface.co/bartowski/granite-3.1-2b-instruct-GGUF/resolve/main/granite-3.1-2b-instruct-Q4_K_M.gguf" && \
-              ls -lh "$MODEL_FILE" && \
+              echo "Downloading Granite 3.1 2B Instruct GGUF (~1.6 GB)..."
+              curl -L --progress-bar -o "$MODEL_FILE" \
+                "https://huggingface.co/bartowski/granite-3.1-2b-instruct-GGUF/resolve/main/granite-3.1-2b-instruct-Q4_K_M.gguf"
+              ls -lh "$MODEL_FILE"
               echo "Download complete"
           resources:
             requests:
@@ -726,7 +728,7 @@ spec:
     spec:
       containers:
         - name: llama-server
-          image: ghcr.io/ggerganov/llama.cpp:server
+          image: ghcr.io/ggml-org/llama.cpp:server
           args:
             - "--model"
             - "/models/granite-3.1-2b-instruct-Q4_K_M.gguf"

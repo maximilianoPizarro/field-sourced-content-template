@@ -1009,10 +1009,13 @@ spec:
   - interval: 30s
     port: rest-api
     path: /metrics
+    relabelings:
+    - sourceLabels: [__name__]
+      action: keep
+      regex: strimzi_bridge.*|jvm_.*
   selector:
     matchLabels:
-      strimzi.io/cluster: cdc-bridge
-      strimzi.io/kind: KafkaBridge
+      strimzi.io/name: cdc-bridge-bridge
 ---
 apiVersion: monitoring.rhobs/v1
 kind: PodMonitor
@@ -1338,7 +1341,7 @@ spec:
           "gridPos": {"h": 4, "w": 4, "x": 16, "y": 0},
           "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}},
           "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
-          "targets": [{"expr": "count(kafka_connect_worker_connector_total_task_count{namespace=~\"industrial-edge.*|kafka-cdc\"})", "instant": true}]
+          "targets": [{"expr": "count(kafka_connect_worker_connector_total_task_count{namespace=\"kafka-cdc\"}) + count(kafka_connect_connection_count{namespace=\"industrial-edge-stormshift-messaging\"})", "instant": true}]
         },
         {
           "title": "Under-Replicated",

@@ -379,97 +379,258 @@ data:
                     - log:
                         message: "OVMS status email sent"
 ---
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: camel.apache.org/v1
+kind: IntegrationPlatform
 metadata:
-  name: camel-cv-processor
+  name: camel-k
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  build:
+    registry:
+      address: image-registry.openshift-image-registry.svc:5000
+    publishStrategy: Jib
+---
+apiVersion: camel.apache.org/v1
+kind: Integration
+metadata:
+  name: cv-ovms-poller
   namespace: kafka-cdc
   annotations:
     argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
   labels:
     app: camel-cv-processor
     app.kubernetes.io/part-of: neuroface-cv
     app.openshift.io/runtime: camel
 spec:
-  replicas: 0
-  selector:
-    matchLabels:
-      app: camel-cv-processor
-  template:
-    metadata:
-      labels:
-        app: camel-cv-processor
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "8080"
-        prometheus.io/path: /q/metrics
-    spec:
-      containers:
-        - name: camel
-          image: quay.io/quarkus/quarkus-micro-image:2.0
-          ports:
-            - containerPort: 8080
-              name: http
-              protocol: TCP
-          env:
-            - name: CAMEL_MAIN_ROUTES_INCLUDE_PATTERN
-              value: "file:/config/*.camel.yaml"
-            - name: KAFKA_USER
-              value: cdc-user
-            - name: KAFKA_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: cdc-user
-                  key: password
-          volumeMounts:
-            - name: route-config
-              mountPath: /config
-            - name: kafka-ca-cert
-              mountPath: /etc/kafka-certs
-          resources:
-            requests:
-              cpu: 200m
-              memory: 256Mi
-            limits:
-              cpu: 500m
-              memory: 512Mi
-          livenessProbe:
-            httpGet:
-              path: /q/health/live
-              port: 8080
-            initialDelaySeconds: 30
-            periodSeconds: 10
-          readinessProbe:
-            httpGet:
-              path: /q/health/ready
-              port: 8080
-            initialDelaySeconds: 15
-            periodSeconds: 10
-      volumes:
-        - name: route-config
-          configMap:
-            name: camel-cv-route
-        - name: kafka-ca-cert
-          secret:
-            secretName: cdc-cluster-cluster-ca-cert
+  dependencies:
+    - "camel:timer"
+    - "camel:http"
+    - "camel:kafka"
+    - "camel:jackson"
+    - "camel:log"
+  configuration:
+    - type: secret
+      value: cdc-cluster-cluster-ca-cert
+  sources:
+    - name: cv-ovms-poller.camel.yaml
+      content: |
+        - route:
+            id: cv-ovms-status
+            from:
+              uri: timer:ovms-poll
+              parameters:
+                period: "30000"
+                delay: "10000"
+            steps:
+              - setHeader:
+                  name: CamelHttpMethod
+                  constant: GET
+              - doTry:
+                  steps:
+                    - to:
+                        uri: http://neuroface-ovms.neuroface.svc:8000/v1/config
+                    - setBody:
+                        simple: >
+                          {
+                            "event_type": "ovms_model_status",
+                            "source": "openvino-model-server",
+                            "model_name": "face-detection-retail-0005",
+                            "model_server": "ovms",
+                            "ovms_response": ${body},
+                            "camera_id": "ovms-monitor",
+                            "timestamp": "${date:now:yyyy-MM-dd'T'HH:mm:ss.SSSZ}",
+                            "person_name": "system",
+                            "confidence": 1.0
+                          }
+                    - to:
+                        uri: kafka:cv.face.detections
+                        parameters:
+                          brokers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093
+                          securityProtocol: SASL_SSL
+                          saslMechanism: SCRAM-SHA-512
+                          saslJaasConfig: "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"cdc-user\" password=\"{{secret:cdc-user/password}}\";"
+                          sslTruststoreLocation: /etc/camel/conf.d/_secrets/cdc-cluster-cluster-ca-cert/ca.crt
+                          sslTruststoreType: PEM
+                    - log:
+                        message: "OVMS status published to Kafka"
+                  doCatch:
+                    - exceptions:
+                        - java.lang.Exception
+                      steps:
+                        - log:
+                            message: "OVMS not reachable: ${exception.message}"
 ---
-apiVersion: v1
-kind: Service
+apiVersion: camel.apache.org/v1
+kind: Integration
 metadata:
-  name: camel-cv-processor
+  name: cv-labels-poller
   namespace: kafka-cdc
   annotations:
     argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
   labels:
     app: camel-cv-processor
+    app.kubernetes.io/part-of: neuroface-cv
+    app.openshift.io/runtime: camel
 spec:
-  ports:
-    - port: 8080
-      targetPort: 8080
-      protocol: TCP
-      name: http
-  selector:
+  dependencies:
+    - "camel:timer"
+    - "camel:http"
+    - "camel:kafka"
+    - "camel:jackson"
+    - "camel:jsonpath"
+    - "camel:log"
+  configuration:
+    - type: secret
+      value: cdc-cluster-cluster-ca-cert
+  sources:
+    - name: cv-labels-poller.camel.yaml
+      content: |
+        - route:
+            id: cv-labels-poller
+            from:
+              uri: timer:labels-poll
+              parameters:
+                period: "30000"
+                delay: "15000"
+            steps:
+              - setHeader:
+                  name: CamelHttpMethod
+                  constant: GET
+              - doTry:
+                  steps:
+                    - to:
+                        uri: http://neuroface-backend.neuroface.svc:8080/api/labels
+                    - unmarshal:
+                        json:
+                          library: jackson
+                    - split:
+                        jsonpath: "$.labels"
+                        steps:
+                          - setBody:
+                              simple: >
+                                {
+                                  "event_type": "person_registered",
+                                  "source": "neuroface-lbph",
+                                  "person_name": "${body[name]}",
+                                  "face_count": ${body[face_count]},
+                                  "confidence": 1.0,
+                                  "camera_id": "label-registry",
+                                  "timestamp": "${date:now:yyyy-MM-dd'T'HH:mm:ss.SSSZ}",
+                                  "detection_method": "lbph"
+                                }
+                          - to:
+                              uri: kafka:cv.face.detections
+                              parameters:
+                                brokers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093
+                                securityProtocol: SASL_SSL
+                                saslMechanism: SCRAM-SHA-512
+                                saslJaasConfig: "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"cdc-user\" password=\"{{secret:cdc-user/password}}\";"
+                                sslTruststoreLocation: /etc/camel/conf.d/_secrets/cdc-cluster-cluster-ca-cert/ca.crt
+                                sslTruststoreType: PEM
+                          - log:
+                              message: "Person registered: ${body}"
+                  doCatch:
+                    - exceptions:
+                        - java.lang.Exception
+                      steps:
+                        - log:
+                            message: "NeuroFace backend not ready: ${exception.message}"
+---
+apiVersion: camel.apache.org/v1
+kind: Integration
+metadata:
+  name: cv-face-notification
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  labels:
     app: camel-cv-processor
+    app.kubernetes.io/part-of: neuroface-cv
+    app.openshift.io/runtime: camel
+spec:
+  dependencies:
+    - "camel:kafka"
+    - "camel:http"
+    - "camel:jackson"
+    - "camel:log"
+  configuration:
+    - type: secret
+      value: cdc-cluster-cluster-ca-cert
+  sources:
+    - name: cv-face-notification.camel.yaml
+      content: |
+        - route:
+            id: cv-face-notification
+            from:
+              uri: kafka:cv.face.detections
+              parameters:
+                brokers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093
+                groupId: camel-cv-consumer
+                autoOffsetReset: latest
+                valueDeserializer: org.apache.kafka.common.serialization.StringDeserializer
+                securityProtocol: SASL_SSL
+                saslMechanism: SCRAM-SHA-512
+                saslJaasConfig: "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"cdc-user\" password=\"{{secret:cdc-user/password}}\";"
+                sslTruststoreLocation: /etc/camel/conf.d/_secrets/cdc-cluster-cluster-ca-cert/ca.crt
+                sslTruststoreType: PEM
+            steps:
+              - log:
+                  message: "CV event received: ${body}"
+              - unmarshal:
+                  json:
+                    library: jackson
+              - choice:
+                  when:
+                    - simple: "${body[event_type]} == 'person_registered'"
+                      steps:
+                        - setBody:
+                            simple: >
+                              {
+                                "from": {"name": "NeuroFace CV Pipeline", "email": "neuroface@neuralbank.io"},
+                                "to": [{"name": "Security Admin", "email": "admin@neuralbank.io"}],
+                                "subject": "Person Registered: ${body[person_name]}",
+                                "html": "<h2>New Person Registered</h2><p><b>Name:</b> ${body[person_name]}</p><p><b>Face samples:</b> ${body[face_count]}</p><p><b>Model:</b> ${body[detection_method]}</p><p><b>Timestamp:</b> ${body[timestamp]}</p><hr><p style='color:#666;font-size:12px'>NeuroFace LBPH — Event-Driven Architecture</p>"
+                              }
+                        - marshal:
+                            json:
+                              library: jackson
+                        - setHeader:
+                            name: Content-Type
+                            constant: application/json
+                        - to:
+                            uri: http://n8n-mailpit.openshift-lightspeed.svc:8025/api/v1/send
+                            parameters:
+                              httpMethod: POST
+                        - log:
+                            message: "Person registration email sent"
+                    - simple: "${body[event_type]} == 'ovms_model_status'"
+                      steps:
+                        - setBody:
+                            simple: >
+                              {
+                                "from": {"name": "NeuroFace CV Pipeline", "email": "neuroface@neuralbank.io"},
+                                "to": [{"name": "ML Ops", "email": "mlops@neuralbank.io"}],
+                                "subject": "OVMS Model Status: ${body[model_name]}",
+                                "html": "<h2>OpenVINO Model Server Status</h2><p><b>Model:</b> ${body[model_name]}</p><p><b>Server:</b> ${body[model_server]}</p><p><b>Timestamp:</b> ${body[timestamp]}</p><hr><p style='color:#666;font-size:12px'>OVMS Monitor — Event-Driven Architecture</p>"
+                              }
+                        - marshal:
+                            json:
+                              library: jackson
+                        - setHeader:
+                            name: Content-Type
+                            constant: application/json
+                        - to:
+                            uri: http://n8n-mailpit.openshift-lightspeed.svc:8025/api/v1/send
+                            parameters:
+                              httpMethod: POST
+                        - log:
+                            message: "OVMS status email sent"
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

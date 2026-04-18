@@ -721,6 +721,282 @@ spec:
           weight: 1
 ---
 ##
+## Kafka MCP Server — Deployment, Service, HTTPRoute, MCPServerRegistration
+##
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-mcp-server-script
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+data:
+  server.py: |
+    import os, json, logging, ssl
+    from mcp.server.fastmcp import FastMCP
+    from confluent_kafka import Consumer, TopicPartition
+    from confluent_kafka.admin import AdminClient
+
+    logging.basicConfig(level=logging.INFO)
+    log = logging.getLogger("kafka-mcp")
+
+    BOOTSTRAP = os.environ["KAFKA_BOOTSTRAP"]
+    USER      = os.environ.get("KAFKA_USER", "")
+    PASSWORD  = os.environ.get("KAFKA_PASSWORD", "")
+    CA_CERT   = os.environ.get("KAFKA_CA_CERT", "")
+
+    def _kafka_conf(extra=None):
+        cfg = {"bootstrap.servers": BOOTSTRAP}
+        if USER and PASSWORD:
+            cfg.update({
+                "security.protocol": "SASL_SSL",
+                "sasl.mechanism": "SCRAM-SHA-512",
+                "sasl.username": USER,
+                "sasl.password": PASSWORD,
+                "ssl.ca.location": CA_CERT,
+            })
+        if extra:
+            cfg.update(extra)
+        return cfg
+
+    mcp = FastMCP("kafka-mcp-server", host="0.0.0.0", port=8080)
+
+    @mcp.tool()
+    def list_topics() -> str:
+        """List all Kafka topics with their partition counts."""
+        admin = AdminClient(_kafka_conf())
+        metadata = admin.list_topics(timeout=10)
+        topics = []
+        for name, topic_meta in sorted(metadata.topics.items()):
+            if not name.startswith("__"):
+                topics.append({
+                    "name": name,
+                    "partitions": len(topic_meta.partitions),
+                })
+        return json.dumps(topics, indent=2)
+
+    @mcp.tool()
+    def describe_topic(topic_name: str) -> str:
+        """Describe a Kafka topic: partitions, offsets, and configuration.
+
+        Args:
+            topic_name: Name of the Kafka topic to describe.
+        """
+        admin = AdminClient(_kafka_conf())
+        metadata = admin.list_topics(topic=topic_name, timeout=10)
+        t = metadata.topics.get(topic_name)
+        if not t:
+            return json.dumps({"error": f"Topic '{topic_name}' not found"})
+        c = Consumer(_kafka_conf({"group.id": "mcp-describe-tmp", "enable.auto.commit": False}))
+        partitions = []
+        for pid in sorted(t.partitions.keys()):
+            tp = TopicPartition(topic_name, pid)
+            low, high = c.get_watermark_offsets(tp, timeout=5)
+            partitions.append({"partition": pid, "low_offset": low, "high_offset": high, "messages": high - low})
+        c.close()
+        return json.dumps({"topic": topic_name, "partitions": partitions, "total_messages": sum(p["messages"] for p in partitions)}, indent=2)
+
+    @mcp.tool()
+    def read_messages(topic_name: str, count: int = 5) -> str:
+        """Read the latest messages from a Kafka topic.
+
+        Args:
+            topic_name: Name of the Kafka topic to read from.
+            count: Number of recent messages to retrieve (default 5, max 20).
+        """
+        count = min(int(count), 20)
+        c = Consumer(_kafka_conf({
+            "group.id": "mcp-reader-tmp",
+            "auto.offset.reset": "latest",
+            "enable.auto.commit": False,
+        }))
+        metadata = c.list_topics(topic=topic_name, timeout=10)
+        t = metadata.topics.get(topic_name)
+        if not t:
+            c.close()
+            return json.dumps({"error": f"Topic '{topic_name}' not found"})
+        assignments = []
+        for pid in t.partitions:
+            tp = TopicPartition(topic_name, pid)
+            low, high = c.get_watermark_offsets(tp, timeout=5)
+            start = max(low, high - count)
+            assignments.append(TopicPartition(topic_name, pid, start))
+        c.assign(assignments)
+        messages = []
+        for _ in range(count * 3):
+            msg = c.poll(timeout=2.0)
+            if msg is None:
+                break
+            if msg.error():
+                continue
+            try:
+                val = json.loads(msg.value().decode())
+            except Exception:
+                val = msg.value().decode(errors="replace")
+            messages.append({
+                "partition": msg.partition(),
+                "offset": msg.offset(),
+                "timestamp": msg.timestamp()[1] if msg.timestamp()[0] else None,
+                "key": msg.key().decode() if msg.key() else None,
+                "value": val,
+            })
+            if len(messages) >= count:
+                break
+        c.close()
+        return json.dumps(messages, indent=2, default=str)
+
+    @mcp.tool()
+    def consumer_groups() -> str:
+        """List all Kafka consumer groups and their states."""
+        admin = AdminClient(_kafka_conf())
+        groups = admin.list_consumer_groups(timeout=10)
+        result = []
+        for g in groups.result().valid:
+            result.append({"group_id": g.group_id, "state": str(g.state), "type": str(g.type)})
+        return json.dumps(result, indent=2)
+
+    if __name__ == "__main__":
+        mcp.run(transport="streamable-http")
+  requirements.txt: |
+    mcp[cli]>=1.27.0
+    confluent-kafka>=2.6.0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-mcp-server
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  labels:
+    app: kafka-mcp-server
+    app.kubernetes.io/part-of: mcp-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-mcp-server
+  template:
+    metadata:
+      labels:
+        app: kafka-mcp-server
+    spec:
+      containers:
+        - name: mcp-server
+          image: registry.access.redhat.com/ubi9/python-312:latest
+          command:
+            - bash
+            - -c
+            - |
+              pip install --quiet -r /config/requirements.txt
+              python /config/server.py
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          env:
+            - name: KAFKA_BOOTSTRAP
+              value: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093
+            - name: KAFKA_USER
+              valueFrom:
+                secretKeyRef:
+                  name: cdc-user
+                  key: username
+            - name: KAFKA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cdc-user
+                  key: password
+            - name: KAFKA_CA_CERT
+              value: /certs/ca.crt
+          volumeMounts:
+            - name: script
+              mountPath: /config
+            - name: ca-cert
+              mountPath: /certs
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /mcp
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /mcp
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+      volumes:
+        - name: script
+          configMap:
+            name: kafka-mcp-server-script
+        - name: ca-cert
+          secret:
+            secretName: cdc-cluster-cluster-ca-cert
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-mcp-server
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  selector:
+    app: kafka-mcp-server
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: kafka-mcp-route
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  parentRefs:
+    - name: mcp-gateway
+      namespace: mcp-system
+      sectionName: mcp
+  hostnames:
+    - kafka-mcp-server.kafka-cdc.svc.cluster.local
+  rules:
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: kafka-mcp-server
+          port: 8080
+          weight: 1
+---
+apiVersion: mcp.kuadrant.io/v1alpha1
+kind: MCPServerRegistration
+metadata:
+  name: kafka-mcp-server
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  toolPrefix: kafka_
+  path: /mcp
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: kafka-mcp-route
+---
+##
 ## 11. MCPServerRegistration — openshift-mcp-server
 ##
 apiVersion: mcp.kuadrant.io/v1alpha1

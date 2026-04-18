@@ -452,7 +452,7 @@ spec:
                           brokers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093
                           securityProtocol: SASL_SSL
                           saslMechanism: SCRAM-SHA-512
-                          saslJaasConfig: "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"cdc-user\" password=\"{{secret:cdc-user/password}}\";"
+                          saslJaasConfig: "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"cdc-user\" password=\"{{ "{{" }}secret:cdc-user/password{{ "}}" }}\";"
                           sslTruststoreLocation: /etc/camel/conf.d/_secrets/cdc-cluster-cluster-ca-cert/ca.crt
                           sslTruststoreType: PEM
                     - log:
@@ -529,7 +529,7 @@ spec:
                                 brokers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093
                                 securityProtocol: SASL_SSL
                                 saslMechanism: SCRAM-SHA-512
-                                saslJaasConfig: "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"cdc-user\" password=\"{{secret:cdc-user/password}}\";"
+                                saslJaasConfig: "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"cdc-user\" password=\"{{ "{{" }}secret:cdc-user/password{{ "}}" }}\";"
                                 sslTruststoreLocation: /etc/camel/conf.d/_secrets/cdc-cluster-cluster-ca-cert/ca.crt
                                 sslTruststoreType: PEM
                           - log:
@@ -576,7 +576,7 @@ spec:
                 valueDeserializer: org.apache.kafka.common.serialization.StringDeserializer
                 securityProtocol: SASL_SSL
                 saslMechanism: SCRAM-SHA-512
-                saslJaasConfig: "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"cdc-user\" password=\"{{secret:cdc-user/password}}\";"
+                saslJaasConfig: "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"cdc-user\" password=\"{{ "{{" }}secret:cdc-user/password{{ "}}" }}\";"
                 sslTruststoreLocation: /etc/camel/conf.d/_secrets/cdc-cluster-cluster-ca-cert/ca.crt
                 sslTruststoreType: PEM
             steps:

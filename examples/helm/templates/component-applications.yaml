@@ -273,8 +273,10 @@ spec:
       selfHeal: {{ .selfHeal }}
     syncOptions:
       - CreateNamespace=true
+      {{- if ne (.serverSideApply | toString) "false" }}
       - ServerSideApply=true
       - RespectIgnoreDifferences=true
+      {{- end }}
       {{- if .skipDryRunOnMissingResource }}
       - SkipDryRunOnMissingResource=true
       {{- end }}

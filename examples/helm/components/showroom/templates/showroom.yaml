@@ -60,7 +60,8 @@ subjects:
   name: {{ .Values.showroom.name }}
   namespace: {{ .Values.showroom.namespace }}
 ---
-# Showroom RoleBinding — observability namespace
+{{- if .Values.observabilityAccess | default false }}
+# Showroom RoleBinding — observability namespace (only when observability is enabled)
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -74,6 +75,7 @@ subjects:
 - kind: ServiceAccount
   name: {{ .Values.showroom.name }}
   namespace: {{ .Values.showroom.namespace }}
+{{- end }}
 ---
 # Showroom Nginx ConfigMap
 kind: ConfigMap

@@ -2478,9 +2478,10 @@ spec:
       firstName: Robert
       groups:
       - US-Clients
-      initialPassword:
-        temporary: true
+      credentials:
+      - type: password
         value: Welcome123
+        temporary: true
       lastName: Anderson
       realmRoles:
       - personal-client
@@ -2490,9 +2491,10 @@ spec:
       firstName: Jennifer
       groups:
       - US-Clients
-      initialPassword:
-        temporary: true
+      credentials:
+      - type: password
         value: Welcome123
+        temporary: true
       lastName: Martinez
       realmRoles:
       - personal-client
@@ -2502,9 +2504,10 @@ spec:
       firstName: David
       groups:
       - US-Clients
-      initialPassword:
-        temporary: true
+      credentials:
+      - type: password
         value: Welcome123
+        temporary: true
       lastName: Lee
       realmRoles:
       - personal-client
@@ -2514,9 +2517,10 @@ spec:
       firstName: Michelle
       groups:
       - US-Clients
-      initialPassword:
-        temporary: true
+      credentials:
+      - type: password
         value: Welcome123
+        temporary: true
       lastName: Garcia
       realmRoles:
       - personal-client
@@ -2526,9 +2530,10 @@ spec:
       firstName: TechCorp
       groups:
       - US-Clients
-      initialPassword:
-        temporary: true
+      credentials:
+      - type: password
         value: Welcome123
+        temporary: true
       lastName: Solutions Inc
       realmRoles:
       - corporate-client
@@ -2538,9 +2543,10 @@ spec:
       firstName: Mario
       groups:
       - LATAM-Clients
-      initialPassword:
-        temporary: true
+      credentials:
+      - type: password
         value: Welcome123
+        temporary: true
       lastName: Gómez Morales
       realmRoles:
       - personal-client
@@ -2550,9 +2556,10 @@ spec:
       firstName: Laura
       groups:
       - LATAM-Clients
-      initialPassword:
-        temporary: true
+      credentials:
+      - type: password
         value: Welcome123
+        temporary: true
       lastName: Martínez Pérez
       realmRoles:
       - personal-client
@@ -2562,9 +2569,10 @@ spec:
       firstName: Carlos
       groups:
       - LATAM-Clients
-      initialPassword:
-        temporary: true
+      credentials:
+      - type: password
         value: Welcome123
+        temporary: true
       lastName: Sánchez Muñoz
       realmRoles:
       - personal-client
@@ -2574,9 +2582,10 @@ spec:
       firstName: Paulo
       groups:
       - LATAM-Clients
-      initialPassword:
-        temporary: true
+      credentials:
+      - type: password
         value: Welcome123
+        temporary: true
       lastName: Silva Santos
       realmRoles:
       - personal-client
@@ -2586,9 +2595,10 @@ spec:
       firstName: Ricardo
       groups:
       - LATAM-Clients
-      initialPassword:
-        temporary: true
+      credentials:
+      - type: password
         value: Welcome123
+        temporary: true
       lastName: Ferreira Lima
       realmRoles:
       - personal-client
@@ -2598,9 +2608,10 @@ spec:
       firstName: Diego
       groups:
       - LATAM-Clients
-      initialPassword:
-        temporary: true
+      credentials:
+      - type: password
         value: Welcome123
+        temporary: true
       lastName: Martínez Suárez
       realmRoles:
       - personal-client
@@ -2610,9 +2621,10 @@ spec:
       firstName: Lucía
       groups:
       - LATAM-Clients
-      initialPassword:
-        temporary: true
+      credentials:
+      - type: password
         value: Welcome123
+        temporary: true
       lastName: Fernández Gómez
       realmRoles:
       - personal-client
@@ -2622,9 +2634,10 @@ spec:
       firstName: Juan
       groups:
       - LATAM-Clients
-      initialPassword:
-        temporary: true
+      credentials:
+      - type: password
         value: Welcome123
+        temporary: true
       lastName: Pérez González
       realmRoles:
       - personal-client
@@ -2634,9 +2647,10 @@ spec:
       firstName: María
       groups:
       - LATAM-Clients
-      initialPassword:
-        temporary: true
+      credentials:
+      - type: password
         value: Welcome123
+        temporary: true
       lastName: Silva Rojas
       realmRoles:
       - personal-client
@@ -2646,9 +2660,10 @@ spec:
       firstName: Comercializadora
       groups:
       - LATAM-Clients
-      initialPassword:
-        temporary: true
+      credentials:
+      - type: password
         value: Welcome123
+        temporary: true
       lastName: Global SA de CV
       realmRoles:
       - corporate-client
@@ -2658,9 +2673,10 @@ spec:
       firstName: Constructora
       groups:
       - LATAM-Clients
-      initialPassword:
-        temporary: true
+      credentials:
+      - type: password
         value: Welcome123
+        temporary: true
       lastName: del Sur SRL
       realmRoles:
       - corporate-client
@@ -2670,9 +2686,10 @@ spec:
       firstName: Antonio
       groups:
       - EU-Clients
-      initialPassword:
-        temporary: true
+      credentials:
+      - type: password
         value: Welcome123
+        temporary: true
       lastName: García López
       realmRoles:
       - personal-client
@@ -2682,9 +2699,10 @@ spec:
       firstName: Carmen
       groups:
       - EU-Clients
-      initialPassword:
-        temporary: true
+      credentials:
+      - type: password
         value: Welcome123
+        temporary: true
       lastName: Martín Sánchez
       realmRoles:
       - personal-client
@@ -2694,9 +2712,10 @@ spec:
       firstName: Javier
       groups:
       - EU-Clients
-      initialPassword:
-        temporary: true
+      credentials:
+      - type: password
         value: Welcome123
+        temporary: true
       lastName: Rodríguez Torres
       realmRoles:
       - personal-client
@@ -2706,9 +2725,10 @@ spec:
       firstName: William
       groups:
       - EU-Clients
-      initialPassword:
-        temporary: true
+      credentials:
+      - type: password
         value: Welcome123
+        temporary: true
       lastName: Johnson
       realmRoles:
       - personal-client
@@ -2718,9 +2738,10 @@ spec:
       firstName: Sophie
       groups:
       - EU-Clients
-      initialPassword:
-        temporary: true
+      credentials:
+      - type: password
         value: Welcome123
+        temporary: true
       lastName: Thompson
       realmRoles:
       - personal-client
@@ -2730,9 +2751,10 @@ spec:
       firstName: Inversiones
       groups:
       - EU-Clients
-      initialPassword:
-        temporary: true
+      credentials:
+      - type: password
         value: Welcome123
+        temporary: true
       lastName: Madrid SA
       realmRoles:
       - corporate-client

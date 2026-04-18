@@ -178,6 +178,7 @@ connectivityLink:
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
+      serverSideApply: false
     # --- Developer tools ---
     - id: devspaces
       enabled: true
@@ -415,6 +416,7 @@ components:
     enabled: true
     namespace: showroom
     name: showroom
+    observabilityAccess: true
     content:
       repoUrl: "https://github.com/maximilianoPizarro/field-sourced-content-template.git"
       repoRef: "main"

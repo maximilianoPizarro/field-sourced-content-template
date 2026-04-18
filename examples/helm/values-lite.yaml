@@ -233,6 +233,7 @@ connectivityLink:
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
+      serverSideApply: false
     - id: devspaces
       enabled: false
       path: devspaces

@@ -28,13 +28,13 @@ metadata:
     - fastapi
     - angular
   links:
-    - url: https://neuroface-frontend-neuroface.<CLUSTER_DOMAIN>
+    - url: https://neuroface-frontend-neuroface.apps.cluster-msf9p.dynamic.redhatworkshops.io
       title: NeuroFace Web App
       icon: dashboard
-    - url: https://neuroface-ovms-neuroface.<CLUSTER_DOMAIN>/v1/config
+    - url: https://neuroface-ovms-neuroface.apps.cluster-msf9p.dynamic.redhatworkshops.io/v1/config
       title: OpenVINO Model Server
       icon: web
-    - url: https://n8n-mailpit-openshift-lightspeed.<CLUSTER_DOMAIN>/
+    - url: https://n8n-mailpit-openshift-lightspeed.apps.cluster-msf9p.dynamic.redhatworkshops.io/
       title: Mailpit — CV Notifications
       icon: email
 spec:
@@ -59,10 +59,10 @@ metadata:
     - opencv
     - facial-recognition
   links:
-    - url: https://neuroface-frontend-neuroface.<CLUSTER_DOMAIN>
+    - url: https://neuroface-frontend-neuroface.apps.cluster-msf9p.dynamic.redhatworkshops.io
       title: NeuroFace Frontend
       icon: dashboard
-    - url: https://console-openshift-console.<CLUSTER_DOMAIN>/k8s/ns/neuroface/deployments
+    - url: https://console-openshift-console.apps.cluster-msf9p.dynamic.redhatworkshops.io/k8s/ns/neuroface/deployments
       title: OpenShift Console
       icon: web
 spec:
@@ -91,7 +91,7 @@ metadata:
     - inference
     - ml
   links:
-    - url: https://neuroface-ovms-neuroface.<CLUSTER_DOMAIN>/v1/config
+    - url: https://neuroface-ovms-neuroface.apps.cluster-msf9p.dynamic.redhatworkshops.io/v1/config
       title: OVMS Config Endpoint
       icon: web
 spec:
@@ -118,7 +118,7 @@ metadata:
     - polling
     - model-server
   links:
-    - url: https://neuroface-ovms-neuroface.<CLUSTER_DOMAIN>/v1/config
+    - url: https://neuroface-ovms-neuroface.apps.cluster-msf9p.dynamic.redhatworkshops.io/v1/config
       title: OVMS Config Endpoint
       icon: web
 spec:
@@ -147,7 +147,7 @@ metadata:
     - polling
     - lbph
   links:
-    - url: https://console-openshift-console.<CLUSTER_DOMAIN>/k8s/ns/kafka-cdc/deployments/camel-cv-processor
+    - url: https://console-openshift-console.apps.cluster-msf9p.dynamic.redhatworkshops.io/k8s/ns/kafka-cdc/deployments/camel-cv-processor
       title: Camel CV Processor
       icon: web
 spec:
@@ -177,10 +177,10 @@ metadata:
     - event-streaming
     - computer-vision
   links:
-    - url: https://console-openshift-console.<CLUSTER_DOMAIN>/k8s/ns/kafka-cdc/kafka.strimzi.io~v1beta2~KafkaTopic/cv.face.detections
+    - url: https://console-openshift-console.apps.cluster-msf9p.dynamic.redhatworkshops.io/k8s/ns/kafka-cdc/kafka.strimzi.io~v1beta2~KafkaTopic/cv.face.detections
       title: cv.face.detections Topic
       icon: web
-    - url: https://console-openshift-console.<CLUSTER_DOMAIN>/k8s/ns/kafka-cdc/kafka.strimzi.io~v1beta2~KafkaTopic/dlq.cv-errors
+    - url: https://console-openshift-console.apps.cluster-msf9p.dynamic.redhatworkshops.io/k8s/ns/kafka-cdc/kafka.strimzi.io~v1beta2~KafkaTopic/dlq.cv-errors
       title: dlq.cv-errors (Dead Letter Queue)
       icon: web
 spec:
@@ -212,7 +212,7 @@ metadata:
     - email
     - cdc
   links:
-    - url: https://n8n-mailpit-openshift-lightspeed.<CLUSTER_DOMAIN>/
+    - url: https://n8n-mailpit-openshift-lightspeed.apps.cluster-msf9p.dynamic.redhatworkshops.io/
       title: Mailpit Inbox
       icon: email
 spec:
@@ -242,10 +242,10 @@ metadata:
     - openvino
     - data-science
   links:
-    - url: https://neuroface-workbench-neuroface.<CLUSTER_DOMAIN>/notebook/neuroface/neuroface-workbench
+    - url: https://neuroface-workbench-neuroface.apps.cluster-msf9p.dynamic.redhatworkshops.io/notebook/neuroface/neuroface-workbench
       title: Open Workbench
       icon: dashboard
-    - url: https://rhods-dashboard-redhat-ods-applications.<CLUSTER_DOMAIN>/projects/neuroface
+    - url: https://rhods-dashboard-redhat-ods-applications.apps.cluster-msf9p.dynamic.redhatworkshops.io/projects/neuroface
       title: OpenShift AI Project
       icon: web
 spec:

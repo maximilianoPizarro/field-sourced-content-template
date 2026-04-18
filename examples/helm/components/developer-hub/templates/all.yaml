@@ -436,6 +436,8 @@ data:
           target: https://github.com/maximilianoPizarro/field-sourced-content-template/blob/one/examples/helm/components/industrial-edge-tst/catalog-info.yaml
         - type: url
           target: https://github.com/maximilianoPizarro/field-sourced-content-template/blob/one/examples/helm/components/neuroface-cv/catalog-info.yaml
+        - type: url
+          target: https://github.com/maximilianoPizarro/field-sourced-content-template/blob/one/examples/helm/components/operators/catalog-info.yaml
       rules:
         - allow: [Component, Group, User, Resource, Location, Template, API, APIProduct, System, Domain]
     proxy:

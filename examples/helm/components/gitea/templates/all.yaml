@@ -62,17 +62,10 @@ spec:
               set -e
               BASE="http://gitea-http.gitea.svc.cluster.local:3000"
               until curl -sf "$BASE/api/v1/version"; do
-                sleep 3
+                echo "Waiting for Gitea API..."
+                sleep 5
               done
-              USER_JSON=$(printf '%s' "{\"username\":\"${ADMIN_USER}\",\"password\":\"${ADMIN_PASS}\",\"email\":\"${ADMIN_EMAIL}\",\"must_change_password\":false,\"send_notify\":false}")
-              CODE=$(curl -sS -o /tmp/user_resp -w "%{http_code}" -X POST "$BASE/api/v1/admin/users" \
-                -H "Content-Type: application/json" \
-                -d "$USER_JSON" || true)
-              if [ "$CODE" != "201" ] && [ "$CODE" != "422" ]; then
-                echo "admin user create failed: HTTP $CODE" >&2
-                cat /tmp/user_resp >&2 || true
-                exit 1
-              fi
+              echo "Gitea is ready. Setting up orgs and users..."
               ORG_JSON='{"username":"developer-hub","full_name":"Developer Hub"}'
               CODE2=$(curl -sS -o /tmp/org_resp -w "%{http_code}" -X POST "$BASE/api/v1/orgs" \
                 -u "${ADMIN_USER}:${ADMIN_PASS}" \

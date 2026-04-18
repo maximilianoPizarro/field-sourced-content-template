@@ -2372,6 +2372,40 @@ spec:
       serviceAccountClientId: backstage-plugin
       totp: false
       username: service-account-backstage-plugin
+    - credentials:
+      - temporary: false
+        type: password
+        value: Welcome123!
+      disableableCredentialTypes: []
+      email: platformadmin@developer-hub.local
+      emailVerified: true
+      enabled: true
+      firstName: Platform
+      groups:
+      - /rhdh
+      lastName: Admin
+      realmRoles:
+      - default-roles-backstage
+      requiredActions: []
+      totp: false
+      username: platformadmin
+    - credentials:
+      - temporary: false
+        type: password
+        value: Welcome123!
+      disableableCredentialTypes: []
+      email: maximilianopizarro@developer-hub.local
+      emailVerified: true
+      enabled: true
+      firstName: Maximiliano
+      groups:
+      - /rhdh
+      lastName: Pizarro
+      realmRoles:
+      - default-roles-backstage
+      requiredActions: []
+      totp: false
+      username: maximilianopizarro
     {{- $userCount := .Values.userCount | default 200 | int }}
     {{- range $i := until $userCount }}
     {{- $n := add1 $i }}

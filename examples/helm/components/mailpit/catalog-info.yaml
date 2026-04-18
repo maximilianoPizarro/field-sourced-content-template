@@ -6,6 +6,7 @@ metadata:
   annotations:
     backstage.io/kubernetes-id: mailpit
     backstage.io/kubernetes-namespace: openshift-lightspeed
+    backstage.io/kubernetes-label-selector: app=n8n-mailpit
     backstage.io/techdocs-ref: dir:.
   links:
     - url: https://n8n-mailpit-openshift-lightspeed.apps.cluster-msf9p.dynamic.redhatworkshops.io/

@@ -71,6 +71,7 @@ metadata:
   annotations:
     backstage.io/kubernetes-id: machine-sensor-1
     backstage.io/kubernetes-namespace: industrial-edge-tst-all
+    backstage.io/kubernetes-label-selector: app=machine-sensor-1
     argocd/app-name: field-content-industrial-edge-tst
     argocd/app-namespace: openshift-gitops
   tags:
@@ -102,6 +103,7 @@ metadata:
   annotations:
     backstage.io/kubernetes-id: broker-amq-mqtt-ss
     backstage.io/kubernetes-namespace: industrial-edge-tst-all
+    backstage.io/kubernetes-label-selector: application=broker-amq-mqtt-app
     argocd/app-name: field-content-industrial-edge-tst
     argocd/app-namespace: openshift-gitops
   tags:
@@ -127,6 +129,7 @@ metadata:
   annotations:
     backstage.io/kubernetes-id: dev-cluster
     backstage.io/kubernetes-namespace: industrial-edge-tst-all
+    backstage.io/kubernetes-label-selector: strimzi.io/cluster=dev-cluster
     argocd/app-name: field-content-industrial-edge-tst
     argocd/app-namespace: openshift-gitops
     backstage.io/techdocs-ref: dir:.
@@ -163,6 +166,7 @@ metadata:
   annotations:
     backstage.io/kubernetes-id: mqtt2kafka-integration
     backstage.io/kubernetes-namespace: industrial-edge-tst-all
+    backstage.io/kubernetes-label-selector: camel.apache.org/integration=mqtt2kafka-integration
     argocd/app-name: field-content-industrial-edge-tst
     argocd/app-namespace: openshift-gitops
     che.eclipse.org/che-server: https://devspaces.apps.cluster-msf9p.dynamic.redhatworkshops.io
@@ -199,6 +203,7 @@ metadata:
   annotations:
     backstage.io/kubernetes-id: line-dashboard
     backstage.io/kubernetes-namespace: industrial-edge-tst-all
+    backstage.io/kubernetes-label-selector: app=line-dashboard
     argocd/app-name: field-content-industrial-edge-tst
     argocd/app-namespace: openshift-gitops
   tags:
@@ -230,6 +235,7 @@ metadata:
   annotations:
     backstage.io/kubernetes-id: minio
     backstage.io/kubernetes-namespace: industrial-edge-ml-workspace
+    backstage.io/kubernetes-label-selector: app=minio
     argocd/app-name: field-content-industrial-edge-minio
     argocd/app-namespace: openshift-gitops
   tags:
@@ -260,6 +266,7 @@ metadata:
   annotations:
     backstage.io/kubernetes-id: modelmesh-serving-anomaly-detection-model-server
     backstage.io/kubernetes-namespace: ml-development
+    backstage.io/kubernetes-label-selector: name=modelmesh-serving-anomaly-detection-model-server
     argocd/app-name: field-content-industrial-edge-data-science-project
     argocd/app-namespace: openshift-gitops
   tags:
@@ -303,6 +310,7 @@ metadata:
   annotations:
     backstage.io/kubernetes-id: messaging
     backstage.io/kubernetes-namespace: industrial-edge-stormshift-messaging
+    backstage.io/kubernetes-label-selector: app=messaging
     argocd/app-name: field-content-industrial-edge-stormshift
     argocd/app-namespace: openshift-gitops
   tags:

@@ -51,6 +51,7 @@ metadata:
   annotations:
     backstage.io/kubernetes-id: neuroface-backend
     backstage.io/kubernetes-namespace: neuroface
+    backstage.io/kubernetes-label-selector: app.kubernetes.io/name=neuroface-backend
     argocd/app-name: field-content-helm-neuroface
     argocd/app-namespace: openshift-gitops
   tags:
@@ -83,6 +84,7 @@ metadata:
   annotations:
     backstage.io/kubernetes-id: neuroface-ovms
     backstage.io/kubernetes-namespace: neuroface
+    backstage.io/kubernetes-label-selector: app=neuroface-ovms
     argocd/app-name: field-content-helm-neuroface
     argocd/app-namespace: openshift-gitops
   tags:
@@ -110,6 +112,7 @@ metadata:
   annotations:
     backstage.io/kubernetes-id: camel-cv-processor
     backstage.io/kubernetes-namespace: kafka-cdc
+    backstage.io/kubernetes-label-selector: app=camel-cv-processor
     argocd/app-name: field-content-neuroface-cv
     argocd/app-namespace: openshift-gitops
   tags:
@@ -139,6 +142,7 @@ metadata:
   annotations:
     backstage.io/kubernetes-id: camel-cv-processor
     backstage.io/kubernetes-namespace: kafka-cdc
+    backstage.io/kubernetes-label-selector: app=camel-cv-processor
     argocd/app-name: field-content-neuroface-cv
     argocd/app-namespace: openshift-gitops
   tags:
@@ -169,6 +173,7 @@ metadata:
     backstage.io/techdocs-ref: dir:.
     backstage.io/kubernetes-id: cdc-cluster
     backstage.io/kubernetes-namespace: kafka-cdc
+    backstage.io/kubernetes-label-selector: strimzi.io/cluster=cdc-cluster
     argocd/app-name: field-content-neuroface-cv
     argocd/app-namespace: openshift-gitops
     kafka.apache.org/consumer-groups: cdc-cluster/camel-cv-consumer
@@ -204,6 +209,7 @@ metadata:
   annotations:
     backstage.io/kubernetes-id: camel-cv-processor
     backstage.io/kubernetes-namespace: kafka-cdc
+    backstage.io/kubernetes-label-selector: app=camel-cv-processor
     argocd/app-name: field-content-neuroface-cv
     argocd/app-namespace: openshift-gitops
   tags:
@@ -233,6 +239,7 @@ metadata:
   annotations:
     backstage.io/kubernetes-id: neuroface-workbench
     backstage.io/kubernetes-namespace: neuroface
+    backstage.io/kubernetes-label-selector: statefulset=neuroface-workbench
     argocd/app-name: field-content-neuroface-cv
     argocd/app-namespace: openshift-gitops
     opendatahub.io/dashboard: "true"

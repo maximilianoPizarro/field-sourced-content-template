@@ -38,7 +38,7 @@ spec:
     trustyai:
       managementState: Removed
     workbenches:
-      managementState: Removed
+      managementState: Managed
 ---
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup

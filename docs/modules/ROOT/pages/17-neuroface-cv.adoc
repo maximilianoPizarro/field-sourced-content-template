@@ -1,0 +1,214 @@
+= NeuroFace CV — Computer Vision Pipeline
+
+++++
+<div id="scene-neuroface" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-neuroface', {height:400, camX:0, camY:10, camZ:22});
+  if(!ctx) return;
+  var cam  = ThreeHelper.createNode(ctx.scene,'Webcam',0x607D8B,-12,0,0);
+  var fe   = ThreeHelper.createNode(ctx.scene,'Frontend',0x9C27B0,-6,0,0);
+  var be   = ThreeHelper.createNode(ctx.scene,'Backend',0x9C27B0,0,0,0);
+  var ovms = ThreeHelper.createNode(ctx.scene,'OpenVINO',0x0068B5,0,3,3);
+  var pvc  = ThreeHelper.createNode(ctx.scene,'Model PVC',0x78909C,5,3,3);
+  var cvp  = ThreeHelper.createNode(ctx.scene,'CV Processor',0xFF9800,6,0,0);
+  var kf   = ThreeHelper.createNode(ctx.scene,'Kafka',0x231F20,12,0,0);
+  var cons = ThreeHelper.createNode(ctx.scene,'Consumer',0xFF9800,12,0,-4);
+  var mail = ThreeHelper.createNode(ctx.scene,'Mailpit',0x42A5F5,12,0,-8);
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,cam,fe,0x607D8B,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,fe,be,0x9C27B0,{speed:0.009}),
+    ThreeHelper.createEdge(ctx.scene,be,ovms,0x0068B5,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,pvc,ovms,0x78909C,{speed:0.004}),
+    ThreeHelper.createEdge(ctx.scene,cvp,ovms,0x0068B5,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,cvp,be,0xFF9800,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,cvp,kf,0xFF9800,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,kf,cons,0x231F20,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,cons,mail,0x42A5F5,{speed:0.009})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
+== Descripción General
+
+El pipeline de *Computer Vision* de NeuroFace extiende la arquitectura event-driven del demo, integrando reconocimiento facial con streaming de eventos vía Kafka y notificaciones por email.
+
+=== Componentes
+
+[cols="1,2,1",options="header"]
+|===
+| Componente | Función | Namespace
+
+| *NeuroFace Frontend*
+| Aplicación Angular para registro de rostros y detección en vivo vía webcam (WebRTC)
+| `neuroface`
+
+| *NeuroFace Backend*
+| API FastAPI + OpenCV con reconocedor LBPH — entrena labels y expone `/api/labels`
+| `neuroface`
+
+| *OpenVINO Model Server (OVMS)*
+| Servidor de inferencia Intel que sirve `face-detection-retail-0005` (FP16) vía REST/gRPC, desplegado como KServe `InferenceService`
+| `neuroface`
+
+| *Model PVC*
+| PersistentVolumeClaim de 1 Gi que almacena los archivos `.xml/.bin` del Intel Model Zoo
+| `neuroface`
+
+| *Jupyter Workbench*
+| Notebook de OpenShift AI para experimentación con modelos
+| `neuroface`
+
+| *CV Processor*
+| Microservicio Python (UBI9) — pollea OVMS `/v1/config` y Backend `/api/labels` cada 30 s
+| `kafka-cdc`
+
+| *Kafka Topic*
+| `cv.face.detections` en Strimzi `cdc-cluster` (SASL_SSL + SCRAM-SHA-512)
+| `kafka-cdc`
+
+| *Kafka Consumer*
+| Mismo proceso Python — consume eventos y rutea por `event_type`
+| `kafka-cdc`
+
+| *Mailpit*
+| SMTP + HTTP API — recibe emails HTML formateados por tipo de evento
+| `openshift-lightspeed`
+|===
+
+== Flujo de Eventos
+
+El CV Processor ejecuta un loop de polling continuo:
+
+. *Registrar rostro* — El usuario registra un rostro en la UI de NeuroFace (webcam → Frontend → Backend LBPH)
+. *Poll OVMS* — `GET /v1/config` cada 30 segundos para verificar estado del modelo
+. *Poll Backend* — `GET /api/labels` cada 30 segundos para detectar nuevos rostros registrados
+. *Producir a Kafka* — Publica eventos JSON al topic `cv.face.detections` (SASL_SSL autenticado)
+. *Consumir de Kafka* — El mismo proceso lee eventos y rutea por `event_type`
+. *Enviar email* — Formatea HTML y envía `POST /api/v1/send` a Mailpit
+
+=== Tipos de Evento
+
+[cols="1,3,2",options="header"]
+|===
+| Tipo | Descripción | Destinatario
+
+| `person_registered`
+| Se detecta un nuevo label en la respuesta de `/api/labels`
+| Security Admin — `admin@neuralbank.io`
+
+| `ovms_model_status`
+| OVMS `/v1/config` retorna la configuración del modelo
+| ML Ops — `mlops@neuralbank.io`
+|===
+
+=== Schema del Evento Kafka
+
+[source,json]
+----
+{
+  "event_type": "person_registered",
+  "timestamp": "2025-06-15T14:32:00Z",
+  "source": "neuroface-lbph",
+  "person_name": "Max",
+  "face_count": 1,
+  "detection_method": "lbph",
+  "camera_id": "label-registry"
+}
+----
+
+[source,json]
+----
+{
+  "event_type": "ovms_model_status",
+  "timestamp": "2025-06-15T14:32:30Z",
+  "source": "openvino-model-server",
+  "model_name": "face-detection-retail-0005",
+  "model_server": "ovms",
+  "ovms_response": { "face-detection-retail-0005": { "model_version_status": [{"state": "AVAILABLE"}] } },
+  "camera_id": "ovms-monitor"
+}
+----
+
+== Seguridad
+
+* *Kafka*: SASL_SSL con SCRAM-SHA-512 (credenciales `cdc-user` desde Kubernetes Secret)
+* *Kafka Console OIDC*: Autenticado vía Keycloak (RHBK) — roles: `platformadmin` → admin, `userN` → viewer
+* *OVMS*: Acceso interno al cluster únicamente (sin Route externa)
+* *Tráfico inter-namespace*: Todas las conexiones Kafka usan TLS
+
+== Integración con OpenShift AI
+
+El modelo de NeuroFace se sirve a través de *OpenShift AI* usando KServe:
+
+[cols="1,3",options="header"]
+|===
+| Recurso | Detalle
+
+| *ServingRuntime*
+| `ovms-face-detection` — runtime custom basado en la imagen OVMS
+
+| *InferenceService*
+| `face-detection-retail-0005` — modo RawDeployment, storage desde PVC
+
+| *Jupyter Workbench*
+| `neuroface-workbench` — para experimentación y debugging de modelos
+|===
+
+== GitOps y ArgoCD
+
+Todos los recursos del pipeline CV se despliegan vía GitOps:
+
+* *`field-content-neuroface-cv`*: Application ArgoCD para OVMS, InferenceService, CV Processor, Notebook
+* *`field-content-mailpit`*: Application ArgoCD para Mailpit (SMTP sink)
+* *`field-content-kafka-console`*: Console con OIDC habilitado
+
+La definición completa está en `examples/helm/components/neuroface-cv/templates/all.yaml`.
+
+== Verificación
+
+=== Estado del Modelo OVMS
+
+[source,bash]
+----
+curl -s http://face-detection-retail-0005-predictor.neuroface.svc.cluster.local:8080/v1/config
+----
+
+=== Labels Registrados
+
+[source,bash]
+----
+curl -s http://neuroface-backend.neuroface.svc.cluster.local:8000/api/labels
+----
+
+=== Eventos en Kafka
+
+Navegar a *Kafka Console → Topics → cv.face.detections → Messages* para ver eventos en tiempo real.
+
+=== Emails de Notificación
+
+Abrir *Mailpit* (`\https://n8n-mailpit-openshift-lightspeed.{cluster_domain}`) para ver los emails enviados por el consumer.
+
+== Acceso
+
+[cols="1,2",options="header"]
+|===
+| Servicio | URL
+
+| *NeuroFace App*
+| `\https://neuroface-frontend-neuroface.{cluster_domain}`
+
+| *OpenShift AI*
+| `\https://rhods-dashboard-redhat-ods-applications.{cluster_domain}/projects/neuroface`
+
+| *Kafka Console*
+| `\https://kafka-console-kafka-cdc.{cluster_domain}`
+
+| *Mailpit*
+| `\https://n8n-mailpit-openshift-lightspeed.{cluster_domain}`
+|===

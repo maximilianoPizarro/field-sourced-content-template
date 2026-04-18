@@ -292,6 +292,15 @@ data:
       - name: Grafana
         url: 'https://grafana-observability.{{ .Values.deployer.domain }}'
         external: true
+      - name: NeuroFace
+        url: 'https://neuroface-frontend-neuroface.{{ .Values.deployer.domain }}'
+        external: true
+      - name: OpenShift AI
+        url: 'https://rhods-dashboard-redhat-ods-applications.{{ .Values.deployer.domain }}'
+        external: true
+      - name: Mailpit
+        url: 'https://n8n-mailpit-openshift-lightspeed.{{ .Values.deployer.domain }}'
+        external: true
 ---
 # Showroom PVC
 apiVersion: v1

@@ -16,3 +16,5 @@
 
 * xref:15-industrial-edge.adoc[— Industrial Edge Pattern —]
 * xref:16-ie-sizing.adoc[Capacity Planning & Infrastructure]
+
+* xref:17-neuroface-cv.adoc[— Computer Vision Pipeline —]

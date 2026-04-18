@@ -4,7 +4,7 @@ site:
 content:
   sources:
     - url: https://github.com/maximilianoPizarro/field-sourced-content-template.git
-      branches: main
+      branches: one
       start_path: showroom/content
 asciidoc:
   attributes:

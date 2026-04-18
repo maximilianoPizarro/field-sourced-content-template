@@ -7,7 +7,7 @@ showroom:
   # Lab guide Git repository
   content:
     repoUrl: "https://github.com/maximilianoPizarro/field-sourced-content-template.git"
-    repoRef: "main"
+    repoRef: "one"
     antoraPlaybook: "showroom/site.yml"
     image: "quay.io/rhpds/showroom-content:v1.3.1"
 

@@ -17,6 +17,9 @@
   var sf = ThreeHelper.createNode(ctx.scene,'SonataFlow',0x0066CC,5,0,3);
   var api = ThreeHelper.createNode(ctx.scene,'Apicurio',0x1A73E8,0,3,4);
   var graf = ThreeHelper.createNode(ctx.scene,'Grafana',0xF46800,-5,3,4);
+  var nf = ThreeHelper.createNode(ctx.scene,'NeuroFace',0x9C27B0,-5,0,-5);
+  var ovms = ThreeHelper.createNode(ctx.scene,'OpenVINO',0x0068B5,0,0,-5);
+  var cvp = ThreeHelper.createNode(ctx.scene,'CV Processor',0xFF9800,5,0,-6);
   var edges = [
     ThreeHelper.createEdge(ctx.scene,pg,deb,0x336791,{speed:0.008}),
     ThreeHelper.createEdge(ctx.scene,deb,kf,0xE53935,{speed:0.01}),
@@ -24,7 +27,12 @@
     ThreeHelper.createEdge(ctx.scene,cam,mail,0x42A5F5,{speed:0.009}),
     ThreeHelper.createEdge(ctx.scene,kf,sf,0x0066CC,{speed:0.006}),
     ThreeHelper.createEdge(ctx.scene,kf,api,0x1A73E8,{speed:0.005}),
-    ThreeHelper.createEdge(ctx.scene,kf,graf,0xF46800,{speed:0.004})
+    ThreeHelper.createEdge(ctx.scene,kf,graf,0xF46800,{speed:0.004}),
+    ThreeHelper.createEdge(ctx.scene,nf,ovms,0x9C27B0,{speed:0.009}),
+    ThreeHelper.createEdge(ctx.scene,cvp,ovms,0x0068B5,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,cvp,nf,0xFF9800,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,cvp,kf,0xFF9800,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,kf,mail,0x42A5F5,{speed:0.005})
   ];
   ThreeHelper.animate(ctx, edges);
 })();
@@ -77,6 +85,18 @@ This environment wires a production-style event backbone: relational data change
 | Red Hat Developer Hub
 | Self-service portal, software templates, and golden paths
 | link:https://backstage-developer-hub-developer-hub.{cluster_domain}[Developer Hub^]
+
+| NeuroFace (Computer Vision)
+| Facial recognition with LBPH + OpenVINO Model Server (face-detection-retail-0005)
+| link:https://neuroface-frontend-neuroface.{cluster_domain}[NeuroFace App^]
+
+| OpenVINO Model Server
+| Intel inference server deployed as KServe InferenceService on OpenShift AI
+| link:https://rhods-dashboard-redhat-ods-applications.{cluster_domain}/projects/neuroface[OpenShift AI^]
+
+| CV Processor (Python)
+| Polls OVMS and NeuroFace labels, publishes events to Kafka topic `cv.face.detections`
+| Events visible in link:https://kafka-console-kafka-cdc.{cluster_domain}[Kafka Console^]
 |===
 
 == Demo steps
@@ -93,6 +113,11 @@ Work through the guides in order. Each page focuses on one slice of the platform
 . xref:08-reliability.adoc[Reliability & DRP] — Resilience patterns and recovery
 . xref:09-operations.adoc[Operations] — Day-2 tasks for the demo stack
 . xref:10-devspaces.adoc[Self-service IDE] — Cloud IDE and developer experience
+
+*Computer Vision Pipeline*
+
+[start=11]
+. xref:18-neuroface-cv.adoc[NeuroFace CV Pipeline] — Facial recognition with OpenVINO, Kafka events, and email alerts
 
 == Terminal
 

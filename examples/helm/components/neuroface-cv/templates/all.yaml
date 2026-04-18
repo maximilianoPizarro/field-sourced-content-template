@@ -342,9 +342,11 @@ metadata:
     argocd.argoproj.io/sync-wave: "2"
 data:
   cv-processor.py: |
-    import os, json, time, threading, logging, ssl
+    import os, json, time, threading, logging, ssl, locale
     from datetime import datetime, timezone
     import requests
+    from requests.adapters import HTTPAdapter
+    from urllib3.util.retry import Retry
     from confluent_kafka import Producer, Consumer, KafkaError
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
@@ -375,6 +377,15 @@ data:
 
     producer = Producer(kafka_conf())
 
+    _mail_session = requests.Session()
+    _retry = Retry(total=3, backoff_factor=1, status_forcelist=[502, 503, 504])
+    _mail_session.mount("http://", HTTPAdapter(max_retries=_retry))
+    _mail_session.mount("https://", HTTPAdapter(max_retries=_retry))
+
+    def human_ts():
+        now = datetime.now(timezone.utc)
+        return now.strftime("%d %b %Y — %H:%M:%S UTC")
+
     def publish(event):
         payload = json.dumps(event)
         producer.produce(TOPIC, value=payload.encode())
@@ -393,7 +404,7 @@ data:
                     "model_server":  "ovms",
                     "ovms_response": r.json(),
                     "camera_id":     "ovms-monitor",
-                    "timestamp":     datetime.now(timezone.utc).isoformat(),
+                    "timestamp":     human_ts(),
                     "person_name":   "system",
                     "confidence":    1.0,
                 })
@@ -421,7 +432,7 @@ data:
                             "face_count":       face_count,
                             "confidence":       1.0,
                             "camera_id":        "label-registry",
-                            "timestamp":        datetime.now(timezone.utc).isoformat(),
+                            "timestamp":        human_ts(),
                             "detection_method": "lbph",
                         })
                     publish({
@@ -431,7 +442,7 @@ data:
                         "face_count":       face_count,
                         "confidence":       1.0,
                         "camera_id":        "label-registry",
-                        "timestamp":        datetime.now(timezone.utc).isoformat(),
+                        "timestamp":        human_ts(),
                         "detection_method": "lbph",
                         "total_labels":     len(labels),
                     })
@@ -579,11 +590,15 @@ data:
             }
         else:
             return
-        try:
-            requests.post(f"{MAILPIT}/api/v1/send", json=mail, timeout=10)
-            log.info("Email sent: %s", mail["subject"])
-        except Exception as e:
-            log.warning("Mailpit error: %s", e)
+        for attempt in range(3):
+            try:
+                _mail_session.post(f"{MAILPIT}/api/v1/send", json=mail, timeout=15)
+                log.info("Email sent: %s", mail["subject"])
+                break
+            except Exception as e:
+                log.warning("Mailpit attempt %d/3 failed: %s", attempt + 1, e)
+                if attempt < 2:
+                    time.sleep(2 ** attempt)
 
     def consume_and_notify():
         c = Consumer(kafka_conf({"group.id": "cv-python-consumer", "auto.offset.reset": "latest"}))

@@ -1333,8 +1333,8 @@ spec:
           "type": "timeseries",
           "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
           "targets": [
-            {"expr": "sum(rate(kafka_server_brokertopicmetrics_messagesinpersec_total{namespace=~\"industrial-edge.*\", topic=~\".*temperature.*\"}[5m]))", "legendFormat": "temperature"},
-            {"expr": "sum(rate(kafka_server_brokertopicmetrics_messagesinpersec_total{namespace=~\"industrial-edge.*\", topic=~\".*vibration.*\"}[5m]))", "legendFormat": "vibration"}
+            {"expr": "sum(rate(kafka_topic_partition_current_offset{namespace=~\"industrial-edge.*\", topic=~\".*temperature.*\"}[5m])) by (topic)", "legendFormat": "{{`{{topic}}`}}"},
+            {"expr": "sum(rate(kafka_topic_partition_current_offset{namespace=~\"industrial-edge.*\", topic=~\".*vibration.*\"}[5m])) by (topic)", "legendFormat": "{{`{{topic}}`}}"}
           ],
           "fieldConfig": {"defaults": {"unit": "msg/s", "custom": {"fillOpacity": 20, "lineWidth": 2, "showPoints": "never"}}}
         },
@@ -1343,7 +1343,7 @@ spec:
           "type": "timeseries",
           "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
           "targets": [
-            {"expr": "kafka_consumergroup_lag{namespace=~\"industrial-edge.*\"} > 0", "legendFormat": "{{`{{consumergroup}}`}} / {{`{{topic}}`}}"}
+            {"expr": "kafka_consumergroup_lag{namespace=~\"industrial-edge.*\", topic=~\".*sensor.*\"}", "legendFormat": "{{`{{consumergroup}}`}} / {{`{{topic}}`}}"}
           ],
           "fieldConfig": {"defaults": {"unit": "short", "custom": {"fillOpacity": 10, "lineWidth": 2, "showPoints": "never"}}}
         },
@@ -1352,10 +1352,10 @@ spec:
           "type": "timeseries",
           "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
           "targets": [
-            {"expr": "kafka_connect_mirror_source_connector_replication_latency_ms{namespace=~\"industrial-edge.*\"}", "legendFormat": "{{`{{connector}}`}} latency"},
-            {"expr": "kafka_connect_mirror_source_connector_record_count{namespace=~\"industrial-edge.*\"}", "legendFormat": "{{`{{connector}}`}} records"}
+            {"expr": "sum(kafka_consumergroup_lag{namespace=\"industrial-edge-stormshift-messaging\", consumergroup=~\".*mirror.*\"}) by (topic)", "legendFormat": "MM2 lag: {{`{{topic}}`}}"},
+            {"expr": "sum(rate(kafka_topic_partition_current_offset{namespace=\"industrial-edge-data-lake\", topic=~\"factory-kafka-cluster.*\"}[5m])) by (topic)", "legendFormat": "replicated: {{`{{topic}}`}}"}
           ],
-          "fieldConfig": {"defaults": {"unit": "ms", "custom": {"fillOpacity": 15, "lineWidth": 2, "showPoints": "never"}}}
+          "fieldConfig": {"defaults": {"unit": "short", "custom": {"fillOpacity": 15, "lineWidth": 2, "showPoints": "never"}}}
         },
         {
           "title": "Under-Replicated Partitions by Cluster",

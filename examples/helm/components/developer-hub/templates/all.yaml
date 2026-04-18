@@ -885,6 +885,28 @@ metadata:
 apiVersion: v1
 kind: Secret
 metadata:
+  name: secrets-rhdh
+  namespace: developer-hub
+  labels:
+    rhdh.redhat.com/ext-config-sync: "true"
+type: Opaque
+stringData:
+  BACKEND_SECRET: "{{ .Values.backendSecret | default "a01bb6ee68d5afbd9e82402b1a37a73d900bc653d6dc2375dec06bce6d62f34d" }}"
+  KEYCLOAK_BASE_URL: "https://rhbk.{{ .Values.clusterDomain }}"
+  KEYCLOAK_METADATA_URL: "https://rhbk.{{ .Values.clusterDomain }}/realms/backstage/.well-known/openid-configuration"
+  KEYCLOAK_CLIENT_ID: "backstage"
+  KEYCLOAK_CLIENT_SECRET: "{{ .Values.keycloakClientSecret | default "FfzjFAAuQUGjZDtKUErTx9fOaqF7RV6m" }}"
+  KEYCLOAK_REALM: "backstage"
+  RHDH_BASE_URL: "https://backstage-developer-hub-developer-hub.{{ .Values.clusterDomain }}"
+  RHDH_HOST: "https://backstage-developer-hub-developer-hub.{{ .Values.clusterDomain }}"
+  RHDH_CALLBACK_URL: "https://backstage-developer-hub-developer-hub.{{ .Values.clusterDomain }}/api/auth/oidc/handler/frame"
+  ARGOCD_INSTANCE_2_URL: "https://openshift-gitops-server-openshift-gitops.{{ .Values.clusterDomain }}"
+  ARGOCD_INSTANCE_2_USERNAME: "admin"
+  MCP_TOKEN: "{{ .Values.mcpToken | default "IpIbd50gbMb1p2+iCigrhkm21pZwbn0g" }}"
+---
+apiVersion: v1
+kind: Secret
+metadata:
   annotations:
     kubernetes.io/service-account.name: default
   name: developer-hub-k8s-sa-token
@@ -978,6 +1000,7 @@ spec:
     extraEnvs:
       secrets:
       - name: secrets-rhdh
+      - name: rhdh-argocd-credentials
       - name: llama-stack-secrets
       - key: token
         name: developer-hub-k8s-sa-token
@@ -1050,3 +1073,93 @@ spec:
                     subPath: lightspeed-stack.yaml
                   - mountPath: /tmp/data
                     name: shared-storage
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: rhdh-argocd-secret-reader
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "create", "update", "patch"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: rhdh-argocd-secret-reader-binding
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+subjects:
+- kind: ServiceAccount
+  name: rhdh-argocd-sync
+  namespace: developer-hub
+roleRef:
+  kind: ClusterRole
+  name: rhdh-argocd-secret-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rhdh-argocd-sync
+  namespace: developer-hub
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rhdh-argocd-password-sync
+  namespace: developer-hub
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      serviceAccountName: rhdh-argocd-sync
+      restartPolicy: OnFailure
+      containers:
+      - name: sync
+        image: registry.redhat.io/openshift4/ose-cli:latest
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          echo "Reading ArgoCD admin password from openshift-gitops namespace..."
+          ARGOCD_PWD=$(oc get secret openshift-gitops-cluster -n openshift-gitops -o jsonpath='{.data.admin\.password}' | base64 -d)
+          if [ -z "$ARGOCD_PWD" ]; then
+            echo "ERROR: Could not read ArgoCD admin password"
+            exit 1
+          fi
+
+          CURRENT=$(oc get secret rhdh-argocd-credentials -n developer-hub -o jsonpath='{.data.ARGOCD_INSTANCE_2_PASSWORD}' 2>/dev/null | base64 -d 2>/dev/null)
+          if [ "$CURRENT" = "$ARGOCD_PWD" ]; then
+            echo "ArgoCD password already up to date"
+            exit 0
+          fi
+
+          echo "Creating/updating rhdh-argocd-credentials secret..."
+          cat <<EOSECRET | oc apply -f -
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: rhdh-argocd-credentials
+            namespace: developer-hub
+            labels:
+              rhdh.redhat.com/ext-config-sync: "true"
+          type: Opaque
+          stringData:
+            ARGOCD_INSTANCE_2_PASSWORD: "${ARGOCD_PWD}"
+          EOSECRET
+
+          echo "Restarting RHDH deployment to pick up new credentials..."
+          oc rollout restart deployment/backstage-developer-hub -n developer-hub 2>/dev/null || true
+          echo "Done."

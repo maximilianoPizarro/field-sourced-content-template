@@ -429,8 +429,145 @@ spec:
     errors.deadletterqueue.topic.replication.factor: 3
     errors.deadletterqueue.context.headers.enable: true
 ---
-apiVersion: batch/v1
-kind: CronJob
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cdc-data-simulator-script
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+data:
+  simulator.py: |
+    import os, time, random, string, logging
+    import psycopg2
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    log = logging.getLogger("cdc-simulator")
+
+    DB_HOST = os.getenv("PGHOST", "cdc-postgresql")
+    DB_NAME = os.getenv("PGDATABASE", "cdcdb")
+    DB_USER = os.getenv("PGUSER", "cdcuser")
+    DB_PASS = os.getenv("PGPASSWORD", "")
+    INTERVAL = int(os.getenv("INTERVAL_SECONDS", "60"))
+
+    PRODUCTS = [
+        ("Personal Loan", 5000, 50000),
+        ("Credit Card", 1000, 25000),
+        ("Mortgage", 100000, 500000),
+        ("Auto Loan", 10000, 80000),
+        ("Business Line", 20000, 200000),
+        ("Savings Account", 500, 10000),
+        ("Investment Fund", 5000, 100000),
+    ]
+    STATUSES = ["pending", "approved", "reviewing", "rejected"]
+    FIRST_NAMES = ["Ana", "Carlos", "Maria", "Pedro", "Laura", "Diego", "Sofia",
+                   "Miguel", "Valentina", "Andres", "Camila", "Javier", "Isabella",
+                   "Lucas", "Emma", "Mateo", "Lucia", "Daniel", "Paula", "Nicolas"]
+    LAST_NAMES = ["Garcia", "Lopez", "Rodriguez", "Martinez", "Fernandez", "Gonzalez",
+                  "Perez", "Sanchez", "Ramirez", "Torres", "Diaz", "Moreno", "Alvarez"]
+
+    def rand_str(n=6):
+        return "".join(random.choices(string.ascii_lowercase + string.digits, k=n))
+
+    def connect():
+        for attempt in range(30):
+            try:
+                conn = psycopg2.connect(host=DB_HOST, dbname=DB_NAME, user=DB_USER, password=DB_PASS)
+                conn.autocommit = True
+                return conn
+            except psycopg2.OperationalError as e:
+                log.warning("DB not ready (attempt %d/30): %s", attempt + 1, e)
+                time.sleep(10)
+        raise RuntimeError("Cannot connect to PostgreSQL after 30 attempts")
+
+    def ensure_tables(cur):
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS customers (
+                id SERIAL PRIMARY KEY,
+                first_name VARCHAR(100) NOT NULL,
+                last_name VARCHAR(100) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS orders (
+                id SERIAL PRIMARY KEY,
+                customer_id INTEGER REFERENCES customers(id),
+                product VARCHAR(255) NOT NULL,
+                amount DECIMAL(10,2) NOT NULL,
+                status VARCHAR(50) DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+    def insert_customer(cur):
+        fn = random.choice(FIRST_NAMES)
+        ln = random.choice(LAST_NAMES)
+        email = f"{fn.lower()}.{ln.lower()}.{rand_str()}@neuralbank.io"
+        cur.execute(
+            "INSERT INTO customers (first_name, last_name, email) VALUES (%s, %s, %s) RETURNING id",
+            (fn, ln, email),
+        )
+        cid = cur.fetchone()[0]
+        log.info("Inserted customer id=%d: %s %s <%s>", cid, fn, ln, email)
+        return cid
+
+    def insert_order(cur, customer_id):
+        product, lo, hi = random.choice(PRODUCTS)
+        amount = round(random.uniform(lo, hi), 2)
+        status = random.choice(STATUSES)
+        cur.execute(
+            "INSERT INTO orders (customer_id, product, amount, status) VALUES (%s, %s, %s, %s) RETURNING id",
+            (customer_id, product, amount, status),
+        )
+        oid = cur.fetchone()[0]
+        log.info("Inserted order id=%d: %s $%.2f [%s] for customer %d", oid, product, amount, status, customer_id)
+
+    def update_random_order(cur):
+        cur.execute("SELECT id FROM orders ORDER BY random() LIMIT 1")
+        row = cur.fetchone()
+        if row:
+            new_status = random.choice(STATUSES)
+            cur.execute("UPDATE orders SET status = %s WHERE id = %s", (new_status, row[0]))
+            log.info("Updated order id=%d status → %s", row[0], new_status)
+
+    def main():
+        log.info("CDC Data Simulator starting (interval=%ds)", INTERVAL)
+        conn = connect()
+        cur = conn.cursor()
+        ensure_tables(cur)
+        log.info("Tables verified, starting simulation loop")
+
+        while True:
+            try:
+                action = random.choices(["customer", "order", "update"], weights=[40, 40, 20])[0]
+                if action == "customer":
+                    insert_customer(cur)
+                elif action == "order":
+                    cur.execute("SELECT id FROM customers ORDER BY random() LIMIT 1")
+                    row = cur.fetchone()
+                    if row:
+                        insert_order(cur, row[0])
+                    else:
+                        cid = insert_customer(cur)
+                        insert_order(cur, cid)
+                else:
+                    update_random_order(cur)
+            except psycopg2.Error as e:
+                log.error("DB error: %s", e)
+                try:
+                    conn = connect()
+                    cur = conn.cursor()
+                except Exception:
+                    pass
+            time.sleep(INTERVAL)
+
+    if __name__ == "__main__":
+        main()
+---
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: cdc-data-simulator
   namespace: kafka-cdc
@@ -439,34 +576,43 @@ metadata:
   labels:
     app: cdc-data-simulator
     app.kubernetes.io/part-of: cdc-demo
+    app.openshift.io/runtime: python
 spec:
-  schedule: "* * * * *"
-  successfulJobsHistoryLimit: 3
-  failedJobsHistoryLimit: 1
-  jobTemplate:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cdc-data-simulator
+  template:
+    metadata:
+      labels:
+        app: cdc-data-simulator
     spec:
-      template:
-        metadata:
-          labels:
-            app: cdc-data-simulator
-        spec:
-          containers:
-          - name: simulator
-            image: registry.redhat.io/rhel9/postgresql-16:latest
-            command: ["/bin/sh", "-c"]
-            args:
-            - |
-              PGPASSWORD={{ .Values.postgresql.password }} psql -h cdc-postgresql -U {{ .Values.postgresql.username }} -d {{ .Values.postgresql.database }} -c \
-              "INSERT INTO customers (first_name, last_name, email) VALUES (
-                'Demo-' || substr(md5(random()::text), 1, 6),
-                'User-' || to_char(now(), 'HH24MI'),
-                'demo-' || substr(md5(random()::text), 1, 8) || '@neuralbank.io'
-              );"
-            resources:
-              requests:
-                cpu: 10m
-                memory: 32Mi
-              limits:
-                cpu: 50m
-                memory: 64Mi
-          restartPolicy: OnFailure
+      containers:
+        - name: simulator
+          image: registry.access.redhat.com/ubi9/python-312:latest
+          command: ["bash", "-c", "pip install --quiet psycopg2-binary && python3 /scripts/simulator.py"]
+          env:
+            - name: PGHOST
+              value: cdc-postgresql
+            - name: PGDATABASE
+              value: {{ .Values.postgresql.database }}
+            - name: PGUSER
+              value: {{ .Values.postgresql.username }}
+            - name: PGPASSWORD
+              value: {{ .Values.postgresql.password }}
+            - name: INTERVAL_SECONDS
+              value: "60"
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+      volumes:
+        - name: script
+          configMap:
+            name: cdc-data-simulator-script

@@ -1007,7 +1007,8 @@ spec:
     - kafka-cdc
   podMetricsEndpoints:
   - interval: 30s
-    port: tcp-prometheus
+    port: rest-api
+    path: /metrics
   selector:
     matchLabels:
       strimzi.io/cluster: cdc-bridge
@@ -1030,6 +1031,7 @@ spec:
   podMetricsEndpoints:
   - interval: 30s
     port: tcp-prometheus
+    path: /metrics
   selector:
     matchLabels:
       strimzi.io/kind: KafkaMirrorMaker2

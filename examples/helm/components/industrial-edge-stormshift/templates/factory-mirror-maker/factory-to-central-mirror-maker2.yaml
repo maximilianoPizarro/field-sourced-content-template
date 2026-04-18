@@ -1,3 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mm2-metrics-config
+  namespace: industrial-edge-stormshift-messaging
+data:
+  metrics-config.yml: |
+    lowercaseOutputName: true
+    lowercaseOutputLabelNames: true
+    rules:
+    - pattern: "kafka.connect<type=connect-metrics, client-id=(.+)><>(.+):"
+      name: "kafka_connect_$2"
+      labels:
+        client: "$1"
+    - pattern: "kafka.connect<type=connector-metrics, connector=(.+)><>(.+):"
+      name: "kafka_connect_connector_$2"
+      labels:
+        connector: "$1"
+    - pattern: "kafka.connect.mirror<type=MirrorSourceConnector, target=(.+), topic=(.+), partition=(.+)><>(.+):"
+      name: "kafka_connect_mirror_source_$4"
+      labels:
+        target: "$1"
+        topic: "$2"
+        partition: "$3"
+    - pattern: "kafka.connect.mirror<type=MirrorCheckpointConnector, source=(.+), target=(.+)><>(.+):"
+      name: "kafka_connect_mirror_checkpoint_$3"
+      labels:
+        source: "$1"
+        target: "$2"
+---
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaMirrorMaker2
 metadata:
@@ -7,6 +37,12 @@ spec:
   version: 4.0.0
   replicas: 1
   connectCluster: production-kafka-cluster
+  metricsConfig:
+    type: jmxPrometheusExporter
+    valueFrom:
+      configMapKeyRef:
+        name: mm2-metrics-config
+        key: metrics-config.yml
   clusters:
     - alias: production-kafka-cluster
       bootstrapServers: 'prod-cluster-kafka-bootstrap.industrial-edge-data-lake.svc:9092'

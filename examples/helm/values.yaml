@@ -411,6 +411,7 @@ connectivityLink:
       values:
         ovms:
           enabled: true
+          externalUrl: "http://neuroface-ovms.neuroface.svc:8000"
           modelmesh:
             enabled: false
         litellm:

@@ -1,3 +1,160 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: neuroface-ovms-config
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  config.json: |
+    {
+      "model_config_list": [
+        {
+          "config": {
+            "name": "face-detection-retail-0005",
+            "base_path": "/models/face-detection-retail-0005"
+          }
+        }
+      ]
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: neuroface-ovms
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    app: neuroface-ovms
+    app.kubernetes.io/part-of: neuroface
+    app.openshift.io/runtime: openvino
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: neuroface-ovms
+  template:
+    metadata:
+      labels:
+        app: neuroface-ovms
+    spec:
+      initContainers:
+        - name: download-model
+          image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+          command:
+            - sh
+            - -c
+            - |
+              MODEL_DIR=/models/face-detection-retail-0005/1
+              mkdir -p "$MODEL_DIR"
+              BASE_URL="https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/face-detection-retail-0005/FP16"
+              echo "Downloading face-detection-retail-0005 FP16..."
+              curl -sL "$BASE_URL/face-detection-retail-0005.xml" -o "$MODEL_DIR/face-detection-retail-0005.xml"
+              curl -sL "$BASE_URL/face-detection-retail-0005.bin" -o "$MODEL_DIR/face-detection-retail-0005.bin"
+              ls -lh "$MODEL_DIR/"
+              echo "Model download complete"
+          volumeMounts:
+            - name: model-store
+              mountPath: /models
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      containers:
+        - name: ovms
+          image: openvino/model_server:2025.2.1
+          args:
+            - "--config_path=/config/config.json"
+            - "--rest_port=8000"
+            - "--port=9000"
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+              name: rest
+            - containerPort: 9000
+              protocol: TCP
+              name: grpc
+          volumeMounts:
+            - name: model-store
+              mountPath: /models
+              readOnly: true
+            - name: ovms-config
+              mountPath: /config
+              readOnly: true
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          readinessProbe:
+            httpGet:
+              path: /v1/config
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /v1/config
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+      volumes:
+        - name: model-store
+          emptyDir: {}
+        - name: ovms-config
+          configMap:
+            name: neuroface-ovms-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: neuroface-ovms
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    app: neuroface-ovms
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: 8000
+      protocol: TCP
+      name: rest
+    - port: 9000
+      targetPort: 9000
+      protocol: TCP
+      name: grpc
+  selector:
+    app: neuroface-ovms
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: neuroface-ovms
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    app: neuroface-ovms
+spec:
+  to:
+    kind: Service
+    name: neuroface-ovms
+    weight: 100
+  port:
+    targetPort: rest
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+---
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaTopic
 metadata:

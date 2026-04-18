@@ -274,9 +274,9 @@ metadata:
   namespace: default
   description: "Granite LLM Server — llama.cpp inference server for NeuroFace chat functionality"
   annotations:
-    backstage.io/kubernetes-id: granite-llm-server
+    backstage.io/kubernetes-id: granite-llm-predictor
     backstage.io/kubernetes-namespace: neuroface
-    backstage.io/kubernetes-label-selector: app=granite-llm-server
+    backstage.io/kubernetes-label-selector: app=isvc.granite-llm-predictor
     argocd/app-name: field-content-helm-neuroface
     argocd/app-namespace: openshift-gitops
   tags:

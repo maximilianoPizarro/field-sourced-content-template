@@ -426,7 +426,7 @@ connectivityLink:
           enabled: false
         chat:
           enabled: true
-          modelEndpoint: "http://granite-llm-server.neuroface.svc:8080"
+          modelEndpoint: "http://granite-llm-metrics.neuroface.svc:8080"
           modelName: "granite-3.1-2b-instruct"
         persistence:
           enabled: true

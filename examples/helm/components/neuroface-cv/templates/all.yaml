@@ -428,29 +428,114 @@ data:
                 log.warning("NeuroFace backend not ready: %s", e)
             time.sleep(30)
 
+    def _corporate_template(title, icon, accent, rows, footer_note):
+        row_html = ""
+        for label, value in rows:
+            row_html += (
+                f'<tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;'
+                f'font-size:13px;width:160px;font-weight:600">{label}</td>'
+                f'<td style="padding:8px 12px;border-bottom:1px solid #eee;color:#1a1a1a;'
+                f'font-size:13px">{value}</td></tr>'
+            )
+        return (
+            '<!DOCTYPE html><html><head><meta charset="utf-8"></head>'
+            '<body style="margin:0;padding:0;background:#f4f5f7;font-family:Arial,Helvetica,sans-serif">'
+            '<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;padding:24px 0">'
+            '<tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" '
+            'style="background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08)">'
+            f'<tr><td style="background:{accent};padding:24px 32px">'
+            '<table width="100%"><tr>'
+            '<td style="color:#fff;font-size:20px;font-weight:700;letter-spacing:-0.5px">'
+            f'{icon} {title}</td>'
+            '<td align="right" style="color:rgba(255,255,255,0.8);font-size:11px">'
+            'NeuralBank Security</td></tr></table></td></tr>'
+            '<tr><td style="padding:28px 32px 12px">'
+            '<table width="100%" cellpadding="0" cellspacing="0" '
+            'style="border:1px solid #e8e8e8;border-radius:6px;overflow:hidden">'
+            '<tr><td style="background:#fafafa;padding:10px 12px;font-size:11px;color:#999;'
+            'text-transform:uppercase;letter-spacing:1px;font-weight:700;border-bottom:2px solid '
+            f'{accent}">Event Details</td><td style="background:#fafafa;border-bottom:2px solid '
+            f'{accent}"></td></tr>{row_html}</table></td></tr>'
+            '<tr><td style="padding:0 32px 24px"><table width="100%" style="margin-top:16px;'
+            f'background:#f8f9fa;border-radius:6px;border-left:4px solid {accent}">'
+            f'<tr><td style="padding:12px 16px;font-size:12px;color:#555">{footer_note}</td>'
+            '</tr></table></td></tr>'
+            '<tr><td style="background:#151515;padding:16px 32px">'
+            '<table width="100%"><tr>'
+            '<td style="color:#999;font-size:11px">NeuroFace CV Pipeline &middot; '
+            'Event-Driven Architecture</td>'
+            '<td align="right" style="color:#666;font-size:11px">'
+            '<span style="color:#c00">&bull;</span> Red Hat OpenShift</td>'
+            '</tr></table></td></tr>'
+            '</table></td></tr></table></body></html>'
+        )
+
     def send_mail(event):
         etype = event.get("event_type")
         if etype == "person_registered":
+            name = event.get("person_name", "Unknown")
+            rows = [
+                ("Person Name", f'<span style="font-size:15px;font-weight:700;color:#c00">{name}</span>'),
+                ("Face Samples", str(event.get("face_count", 1))),
+                ("Detection Method", event.get("detection_method", "lbph").upper()),
+                ("Source", event.get("source", "neuroface-lbph")),
+                ("Camera / Registry", event.get("camera_id", "label-registry")),
+                ("Timestamp", event.get("timestamp", "")),
+                ("Kafka Topic", "cv.face.detections"),
+            ]
+            html = _corporate_template(
+                title="Person Registered",
+                icon="&#128100;",
+                accent="#c00",
+                rows=rows,
+                footer_note=(
+                    f'<strong>Action Required:</strong> A new identity "<strong>{name}</strong>" '
+                    'has been registered in the facial recognition system. Verify that this '
+                    'registration was authorized and review access logs in the Kafka Console.'
+                ),
+            )
             mail = {
                 "from": {"name": "NeuroFace CV Pipeline", "email": "neuroface@neuralbank.io"},
                 "to":   [{"name": "Security Admin", "email": "admin@neuralbank.io"}],
-                "subject": f"Person Registered: {event['person_name']}",
-                "html": f"<h2>New Person Registered</h2><p><b>Name:</b> {event['person_name']}</p>"
-                         f"<p><b>Face samples:</b> {event.get('face_count',1)}</p>"
-                         f"<p><b>Model:</b> {event.get('detection_method','lbph')}</p>"
-                         f"<p><b>Timestamp:</b> {event['timestamp']}</p>"
-                         f"<hr><p style='color:#666;font-size:12px'>NeuroFace LBPH — Event-Driven Architecture</p>",
+                "subject": f"\U0001f6a8 Person Registered: {name}",
+                "html": html,
             }
         elif etype == "ovms_model_status":
+            model = event.get("model_name", "face-detection-retail-0005")
+            server = event.get("model_server", "ovms")
+            resp = event.get("ovms_response", {})
+            status_str = "Available"
+            if isinstance(resp, dict):
+                for v in resp.values():
+                    if isinstance(v, dict):
+                        statuses = v.get("model_version_status", [])
+                        if statuses:
+                            status_str = statuses[0].get("state", "Available")
+            rows = [
+                ("Model Name", f'<strong>{model}</strong>'),
+                ("Server Type", server.upper()),
+                ("Status", f'<span style="color:#0a0;font-weight:700">\u2713 {status_str}</span>'),
+                ("Source", event.get("source", "openvino-model-server")),
+                ("Monitor ID", event.get("camera_id", "ovms-monitor")),
+                ("Timestamp", event.get("timestamp", "")),
+                ("Kafka Topic", "cv.face.detections"),
+            ]
+            html = _corporate_template(
+                title="Model Server Health",
+                icon="&#9881;",
+                accent="#0066cc",
+                rows=rows,
+                footer_note=(
+                    f'<strong>Informational:</strong> The inference model "<strong>{model}</strong>" '
+                    f'is reporting status <strong>{status_str}</strong>. '
+                    'This is a periodic health check from the CV Processor polling loop (every 30s).'
+                ),
+            )
             mail = {
                 "from": {"name": "NeuroFace CV Pipeline", "email": "neuroface@neuralbank.io"},
                 "to":   [{"name": "ML Ops", "email": "mlops@neuralbank.io"}],
-                "subject": f"OVMS Model Status: {event.get('model_name','')}",
-                "html": f"<h2>OpenVINO Model Server Status</h2>"
-                         f"<p><b>Model:</b> {event.get('model_name','')}</p>"
-                         f"<p><b>Server:</b> {event.get('model_server','')}</p>"
-                         f"<p><b>Timestamp:</b> {event['timestamp']}</p>"
-                         f"<hr><p style='color:#666;font-size:12px'>OVMS Monitor — Event-Driven Architecture</p>",
+                "subject": f"\u2699\ufe0f OVMS Health: {model} [{status_str}]",
+                "html": html,
             }
         else:
             return

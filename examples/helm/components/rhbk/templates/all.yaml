@@ -1560,6 +1560,39 @@ spec:
       webOrigins:
       - https://devspaces.{{ .Values.clusterDomain }}
     - alwaysDisplayInConsole: false
+      bearerOnly: false
+      clientAuthenticatorType: client-secret
+      clientId: kafka-console
+      consentRequired: false
+      defaultClientScopes:
+      - profile
+      - roles
+      - basic
+      - email
+      directAccessGrantsEnabled: false
+      enabled: true
+      frontchannelLogout: true
+      fullScopeAllowed: true
+      implicitFlowEnabled: false
+      nodeReRegistrationTimeout: -1
+      notBefore: 0
+      optionalClientScopes:
+      - web-origins
+      - acr
+      - address
+      - phone
+      - offline_access
+      protocol: openid-connect
+      publicClient: false
+      redirectUris:
+      - https://kafka-console-kafka-cdc.{{ .Values.clusterDomain }}/*
+      secret: kafka-console-oidc-secret
+      serviceAccountsEnabled: false
+      standardFlowEnabled: true
+      surrogateAuthRequired: false
+      webOrigins:
+      - https://kafka-console-kafka-cdc.{{ .Values.clusterDomain }}
+    - alwaysDisplayInConsole: false
       attributes:
         post.logout.redirect.uris: +
         realm_client: "true"

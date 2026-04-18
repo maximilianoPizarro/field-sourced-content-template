@@ -845,108 +845,85 @@ spec:
           persistentVolumeClaim:
             claimName: granite-model-pvc
 ---
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
 metadata:
-  name: granite-llm-server
+  name: llama-cpp-runtime
   namespace: neuroface
   annotations:
     argocd.argoproj.io/sync-wave: "2"
+    openshift.io/display-name: "llama.cpp (OpenAI-compatible)"
+    opendatahub.io/apiProtocol: REST
+    opendatahub.io/template-display-name: "llama.cpp Runtime"
   labels:
-    app: granite-llm-server
-    app.kubernetes.io/part-of: neuroface
-    app.openshift.io/runtime: python
+    opendatahub.io/dashboard: "true"
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: granite-llm-server
-  template:
-    metadata:
-      labels:
-        app: granite-llm-server
-    spec:
-      containers:
-        - name: llama-server
-          image: ghcr.io/ggml-org/llama.cpp:server
-          args:
-            - "--model"
-            - "/models/granite-3.1-2b-instruct-Q4_K_M.gguf"
-            - "--host"
-            - "0.0.0.0"
-            - "--port"
-            - "8080"
-            - "--ctx-size"
-            - "2048"
-            - "--threads"
-            - "8"
-            - "--parallel"
-            - "2"
-          ports:
-            - containerPort: 8080
-              protocol: TCP
-          resources:
-            requests:
-              cpu: "4"
-              memory: 4Gi
-            limits:
-              cpu: "8"
-              memory: 8Gi
-          volumeMounts:
-            - name: model-storage
-              mountPath: /models
-              readOnly: true
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 8080
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            failureThreshold: 12
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 8080
-            initialDelaySeconds: 60
-            periodSeconds: 30
-      volumes:
-        - name: model-storage
-          persistentVolumeClaim:
-            claimName: granite-model-pvc
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: granite-llm-server
-  namespace: neuroface
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
-  labels:
-    app: granite-llm-server
-spec:
-  selector:
-    app: granite-llm-server
-  ports:
-    - port: 8080
-      targetPort: 8080
-      protocol: TCP
-      name: http
+    prometheus.io/port: "8080"
+    prometheus.io/path: /metrics
+  multiModel: false
+  supportedModelFormats:
+    - name: gguf
+      version: "1"
+      autoSelect: true
+  containers:
+    - name: kserve-container
+      image: ghcr.io/ggml-org/llama.cpp:server
+      ports:
+        - containerPort: 8080
+          protocol: TCP
+      args:
+        - "--model"
+        - "/mnt/models/granite-3.1-2b-instruct-Q4_K_M.gguf"
+        - "--host"
+        - "0.0.0.0"
+        - "--port"
+        - "8080"
+        - "--ctx-size"
+        - "2048"
+        - "--threads"
+        - "8"
+        - "--parallel"
+        - "2"
+      resources:
+        requests:
+          cpu: "4"
+          memory: 4Gi
+        limits:
+          cpu: "8"
+          memory: 8Gi
+      readinessProbe:
+        httpGet:
+          path: /health
+          port: 8080
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        failureThreshold: 12
+      livenessProbe:
+        httpGet:
+          path: /health
+          port: 8080
+        initialDelaySeconds: 60
+        periodSeconds: 30
 ---
-apiVersion: route.openshift.io/v1
-kind: Route
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
 metadata:
   name: granite-llm
   namespace: neuroface
   annotations:
     argocd.argoproj.io/sync-wave: "2"
+    serving.kserve.io/deploymentMode: RawDeployment
+    openshift.io/display-name: "Granite 3.1 2B Instruct"
+    opendatahub.io/apiProtocol: REST
   labels:
-    app: granite-llm-server
+    opendatahub.io/dashboard: "true"
 spec:
-  to:
-    kind: Service
-    name: granite-llm-server
-  port:
-    targetPort: http
-  tls:
-    termination: edge
-    insecureEdgeTerminationPolicy: Redirect
+  predictor:
+    model:
+      modelFormat:
+        name: gguf
+      runtime: llama-cpp-runtime
+      storageUri: "pvc://granite-model-pvc/"
+    minReplicas: 1
+    maxReplicas: 1

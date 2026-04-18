@@ -1,0 +1,35 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.uniqueName }}
+  description: ${{ values.description }}
+  annotations:
+    backstage.io/kubernetes-id: ${{ values.uniqueName }}
+    backstage.io/kubernetes-namespace: ${{ values.namespace }}
+    backstage.io/techdocs-ref: dir:.
+    kafka.apache.org/consumer-groups: cdc-cluster/${{ values.consumerGroup }}
+    argocd/app-name: ${{ values.uniqueName }}
+    argocd/app-namespace: openshift-gitops
+    che.eclipse.org/che-server: https://devspaces.${{ values.clusterDomain }}
+    devspaces.io/factory: "https://devspaces.${{ values.clusterDomain }}/#https://gitea-gitea.${{ values.clusterDomain }}/ws-${{ values.owner }}/${{ values.name }}"
+  links:
+    - url: "https://devspaces.${{ values.clusterDomain }}/#https://gitea-gitea.${{ values.clusterDomain }}/ws-${{ values.owner }}/${{ values.name }}"
+      title: Open in DevSpaces
+      icon: catalog
+      type: ide
+    - url: "https://grafana-observability.${{ values.clusterDomain }}/d/kafka-external-access"
+      title: Kafka External Dashboard
+      icon: dashboard
+      type: grafana
+  tags:
+    - kafka
+    - consumer
+    - cdc
+    - quarkus
+spec:
+  type: service
+  lifecycle: experimental
+  owner: user:${{ values.owner }}
+  system: ${{ values.owner }}-neuralbank
+  consumesApis:
+    - cdc-cluster-kafka

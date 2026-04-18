@@ -1,0 +1,136 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: kafka-external-consumer
+  title: "Kafka External Consumer (CDC)"
+  description: >
+    Deploys a Quarkus-based Kafka consumer that connects to the external CDC
+    cluster (cdc-cluster). Supports consuming from CDC change-data topics,
+    DLQ topics, or custom topics. Includes health checks, metrics, DevSpaces
+    workspace, and ArgoCD-managed deployment.
+  tags:
+    - kafka
+    - consumer
+    - cdc
+    - quarkus
+    - external
+    - recommended
+spec:
+  owner: platform-engineering
+  type: service
+  parameters:
+    - title: Project Configuration
+      required:
+        - name
+        - owner
+      properties:
+        name:
+          title: Application Name
+          type: string
+          description: Unique name for the Kafka consumer
+          ui:autofocus: true
+          default: "my-kafka-consumer"
+          pattern: "^[a-z0-9-]+$"
+        owner:
+          title: User (OpenShift username)
+          type: string
+          description: "Your OpenShift username. Namespace: <username>-neuralbank"
+          default: ${{ user.entity.metadata.name }}
+          pattern: "^[a-z][a-z0-9-]*$"
+          ui:help: "E.g.: user1 → namespace user1-neuralbank"
+        description:
+          title: Description
+          type: string
+          default: "Quarkus Kafka consumer connected to external CDC cluster"
+        clusterDomain:
+          title: Cluster Domain
+          type: string
+          default: ""
+          ui:widget: hidden
+    - title: Kafka Connection
+      properties:
+        kafkaBootstrap:
+          title: Kafka Bootstrap Server
+          type: string
+          default: "cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092"
+          description: "Internal bootstrap for cdc-cluster (plain listener)"
+        kafkaTopic:
+          title: Source Topic
+          type: string
+          default: "cdc.public.customers"
+          enum:
+            - "cdc.public.customers"
+            - "cdc.public.orders"
+            - "dlq.cdc-errors"
+            - "dlq.cdc-camel-errors"
+          enumNames:
+            - "CDC Customers (cdc.public.customers)"
+            - "CDC Orders (cdc.public.orders)"
+            - "DLQ CDC Errors (dlq.cdc-errors)"
+            - "DLQ Camel Errors (dlq.cdc-camel-errors)"
+        consumerGroup:
+          title: Consumer Group ID
+          type: string
+          default: ""
+          description: "Leave empty to auto-generate from app name"
+  steps:
+    - id: fetch-skeleton
+      name: Generate Skeleton
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          uniqueName: "${{ parameters.owner }}-${{ parameters.name }}"
+          owner: ${{ parameters.owner }}
+          description: ${{ parameters.description }}
+          namespace: "${{ parameters.owner }}-neuralbank"
+          clusterDomain: ${{ parameters.clusterDomain }}
+          kafkaBootstrap: ${{ parameters.kafkaBootstrap }}
+          kafkaTopic: ${{ parameters.kafkaTopic }}
+          consumerGroup: ${{ parameters.consumerGroup if parameters.consumerGroup else parameters.owner + '-' + parameters.name }}
+    - id: publish
+      name: Publish to Gitea
+      action: publish:gitea
+      input:
+        repoUrl: "gitea-gitea.${{ parameters.clusterDomain }}?owner=ws-${{ parameters.owner }}&repo=${{ parameters.name }}"
+        description: ${{ parameters.description }}
+        defaultBranch: main
+        repoVisibility: public
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
+        catalogInfoPath: /main/catalog-info.yaml
+    - id: notify
+      name: Send Email Notification
+      action: http:backstage:request
+      input:
+        method: POST
+        path: /proxy/mailpit/api/v1/send
+        headers:
+          Content-Type: application/json
+        body:
+          From:
+            Email: "developer-hub@redhat.local"
+            Name: "Red Hat Developer Hub"
+          To:
+            - Email: "${{ parameters.owner }}@redhat.local"
+              Name: "${{ parameters.owner }}"
+          Subject: "Kafka Consumer — ${{ parameters.name }} Deployed"
+          Text: "Your Kafka consumer ${{ parameters.owner }}-${{ parameters.name }} is being deployed to namespace ${{ parameters.owner }}-neuralbank. Topic: ${{ parameters.kafkaTopic }}, Bootstrap: ${{ parameters.kafkaBootstrap }}."
+          HTML: "<div style='font-family:Red Hat Text,Helvetica,Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden'><div style='background:#0066CC;padding:24px 32px;text-align:center'><h1 style='color:#fff;margin:0;font-size:22px;font-weight:600'>Kafka External Consumer</h1><p style='color:#cce0ff;margin:4px 0 0;font-size:12px'>CDC Cluster Consumer Service</p></div><div style='padding:32px'><h2 style='color:#151515;margin:0 0 16px;font-size:18px'>Consumer Deployed</h2><p style='color:#6a6e73;font-size:14px;line-height:1.6;margin:0 0 20px'>Your Kafka consumer has been provisioned.</p><table style='width:100%;border-collapse:collapse;font-size:14px;margin-bottom:24px'><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:10px 0;color:#6a6e73;width:140px'>Application</td><td style='padding:10px 0;color:#151515;font-weight:500'>${{ parameters.owner }}-${{ parameters.name }}</td></tr><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:10px 0;color:#6a6e73'>Topic</td><td style='padding:10px 0;color:#151515;font-weight:500'>${{ parameters.kafkaTopic }}</td></tr><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:10px 0;color:#6a6e73'>Bootstrap</td><td style='padding:10px 0;color:#151515;font-weight:500'>${{ parameters.kafkaBootstrap }}</td></tr><tr><td style='padding:10px 0;color:#6a6e73'>Status</td><td style='padding:10px 0;color:#151515;font-weight:500'><span style='background:#faeae8;color:#c9190b;padding:2px 8px;border-radius:12px;font-size:12px'>Deploying</span></td></tr></table></div><div style='background:#f0f0f0;padding:16px 32px;text-align:center;font-size:11px;color:#6a6e73'>Kafka External Consumer &bull; Powered by Red Hat Developer Hub</div></div>"
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps['publish'].output.remoteUrl }}
+      - title: Open in DevSpaces
+        icon: chat
+        url: "https://devspaces.${{ parameters.clusterDomain }}/#https://gitea-gitea.${{ parameters.clusterDomain }}/ws-${{ parameters.owner }}/${{ parameters.name }}"
+      - title: View in Catalog
+        icon: catalog
+        entityRef: ${{ steps['register'].output.entityRef }}
+      - title: Grafana — External Kafka
+        icon: dashboard
+        url: "https://grafana-observability.${{ parameters.clusterDomain }}/d/kafka-external-access"

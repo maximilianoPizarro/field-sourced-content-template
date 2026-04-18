@@ -45,6 +45,15 @@ spec:
       offsets.topic.replication.factor: 3
       transaction.state.log.min.isr: 2
       transaction.state.log.replication.factor: 3
+    metricsConfig:
+      type: jmxPrometheusExporter
+      valueFrom:
+        configMapKeyRef:
+          name: iot-kafka-metrics-config
+          key: kafka-metrics-config.yml
   entityOperator:
     topicOperator: {}
     userOperator: {}
+  kafkaExporter:
+    topicRegex: ".*"
+    groupRegex: ".*"

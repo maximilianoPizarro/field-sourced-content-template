@@ -1236,6 +1236,57 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "6"
   labels:
+    k8s-app: iot-kafka-cluster-metrics
+    openshift.io/user-monitoring: "true"
+  name: iot-kafka-cluster-metrics
+  namespace: openshift-cluster-observability-operator
+spec:
+  namespaceSelector:
+    matchNames:
+    - industrial-edge-tst-all
+    - industrial-edge-stormshift-messaging
+    - industrial-edge-data-lake
+  podMetricsEndpoints:
+  - interval: 30s
+    port: tcp-prometheus
+  selector:
+    matchLabels:
+      strimzi.io/kind: Kafka
+---
+apiVersion: monitoring.rhobs/v1
+kind: PodMonitor
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  labels:
+    k8s-app: iot-kafka-exporter-metrics
+    openshift.io/user-monitoring: "true"
+  name: iot-kafka-exporter-metrics
+  namespace: openshift-cluster-observability-operator
+spec:
+  namespaceSelector:
+    matchNames:
+    - industrial-edge-tst-all
+    - industrial-edge-stormshift-messaging
+    - industrial-edge-data-lake
+  podMetricsEndpoints:
+  - interval: 30s
+    port: tcp-prometheus
+  selector:
+    matchExpressions:
+    - key: strimzi.io/name
+      operator: In
+      values:
+      - dev-cluster-kafka-exporter
+      - factory-cluster-kafka-exporter
+      - prod-cluster-kafka-exporter
+---
+apiVersion: monitoring.rhobs/v1
+kind: PodMonitor
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  labels:
     k8s-app: camel-cdc-metrics
     openshift.io/user-monitoring: "true"
   name: camel-cdc-metrics
@@ -1422,6 +1473,280 @@ spec:
       "time": {"from": "now-1h", "to": "now"},
       "title": "Kafka CDC Pipeline",
       "uid": "kafka-cdc-pipeline"
+    }
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  name: kafka-iot-clusters
+  namespace: openshift-cluster-observability-operator
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana-observability
+  json: |
+    {
+      "annotations": {"list": []},
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "links": [],
+      "panels": [
+        {
+          "title": "Dev Brokers",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+          "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 3}]}}},
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
+          "targets": [{"expr": "count(kafka_server_replicamanager_leadercount{namespace=\"industrial-edge-tst-all\"})", "instant": true}]
+        },
+        {
+          "title": "Factory Brokers",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
+          "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 3}]}}},
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
+          "targets": [{"expr": "count(kafka_server_replicamanager_leadercount{namespace=\"industrial-edge-stormshift-messaging\"})", "instant": true}]
+        },
+        {
+          "title": "Prod Brokers",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
+          "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 3}]}}},
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
+          "targets": [{"expr": "count(kafka_server_replicamanager_leadercount{namespace=\"industrial-edge-data-lake\"})", "instant": true}]
+        },
+        {
+          "title": "IoT Topics (All Clusters)",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0},
+          "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "purple", "value": null}]}}},
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
+          "targets": [{"expr": "count(count by (topic) (kafka_topic_partition_current_offset{namespace=~\"industrial-edge.*\"}))", "instant": true}]
+        },
+        {
+          "title": "MM2 Connectors",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 4, "x": 16, "y": 0},
+          "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}},
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
+          "targets": [{"expr": "kafka_connect_worker_connector_count{namespace=~\"industrial-edge.*\"}", "instant": true}]
+        },
+        {
+          "title": "Under-Replicated",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 4, "x": 20, "y": 0},
+          "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}},
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
+          "targets": [{"expr": "sum(kafka_topic_partition_under_replicated_partition{namespace=~\"industrial-edge.*\"}) or vector(0)", "instant": true}]
+        },
+        {
+          "title": "Sensor Messages In/s by Cluster",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+          "targets": [
+            {"expr": "sum(rate(kafka_server_brokertopicmetrics_messagesinpersec_total{namespace=\"industrial-edge-tst-all\"}[5m]))", "legendFormat": "dev-cluster"},
+            {"expr": "sum(rate(kafka_server_brokertopicmetrics_messagesinpersec_total{namespace=\"industrial-edge-stormshift-messaging\"}[5m]))", "legendFormat": "factory-cluster"},
+            {"expr": "sum(rate(kafka_server_brokertopicmetrics_messagesinpersec_total{namespace=\"industrial-edge-data-lake\"}[5m]))", "legendFormat": "prod-cluster"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "msg/s", "custom": {"fillOpacity": 15, "lineWidth": 2, "showPoints": "never"}}}
+        },
+        {
+          "title": "Bytes In/Out by Cluster",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+          "targets": [
+            {"expr": "sum(rate(kafka_server_brokertopicmetrics_bytesinpersec_total{namespace=\"industrial-edge-tst-all\"}[5m]))", "legendFormat": "dev-in"},
+            {"expr": "sum(rate(kafka_server_brokertopicmetrics_bytesoutpersec_total{namespace=\"industrial-edge-tst-all\"}[5m]))", "legendFormat": "dev-out"},
+            {"expr": "sum(rate(kafka_server_brokertopicmetrics_bytesinpersec_total{namespace=\"industrial-edge-stormshift-messaging\"}[5m]))", "legendFormat": "factory-in"},
+            {"expr": "sum(rate(kafka_server_brokertopicmetrics_bytesoutpersec_total{namespace=\"industrial-edge-stormshift-messaging\"}[5m]))", "legendFormat": "factory-out"},
+            {"expr": "sum(rate(kafka_server_brokertopicmetrics_bytesinpersec_total{namespace=\"industrial-edge-data-lake\"}[5m]))", "legendFormat": "prod-in"},
+            {"expr": "sum(rate(kafka_server_brokertopicmetrics_bytesoutpersec_total{namespace=\"industrial-edge-data-lake\"}[5m]))", "legendFormat": "prod-out"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "Bps", "custom": {"fillOpacity": 10, "lineWidth": 2, "showPoints": "never"}}}
+        },
+        {
+          "title": "IoT Topic Throughput (Temperature & Vibration)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+          "targets": [
+            {"expr": "sum(rate(kafka_server_brokertopicmetrics_messagesinpersec_total{namespace=~\"industrial-edge.*\", topic=~\".*temperature.*\"}[5m]))", "legendFormat": "temperature"},
+            {"expr": "sum(rate(kafka_server_brokertopicmetrics_messagesinpersec_total{namespace=~\"industrial-edge.*\", topic=~\".*vibration.*\"}[5m]))", "legendFormat": "vibration"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "msg/s", "custom": {"fillOpacity": 20, "lineWidth": 2, "showPoints": "never"}}}
+        },
+        {
+          "title": "Consumer Group Lag (IoT)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+          "targets": [
+            {"expr": "kafka_consumergroup_lag{namespace=~\"industrial-edge.*\"} > 0", "legendFormat": "{{`{{consumergroup}}`}} / {{`{{topic}}`}}"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "short", "custom": {"fillOpacity": 10, "lineWidth": 2, "showPoints": "never"}}}
+        },
+        {
+          "title": "MirrorMaker 2 — Replication Lag",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+          "targets": [
+            {"expr": "kafka_connect_mirror_source_connector_replication_latency_ms{namespace=~\"industrial-edge.*\"}", "legendFormat": "{{`{{connector}}`}} latency"},
+            {"expr": "kafka_connect_mirror_source_connector_record_count{namespace=~\"industrial-edge.*\"}", "legendFormat": "{{`{{connector}}`}} records"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "ms", "custom": {"fillOpacity": 15, "lineWidth": 2, "showPoints": "never"}}}
+        },
+        {
+          "title": "Under-Replicated Partitions by Cluster",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+          "targets": [
+            {"expr": "sum(kafka_topic_partition_under_replicated_partition{namespace=\"industrial-edge-tst-all\"}) by (topic)", "legendFormat": "dev: {{`{{topic}}`}}"},
+            {"expr": "sum(kafka_topic_partition_under_replicated_partition{namespace=\"industrial-edge-stormshift-messaging\"}) by (topic)", "legendFormat": "factory: {{`{{topic}}`}}"},
+            {"expr": "sum(kafka_topic_partition_under_replicated_partition{namespace=\"industrial-edge-data-lake\"}) by (topic)", "legendFormat": "prod: {{`{{topic}}`}}"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "short", "custom": {"fillOpacity": 15, "lineWidth": 2, "showPoints": "never"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}}
+        }
+      ],
+      "schemaVersion": 39,
+      "tags": ["kafka", "iot", "industrial-edge", "strimzi"],
+      "templating": {"list": []},
+      "time": {"from": "now-1h", "to": "now"},
+      "title": "Kafka IoT Clusters — Industrial Edge",
+      "uid": "kafka-iot-clusters"
+    }
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  name: kafka-external-access
+  namespace: openshift-cluster-observability-operator
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana-observability
+  json: |
+    {
+      "annotations": {"list": []},
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "links": [],
+      "panels": [
+        {
+          "title": "CDC Brokers",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+          "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 3}]}}},
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
+          "targets": [{"expr": "kafka_brokers{namespace=\"kafka-cdc\"}", "instant": true}]
+        },
+        {
+          "title": "Bridge Instances",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
+          "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}},
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
+          "targets": [{"expr": "count(up{namespace=\"kafka-cdc\", job=~\".*bridge.*\"})", "instant": true}]
+        },
+        {
+          "title": "External Consumer Groups",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
+          "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}}},
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
+          "targets": [{"expr": "count(count by (consumergroup) (kafka_consumergroup_current_offset{namespace=\"kafka-cdc\"}))", "instant": true}]
+        },
+        {
+          "title": "Connectors Running",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0},
+          "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}},
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
+          "targets": [{"expr": "sum(kafka_connect_worker_connector_running_task_count{namespace=\"kafka-cdc\"})", "instant": true}]
+        },
+        {
+          "title": "CDC Topics",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 4, "x": 16, "y": 0},
+          "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "purple", "value": null}]}}},
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
+          "targets": [{"expr": "count(count by (topic) (kafka_topic_partition_current_offset{namespace=\"kafka-cdc\", topic=~\"cdc\\\\..*|dlq\\\\..*\"}))", "instant": true}]
+        },
+        {
+          "title": "Failed Tasks",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 4, "x": 20, "y": 0},
+          "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}},
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
+          "targets": [{"expr": "sum(kafka_connect_worker_connector_failed_task_count{namespace=\"kafka-cdc\"}) or vector(0)", "instant": true}]
+        },
+        {
+          "title": "External Messages In/s (CDC Cluster)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+          "targets": [
+            {"expr": "sum(rate(kafka_server_brokertopicmetrics_messagesinpersec_total{namespace=\"kafka-cdc\"}[5m])) by (pod)", "legendFormat": "{{`{{pod}}`}}"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "msg/s", "custom": {"fillOpacity": 15, "lineWidth": 2, "showPoints": "never"}}}
+        },
+        {
+          "title": "External Bytes In/Out",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+          "targets": [
+            {"expr": "sum(rate(kafka_server_brokertopicmetrics_bytesinpersec_total{namespace=\"kafka-cdc\"}[5m]))", "legendFormat": "Bytes In"},
+            {"expr": "sum(rate(kafka_server_brokertopicmetrics_bytesoutpersec_total{namespace=\"kafka-cdc\"}[5m]))", "legendFormat": "Bytes Out"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "Bps", "custom": {"fillOpacity": 15, "lineWidth": 2, "showPoints": "never"}}}
+        },
+        {
+          "title": "Consumer Lag by Group (External Consumers)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+          "targets": [
+            {"expr": "kafka_consumergroup_lag{namespace=\"kafka-cdc\"} > 0", "legendFormat": "{{`{{consumergroup}}`}} / {{`{{topic}}`}} [{{`{{partition}}`}}]"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "short", "custom": {"fillOpacity": 10, "lineWidth": 2, "showPoints": "never"}}}
+        },
+        {
+          "title": "CDC Topic Offsets",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+          "targets": [
+            {"expr": "sum(kafka_topic_partition_current_offset{namespace=\"kafka-cdc\", topic=~\"cdc\\\\..*|dlq\\\\..*\"}) by (topic)", "legendFormat": "{{`{{topic}}`}}"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "short", "custom": {"fillOpacity": 10, "lineWidth": 2, "showPoints": "never"}}}
+        },
+        {
+          "title": "KafkaConnect — Connector Status",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+          "targets": [
+            {"expr": "kafka_connect_worker_connector_running_task_count{namespace=\"kafka-cdc\"}", "legendFormat": "running: {{`{{connector}}`}}"},
+            {"expr": "kafka_connect_worker_connector_failed_task_count{namespace=\"kafka-cdc\"}", "legendFormat": "failed: {{`{{connector}}`}}"},
+            {"expr": "kafka_connect_worker_connector_paused_task_count{namespace=\"kafka-cdc\"}", "legendFormat": "paused: {{`{{connector}}`}}"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "short", "custom": {"fillOpacity": 20, "lineWidth": 2, "showPoints": "never"}}}
+        },
+        {
+          "title": "Kafka Bridge — HTTP Requests/s",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+          "targets": [
+            {"expr": "sum(rate(strimzi_bridge_http_server_requests_total{namespace=\"kafka-cdc\"}[5m])) by (method, uri)", "legendFormat": "{{`{{method}}`}} {{`{{uri}}`}}"}
+          ],
+          "fieldConfig": {"defaults": {"unit": "reqps", "custom": {"fillOpacity": 15, "lineWidth": 2, "showPoints": "never"}}}
+        }
+      ],
+      "schemaVersion": 39,
+      "tags": ["kafka", "external", "cdc", "bridge", "strimzi"],
+      "templating": {"list": []},
+      "time": {"from": "now-1h", "to": "now"},
+      "title": "Kafka External Access — CDC Cluster",
+      "uid": "kafka-external-access"
     }
 ---
 apiVersion: monitoring.rhobs/v1

@@ -31,6 +31,8 @@ spec:
       managementState: Removed
     modelmeshserving:
       managementState: Removed
+    modelregistry:
+      managementState: Managed
     ray:
       managementState: Removed
     trainingoperator:

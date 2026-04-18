@@ -48,7 +48,7 @@ connectivityLink:
         source: community-operators
       - name: rhods-operator
         namespace: redhat-ods-operator
-        channel: stable-2.25
+        channel: stable-3.3
         source: redhat-operators
 
   # Argo CD Applications (order via sync-wave on Application metadata)

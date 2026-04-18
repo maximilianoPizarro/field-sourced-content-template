@@ -291,7 +291,6 @@ spec:
     model:
       modelFormat:
         name: openvino_ir
-      name: face-detection-retail-0005
       resources:
         requests:
           cpu: 200m

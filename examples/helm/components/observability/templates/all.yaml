@@ -58,8 +58,8 @@ spec:
     - ztunnel
   podMetricsEndpoints:
   - interval: 30s
-    path: /stats/prometheus
-    port: "15020"
+    path: /metrics
+    port: ztunnel-stats
   selector:
     matchLabels:
       app: ztunnel
@@ -78,14 +78,12 @@ spec:
   namespaceSelector:
     matchNames:
     - litemaas
+    - mcp-system
     - istio-system
   podMetricsEndpoints:
   - interval: 30s
     path: /stats/prometheus
     port: http-envoy-prom
-  - interval: 30s
-    path: /stats/prometheus
-    port: "15090"
   selector:
     matchExpressions:
     - key: gateway.istio.io/managed
@@ -339,8 +337,8 @@ spec:
           "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
           "targets": [
             {
-              "expr": "sum(increase(ratelimit_service_rate_limit_total{status=\"over_limit\"}[1h]))",
-              "legendFormat": "Rejected"
+              "expr": "sum(increase(istio_requests_total{response_code=\"429\"}[1h])) or vector(0)",
+              "legendFormat": "Rejected (429)"
             }
           ],
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }

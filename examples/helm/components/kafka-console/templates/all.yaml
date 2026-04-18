@@ -33,19 +33,12 @@ spec:
         rules:
           - resources:
               - kafkas
-              - topics
-              - topics/records
-              - consumerGroups
-              - rebalances
             privileges:
               - ALL
       - name: viewer
         rules:
           - resources:
               - kafkas
-              - topics
-              - topics/records
-              - consumerGroups
             privileges:
               - GET
               - LIST

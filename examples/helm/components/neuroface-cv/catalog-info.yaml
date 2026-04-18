@@ -19,6 +19,8 @@ metadata:
   name: neuroface-system
   namespace: default
   description: "NeuroFace — Facial recognition with OpenVINO Model Server, Camel pollers (OVMS status + LBPH labels), Kafka event streaming, and email notifications via Mailpit"
+  annotations:
+    backstage.io/techdocs-ref: dir:.
   tags:
     - neuroface
     - openvino
@@ -164,6 +166,7 @@ metadata:
   namespace: default
   description: "CV Kafka Topics — cv.face.detections (person_registered + ovms_model_status events) and dlq.cv-errors on cdc-cluster"
   annotations:
+    backstage.io/techdocs-ref: dir:.
     backstage.io/kubernetes-id: cdc-cluster
     backstage.io/kubernetes-namespace: kafka-cdc
     argocd/app-name: field-content-neuroface-cv

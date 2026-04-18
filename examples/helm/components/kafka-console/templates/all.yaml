@@ -33,12 +33,16 @@ spec:
         rules:
           - resources:
               - kafkas
+              - topics
+              - consumer-groups
             privileges:
               - ALL
       - name: viewer
         rules:
           - resources:
               - kafkas
+              - topics
+              - consumer-groups
             privileges:
               - GET
               - LIST

@@ -244,7 +244,7 @@ spec:
     - name: kserve-container
       image: registry.redhat.io/rhoai/odh-openvino-model-server-rhel9@sha256:225115b4a438e3af202a2507ed9a7054fab3a1018830be9935496a37cb145fb8
       args:
-        - --model_name={{.Name}}
+        - --model_name=face-detection-retail-0005
         - --port=8001
         - --rest_port=8888
         - --model_path=/mnt/models

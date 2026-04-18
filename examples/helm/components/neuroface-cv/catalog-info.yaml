@@ -18,7 +18,7 @@ kind: System
 metadata:
   name: neuroface-system
   namespace: default
-  description: "NeuroFace — Facial recognition with OpenVINO Model Server, Kafka event streaming, and CDC email notifications"
+  description: "NeuroFace — Facial recognition with OpenVINO Model Server, Camel pollers (OVMS status + LBPH labels), Kafka event streaming, and email notifications via Mailpit"
   tags:
     - neuroface
     - openvino
@@ -102,9 +102,67 @@ spec:
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
+  name: cv-ovms-poller
+  namespace: default
+  description: "OVMS Poller — Camel timer polling OpenVINO Model Server /v1/config every 30s for model status events"
+  annotations:
+    backstage.io/kubernetes-id: camel-cv-processor
+    backstage.io/kubernetes-namespace: kafka-cdc
+    argocd/app-name: field-content-neuroface-cv
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - camel
+    - openvino
+    - polling
+    - model-server
+  links:
+    - url: https://neuroface-ovms-neuroface.<CLUSTER_DOMAIN>/v1/config
+      title: OVMS Config Endpoint
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+  dependsOn:
+    - component:default/neuroface-ovms
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: cv-labels-poller
+  namespace: default
+  description: "Labels Poller — Camel timer polling NeuroFace /api/labels every 30s for trained person events"
+  annotations:
+    backstage.io/kubernetes-id: camel-cv-processor
+    backstage.io/kubernetes-namespace: kafka-cdc
+    argocd/app-name: field-content-neuroface-cv
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - camel
+    - neuroface
+    - polling
+    - lbph
+  links:
+    - url: https://console-openshift-console.<CLUSTER_DOMAIN>/k8s/ns/kafka-cdc/deployments/camel-cv-processor
+      title: Camel CV Processor
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+  dependsOn:
+    - component:default/neuroface-app
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
   name: cv-kafka-streaming
   namespace: default
-  description: "CV Kafka Topic — cv.face.detections topic on cdc-cluster for face detection events"
+  description: "CV Kafka Topics — cv.face.detections (person_registered + ovms_model_status events) and dlq.cv-errors on cdc-cluster"
   annotations:
     backstage.io/kubernetes-id: cdc-cluster
     backstage.io/kubernetes-namespace: kafka-cdc
@@ -117,7 +175,10 @@ metadata:
     - computer-vision
   links:
     - url: https://console-openshift-console.<CLUSTER_DOMAIN>/k8s/ns/kafka-cdc/kafka.strimzi.io~v1beta2~KafkaTopic/cv.face.detections
-      title: Kafka Topic
+      title: cv.face.detections Topic
+      icon: web
+    - url: https://console-openshift-console.<CLUSTER_DOMAIN>/k8s/ns/kafka-cdc/kafka.strimzi.io~v1beta2~KafkaTopic/dlq.cv-errors
+      title: dlq.cv-errors (Dead Letter Queue)
       icon: web
 spec:
   type: service
@@ -125,7 +186,8 @@ spec:
   owner: platform-engineering
   system: neuroface-system
   dependsOn:
-    - component:default/neuroface-app
+    - component:default/cv-ovms-poller
+    - component:default/cv-labels-poller
   providesApis:
     - cv-face-detection-events
 
@@ -135,7 +197,7 @@ kind: Component
 metadata:
   name: cv-face-notifier
   namespace: default
-  description: "CV Face Notifier — Camel route consuming face detections and sending email via Mailpit"
+  description: "CV Face Notifier — Camel consumer routing person_registered events to Security Admin and ovms_model_status events to MLOps via Mailpit"
   annotations:
     backstage.io/kubernetes-id: camel-cv-processor
     backstage.io/kubernetes-namespace: kafka-cdc
@@ -160,6 +222,41 @@ spec:
 
 ---
 apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: neuroface-workbench
+  namespace: default
+  description: "CV Workbench — Jupyter notebook for OVMS inference testing, labels API queries, and Kafka event analysis"
+  annotations:
+    backstage.io/kubernetes-id: neuroface-workbench
+    backstage.io/kubernetes-namespace: neuroface
+    argocd/app-name: field-content-neuroface-cv
+    argocd/app-namespace: openshift-gitops
+    opendatahub.io/dashboard: "true"
+  tags:
+    - jupyter
+    - notebook
+    - openvino
+    - data-science
+  links:
+    - url: https://neuroface-workbench-neuroface.<CLUSTER_DOMAIN>/notebook/neuroface/neuroface-workbench
+      title: Open Workbench
+      icon: dashboard
+    - url: https://rhods-dashboard-redhat-ods-applications.<CLUSTER_DOMAIN>/projects/neuroface
+      title: OpenShift AI Project
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+  dependsOn:
+    - component:default/neuroface-ovms
+    - component:default/neuroface-app
+    - component:default/cv-kafka-streaming
+
+---
+apiVersion: backstage.io/v1alpha1
 kind: API
 metadata:
   name: cv-face-detection-events
@@ -177,41 +274,91 @@ spec:
   definition: |
     asyncapi: 2.6.0
     info:
-      title: NeuroFace Detection Events
-      version: 1.0.0
-      description: Face detection events from NeuroFace OpenVINO pipeline
+      title: NeuroFace CV Events
+      version: 2.0.0
+      description: |
+        Events from the NeuroFace Computer Vision pipeline.
+        Two sources publish to this topic:
+        (1) OVMS poller reads OpenVINO Model Server status,
+        (2) Labels poller reads trained persons from LBPH recognizer.
     channels:
       cv.face.detections:
         publish:
-          summary: Face detection result from OpenVINO inference
+          summary: CV pipeline events (person_registered or ovms_model_status)
+          message:
+            oneOf:
+              - name: PersonRegistered
+                summary: A person was detected in the LBPH label registry
+                payload:
+                  type: object
+                  required:
+                    - event_type
+                    - person_name
+                    - timestamp
+                  properties:
+                    event_type:
+                      type: string
+                      enum: [person_registered]
+                    source:
+                      type: string
+                      enum: [neuroface-lbph]
+                    person_name:
+                      type: string
+                      description: Name/label of the trained person
+                    face_count:
+                      type: integer
+                      description: Number of face samples used for training
+                    confidence:
+                      type: number
+                    camera_id:
+                      type: string
+                    timestamp:
+                      type: string
+                      format: date-time
+                    detection_method:
+                      type: string
+                      enum: [lbph]
+              - name: OvmsModelStatus
+                summary: OpenVINO Model Server status from /v1/config
+                payload:
+                  type: object
+                  required:
+                    - event_type
+                    - model_name
+                    - timestamp
+                  properties:
+                    event_type:
+                      type: string
+                      enum: [ovms_model_status]
+                    source:
+                      type: string
+                      enum: [openvino-model-server]
+                    model_name:
+                      type: string
+                      description: Name of the served model (e.g. face-detection-retail-0005)
+                    model_server:
+                      type: string
+                      enum: [ovms]
+                    ovms_response:
+                      type: object
+                      description: Raw response from OVMS /v1/config endpoint
+                    camera_id:
+                      type: string
+                    timestamp:
+                      type: string
+                      format: date-time
+                    person_name:
+                      type: string
+                      description: Always "system" for health events
+                    confidence:
+                      type: number
+      dlq.cv-errors:
+        publish:
+          summary: Dead letter queue for failed CV event processing
           message:
             payload:
               type: object
-              properties:
-                person_name:
-                  type: string
-                  description: Name of the detected person (if recognized)
-                confidence:
-                  type: number
-                  description: Detection confidence score (0-1)
-                camera_id:
-                  type: string
-                  description: Identifier of the camera source
-                timestamp:
-                  type: string
-                  format: date-time
-                  description: ISO 8601 detection timestamp
-                bounding_box:
-                  type: object
-                  properties:
-                    x:
-                      type: integer
-                    y:
-                      type: integer
-                    w:
-                      type: integer
-                    h:
-                      type: integer
+              description: Original message that failed processing, with error headers
     servers:
       cdc-cluster:
         url: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092

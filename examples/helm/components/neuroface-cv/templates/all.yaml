@@ -313,3 +313,91 @@ spec:
       name: http
   selector:
     app: camel-cv-processor
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: neuroface-workbench
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+  labels:
+    opendatahub.io/dashboard: "true"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: kubeflow.org/v1
+kind: Notebook
+metadata:
+  name: neuroface-workbench
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    notebooks.opendatahub.io/inject-oauth: "true"
+    opendatahub.io/image-display-name: "Standard Data Science"
+    openshift.io/display-name: "NeuroFace CV Pipeline"
+    openshift.io/description: "Workbench for testing OpenVINO face detection, NeuroFace labels API, and Kafka CV events"
+    notebooks.opendatahub.io/oauth-logout-url: "https://rhods-dashboard-redhat-ods-applications.{{ .Values.clusterDomain }}/projects/neuroface?notebookLogout=neuroface-workbench"
+  labels:
+    app: neuroface-workbench
+    opendatahub.io/dashboard: "true"
+    opendatahub.io/odh-managed: "true"
+spec:
+  template:
+    spec:
+      affinity: {}
+      containers:
+        - name: neuroface-workbench
+          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/jupyter-datascience-notebook-ubi9:2024.2
+          env:
+            - name: NOTEBOOK_ARGS
+              value: |-
+                --ServerApp.port=8888
+                --ServerApp.token=''
+                --ServerApp.password=''
+                --ServerApp.base_url=/notebook/neuroface/neuroface-workbench
+                --ServerApp.quit_button=False
+            - name: JUPYTER_IMAGE
+              value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/jupyter-datascience-notebook-ubi9:2024.2
+          ports:
+            - containerPort: 8888
+              name: notebook-port
+              protocol: TCP
+          resources:
+            requests:
+              cpu: "1"
+              memory: 4Gi
+            limits:
+              cpu: "2"
+              memory: 8Gi
+          volumeMounts:
+            - mountPath: /opt/app-root/src
+              name: neuroface-workbench
+          workingDir: /opt/app-root/src
+          livenessProbe:
+            httpGet:
+              path: /notebook/neuroface/neuroface-workbench/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 40
+            timeoutSeconds: 1
+          readinessProbe:
+            httpGet:
+              path: /notebook/neuroface/neuroface-workbench/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 40
+            timeoutSeconds: 1
+      volumes:
+        - name: neuroface-workbench
+          persistentVolumeClaim:
+            claimName: neuroface-workbench

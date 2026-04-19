@@ -28,6 +28,8 @@ spec:
   profile: OpenShift
   sources:
     - content: |
+        // dependency=camel:camel-endpointdsl
+        // dependency=camel:kafka
         import org.apache.camel.PropertyInject;
         import org.apache.camel.builder.RouteBuilder;
         import org.apache.camel.component.kafka.KafkaConstants;

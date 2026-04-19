@@ -10,5 +10,5 @@ kafka:
   broker:
     uri: "prod-cluster-kafka-bootstrap.industrial-edge-data-lake.svc:9092"
     topic:
-      temperature: "factory-cluster.industrial-edge-stormshift-messaging.iot-sensor-sw-temperature"
-      vibration: "factory-cluster.industrial-edge-stormshift-messaging.iot-sensor-sw-vibration"
+      temperature: "factory-kafka-cluster.industrial-edge-stormshift-messaging.iot-sensor-sw-temperature"
+      vibration: "factory-kafka-cluster.industrial-edge-stormshift-messaging.iot-sensor-sw-vibration"

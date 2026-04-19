@@ -273,6 +273,13 @@ connectivityLink:
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
+
+# ============================================================
+# NeuroFace CV — PPE Detection Module (YOLO)
+# ============================================================
+neurofaceCv:
+  ppe:
+    enabled: false
     # --- OpenShift Console Links ---
     - id: console-links
       enabled: true

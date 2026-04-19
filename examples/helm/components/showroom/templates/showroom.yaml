@@ -235,7 +235,7 @@ data:
       <h1>Event-Driven Architecture Live</h1>
       <div id="eda-user-box"></div>
     </div>
-    <iframe id="sf" src="/index.html" allow="clipboard-write clipboard-read fullscreen"></iframe>
+    <iframe id="sf" src="/index.html" allow="clipboard-write clipboard-read fullscreen" allowfullscreen></iframe>
     <script>
     (function(){
       var pp = new URLSearchParams(window.location.search);

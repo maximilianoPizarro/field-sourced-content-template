@@ -237,6 +237,8 @@ spec:
     helm:
       valuesObject:
         clusterDomain: {{ $domain }}
+        ppe:
+          enabled: {{ $.Values.neurofaceCv.ppe.enabled }}
     {{- else if has .path (list "opentelemetry" "kiali" "rhcl-operator" "observability") }}
     helm:
       valuesObject:

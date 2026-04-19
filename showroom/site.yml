@@ -91,7 +91,9 @@ ui:
           box-shadow: 0 0 40px rgba(0,102,204,0.3);
         }
         [id^="scene-"]:fullscreen,
-        .three-container:fullscreen {
+        .three-container:fullscreen,
+        [id^="scene-"]:-webkit-full-screen,
+        .three-container:-webkit-full-screen {
           background: #0a0a1a;
           width: 100vw !important;
           height: 100vh !important;
@@ -99,16 +101,23 @@ ui:
           border-radius: 0 !important;
           margin: 0 !important;
           padding: 0 !important;
+          overflow: hidden !important;
         }
-        :fullscreen .fullscreen-btn {
+        :fullscreen .fullscreen-btn,
+        :-webkit-full-screen .fullscreen-btn {
           top: 16px;
           right: 16px;
           padding: 8px 18px;
           font-size: 15px;
         }
-        :fullscreen canvas {
+        :fullscreen canvas,
+        :-webkit-full-screen canvas {
           width: 100vw !important;
           height: 100vh !important;
+        }
+        :fullscreen::-webkit-scrollbar,
+        :-webkit-full-screen::-webkit-scrollbar {
+          display: none;
         }
         @media (max-width: 768px) {
           .nav-container { display: none; }
@@ -174,6 +183,8 @@ ui:
               camera.aspect = nw / nh;
               camera.updateProjectionMatrix();
               renderer.setSize(nw, nh);
+              renderer.domElement.style.width = nw + 'px';
+              renderer.domElement.style.height = nh + 'px';
             }
 
             fsBtn.onclick = function() {

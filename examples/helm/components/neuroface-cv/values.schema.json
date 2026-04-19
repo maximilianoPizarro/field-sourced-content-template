@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "neuroface-cv Helm Values",
+  "description": "Configuration for the NeuroFace CV Pipeline chart — face detection (OpenVINO) and PPE safety detection (YOLO)",
+  "type": "object",
+  "required": ["clusterDomain"],
+  "properties": {
+    "clusterDomain": {
+      "type": "string",
+      "description": "OpenShift cluster wildcard domain (e.g. apps.cluster.example.com)"
+    },
+    "ppe": {
+      "type": "object",
+      "description": "YOLO-based PPE (Personal Protective Equipment) detection pipeline",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Deploy the YOLO PPE detection serving, Kafka topics, and notebook"
+        },
+        "yolo": {
+          "type": "object",
+          "description": "YOLO model serving configuration",
+          "properties": {
+            "image": {
+              "type": "string",
+              "default": "registry.access.redhat.com/ubi9/python-312:latest",
+              "description": "Container image for the YOLO serving deployment"
+            },
+            "modelName": {
+              "type": "string",
+              "default": "yolov8n",
+              "description": "YOLO model variant name (e.g. yolov8n, yolov8s, yolov11n)"
+            },
+            "modelUrl": {
+              "type": "string",
+              "format": "uri",
+              "default": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8n.pt",
+              "description": "URL to download the YOLO .pt model weights"
+            },
+            "replicas": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 1,
+              "description": "Number of YOLO serving replicas"
+            },
+            "resources": {
+              "type": "object",
+              "description": "Kubernetes resource requests/limits for the YOLO serving pod",
+              "properties": {
+                "requests": {
+                  "type": "object",
+                  "properties": {
+                    "cpu": { "type": "string", "default": "500m" },
+                    "memory": { "type": "string", "default": "1Gi" }
+                  }
+                },
+                "limits": {
+                  "type": "object",
+                  "properties": {
+                    "cpu": { "type": "string", "default": "2" },
+                    "memory": { "type": "string", "default": "4Gi" }
+                  }
+                }
+              }
+            },
+            "port": {
+              "type": "integer",
+              "default": 8000,
+              "description": "HTTP port for the YOLO REST API"
+            }
+          }
+        },
+        "kafka": {
+          "type": "object",
+          "description": "Kafka topic configuration for PPE detection events",
+          "properties": {
+            "topic": {
+              "type": "string",
+              "default": "cv.ppe.detections",
+              "description": "Kafka topic name for PPE detection events"
+            },
+            "dlqTopic": {
+              "type": "string",
+              "default": "dlq.ppe-errors",
+              "description": "Dead letter queue topic for failed PPE event processing"
+            },
+            "partitions": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 3,
+              "description": "Number of partitions for the PPE topic"
+            },
+            "replicas": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 3,
+              "description": "Replication factor for the PPE topic"
+            },
+            "retentionMs": {
+              "type": "string",
+              "default": "604800000",
+              "description": "Message retention period in milliseconds (default 7 days)"
+            }
+          }
+        },
+      }
+    },
+    "workbench": {
+      "type": "object",
+      "description": "Jupyter workbench configuration",
+      "properties": {
+        "seedNotebooks": {
+          "type": "boolean",
+          "default": true,
+          "description": "Seed .ipynb notebooks into the workbench PVC on first boot via initContainer"
+        },
+        "notebooksRepoUrl": {
+          "type": "string",
+          "format": "uri",
+          "default": "https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/one/examples/helm/components/neuroface-cv/notebooks",
+          "description": "Base URL to download notebook files from"
+        }
+      }
+    }
+  }
+}

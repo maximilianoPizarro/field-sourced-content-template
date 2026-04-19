@@ -109,6 +109,34 @@ spec:
                     values:
                       - 'true'
               weight: 1
+      initContainers:
+        - name: seed-notebooks
+          image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+          command: ["sh", "-c"]
+          args:
+            - |
+              DEST=/opt/app-root/src
+              if [ -f "$DEST/.notebooks-seeded" ]; then
+                echo "Notebooks already seeded, skipping"
+                exit 0
+              fi
+              BASE_URL="https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/one/examples/helm/components/industrial-edge-data-science-project/notebooks"
+              echo "Seeding Industrial Edge notebooks..."
+              curl -sL "$BASE_URL/1_anomaly_detection_training.ipynb" -o "$DEST/1_anomaly_detection_training.ipynb"
+              curl -sL "$BASE_URL/2_realtime_inference_test.ipynb" -o "$DEST/2_realtime_inference_test.ipynb"
+              touch "$DEST/.notebooks-seeded"
+              ls -lh "$DEST/"
+              echo "Notebook seeding complete"
+          volumeMounts:
+            - mountPath: /opt/app-root/src
+              name: jupyterlab
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
       containers:
         - resources:
             limits:

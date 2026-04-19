@@ -434,3 +434,180 @@ spec:
       cdc-cluster:
         url: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092
         protocol: kafka
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: yolo-ppe-serving
+  namespace: default
+  description: "YOLO PPE Serving — Ultralytics YOLOv8 model server for object detection with REST API (/v1/predict)"
+  annotations:
+    backstage.io/kubernetes-id: yolo-ppe-serving
+    backstage.io/kubernetes-namespace: neuroface
+    backstage.io/kubernetes-label-selector: app=yolo-ppe-serving
+    argocd/app-name: field-content-neuroface-cv
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - yolo
+    - object-detection
+    - ppe
+    - python
+  links:
+    - url: https://yolo-ppe-serving-neuroface.apps.CLUSTER_DOMAIN_PLACEHOLDER/health
+      title: YOLO Health Endpoint
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: cv-ppe-streaming
+  namespace: default
+  description: "PPE Kafka Topics — cv.ppe.detections (ppe_compliance_check events) and dlq.ppe-errors on cdc-cluster"
+  annotations:
+    backstage.io/kubernetes-id: cdc-cluster
+    backstage.io/kubernetes-namespace: kafka-cdc
+    backstage.io/kubernetes-label-selector: strimzi.io/cluster=cdc-cluster
+    argocd/app-name: field-content-neuroface-cv
+    argocd/app-namespace: openshift-gitops
+    kafka.apache.org/consumer-groups: cdc-cluster/ppe-python-consumer
+  tags:
+    - kafka
+    - event-streaming
+    - ppe
+    - safety
+  links:
+    - url: https://console-openshift-console.apps.CLUSTER_DOMAIN_PLACEHOLDER/k8s/ns/kafka-cdc/kafka.strimzi.io~v1beta2~KafkaTopic/cv.ppe.detections
+      title: cv.ppe.detections Topic
+      icon: web
+    - url: https://console-openshift-console.apps.CLUSTER_DOMAIN_PLACEHOLDER/k8s/ns/kafka-cdc/kafka.strimzi.io~v1beta2~KafkaTopic/dlq.ppe-errors
+      title: dlq.ppe-errors (Dead Letter Queue)
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+  dependsOn:
+    - component:default/yolo-ppe-serving
+  providesApis:
+    - cv-ppe-detection-events
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: cv-ppe-detection-events
+  namespace: default
+  description: "PPE compliance events published to Kafka topic cv.ppe.detections"
+  tags:
+    - kafka
+    - asyncapi
+    - ppe
+    - safety
+spec:
+  type: asyncapi
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+  definition: |
+    asyncapi: 2.6.0
+    info:
+      title: YOLO PPE Detection Events
+      version: 1.0.0
+      description: |
+        PPE (Personal Protective Equipment) compliance events from the YOLO detection pipeline.
+        The NeuroFace backend receives webcam frames, forwards them to YOLO serving,
+        classifies compliance, optionally calls Granite LLM, and publishes events to Kafka.
+    channels:
+      cv.ppe.detections:
+        publish:
+          summary: PPE compliance check events
+          message:
+            name: PpeComplianceCheck
+            summary: Result of a YOLO-based PPE compliance scan
+            payload:
+              type: object
+              required:
+                - event_type
+                - ppe_status
+                - timestamp
+              properties:
+                event_type:
+                  type: string
+                  enum: [ppe_compliance_check]
+                source:
+                  type: string
+                  enum: [neuroface-ppe-backend]
+                model:
+                  type: string
+                  description: YOLO model name used for inference
+                timestamp:
+                  type: string
+                  format: date-time
+                ppe_status:
+                  type: string
+                  enum: [compliant, violation, no_persons]
+                  description: Overall PPE compliance status
+                person_count:
+                  type: integer
+                  description: Number of persons detected in the frame
+                detections_count:
+                  type: integer
+                  description: Total number of YOLO detections
+                detections:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      class_id:
+                        type: integer
+                      class_name:
+                        type: string
+                      confidence:
+                        type: number
+                      bbox:
+                        type: object
+                        properties:
+                          x1: { type: number }
+                          y1: { type: number }
+                          x2: { type: number }
+                          y2: { type: number }
+                present_ppe:
+                  type: array
+                  items: { type: string }
+                  description: PPE items detected in the frame
+                missing_ppe:
+                  type: array
+                  items: { type: string }
+                  description: PPE items expected but NOT detected
+                expected_ppe:
+                  type: array
+                  items: { type: string }
+                  description: Full list of expected PPE classes
+                confidence:
+                  type: string
+                  description: Confidence threshold used for inference
+                image_source:
+                  type: string
+                  description: URL or identifier of the source image
+                llm_analysis:
+                  type: string
+                  description: Optional natural language safety analysis from Granite LLM
+      dlq.ppe-errors:
+        publish:
+          summary: Dead letter queue for failed PPE event processing
+          message:
+            payload:
+              type: object
+              description: Original message that failed processing, with error headers
+    servers:
+      cdc-cluster:
+        url: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092
+        protocol: kafka

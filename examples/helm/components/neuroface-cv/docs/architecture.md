@@ -60,9 +60,55 @@ Namespace: neuroface                    Namespace: kafka-cdc
 | `field-content-helm-neuroface` | `neuroface` Helm chart v1.2.1 | `neuroface` | 10 |
 | `field-content-neuroface-cv` | `neuroface-cv` local component | `kafka-cdc` | 11 |
 
+## PPE Safety Detection (YOLO) — Optional Module
+
+When `ppe.enabled=true`, the chart deploys a parallel YOLO-based PPE detection pipeline that does **not** interfere with the existing OpenVINO face detection:
+
+### PPE Data Flow
+
+1. **YOLO Serving** (`yolo-ppe-serving` in `neuroface`) loads a pre-trained YOLOv8n model
+2. **PPE Processor** (`ppe-yolo-processor` in `kafka-cdc`) polls the YOLO endpoint every N seconds
+3. Processor classifies detected objects against expected PPE (hardhat, safety-vest, goggles)
+4. On **violation**, calls **Granite LLM** for a natural language safety analysis
+5. Publishes `ppe_compliance_check` events to `cv.ppe.detections` Kafka topic
+6. Consumer sends HTML email alerts to Safety Officer via Mailpit
+
+### PPE Deployment Model
+
+```
+Namespace: neuroface                    Namespace: kafka-cdc
+┌──────────────────────────────┐        ┌────────────────────────────────┐
+│ (existing — untouched)       │        │ (existing — untouched)         │
+│ neuroface-backend            │        │ cdc-cluster (Kafka)            │
+│ neuroface-frontend           │        │   └─ cv.face.detections        │
+│ neuroface-ovms               │        │   └─ dlq.cv-errors             │
+│ granite-llm (existing)  ◄────┼────────┤ camel-cv-processor             │
+│                              │        │                                │
+│ (NEW — ppe.enabled=true)     │        │ (NEW — ppe.enabled=true)       │
+│ yolo-ppe-serving         ◄───┼────────┤ cv.ppe.detections (NEW topic)  │
+│   └─ init: download model    │        │ dlq.ppe-errors (NEW topic)     │
+│   └─ ultralytics yolov8n     │        │                                │
+│                              │        │ Kafka producer lives in the    │
+│ neuroface-workbench          │        │ NeuroFace backend (ppe.py)     │
+│   └─ seeded notebooks        │        │   └─ webcam → YOLO → Kafka    │
+└──────────────────────────────┘        └────────────────────────────────┘
+```
+
+### PPE Configuration
+
+All PPE parameters are in `values.yaml` under the `ppe` key and validated by `values.schema.json`. Key settings:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `ppe.enabled` | `false` | Master toggle for the entire PPE module |
+| `ppe.yolo.modelName` | `yolov8n` | YOLO model variant |
+| `ppe.yolo.modelUrl` | ultralytics/v8.3.0 | Model weights download URL |
+| `ppe.kafka.topic` | `cv.ppe.detections` | Kafka topic name |
+
 ## Security
 
 - Kafka connections use **SASL_SSL** with SCRAM-SHA-512 (`cdc-user` credentials)
 - TLS certificates mounted from `cdc-cluster-cluster-ca-cert` secret
 - OpenShift OAuth injected into Jupyter workbench via `notebooks.opendatahub.io/inject-oauth`
 - OVMS model downloaded from Intel's public model zoo (no credentials required)
+- YOLO model downloaded from Ultralytics GitHub releases (public, no credentials)

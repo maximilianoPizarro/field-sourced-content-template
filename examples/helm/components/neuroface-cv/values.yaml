@@ -1,1 +1,27 @@
 clusterDomain: ""
+
+ppe:
+  enabled: false
+  yolo:
+    image: "registry.access.redhat.com/ubi9/python-312:latest"
+    modelName: "yolov8n"
+    modelUrl: "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8n.pt"
+    replicas: 1
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: "2"
+        memory: 4Gi
+    port: 8000
+  kafka:
+    topic: "cv.ppe.detections"
+    dlqTopic: "dlq.ppe-errors"
+    partitions: 3
+    replicas: 3
+    retentionMs: "604800000"
+
+workbench:
+  seedNotebooks: true
+  notebooksRepoUrl: "https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/one/examples/helm/components/neuroface-cv/notebooks"

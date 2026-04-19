@@ -1,6 +1,6 @@
 apiVersion: v2
 name: neuroface-cv
-description: Computer Vision pipeline — Kafka topic for face detections + Camel CDC route for email notifications
+description: Computer Vision pipeline — face detection (OpenVINO) + PPE safety detection (YOLO) with Kafka streaming, Granite LLM analysis, and email notifications
 type: application
-version: 0.1.0
-appVersion: "1.0.0"
+version: 0.2.0
+appVersion: "2.0.0"

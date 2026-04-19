@@ -88,6 +88,38 @@ spec:
         description: ${{ parameters.description }}
         defaultBranch: main
         repoVisibility: public
+    - id: create-argocd-app
+      name: Create ArgoCD Application
+      action: http:backstage:request
+      input:
+        method: POST
+        path: /proxy/argocd/api/v1/applications
+        headers:
+          Content-Type: application/json
+        body:
+          metadata:
+            name: "${{ parameters.owner }}-${{ parameters.name }}"
+            namespace: openshift-gitops
+            labels:
+              backstage.io/kubernetes-id: "${{ parameters.owner }}-${{ parameters.name }}"
+            finalizers:
+              - resources-finalizer.argocd.argoproj.io
+          spec:
+            project: default
+            source:
+              repoURL: "http://gitea-http.gitea.svc.cluster.local:3000/ws-${{ parameters.owner }}/${{ parameters.name }}.git"
+              targetRevision: main
+              path: manifests
+            destination:
+              server: https://kubernetes.default.svc
+              namespace: "${{ parameters.owner }}-${{ parameters.name }}"
+            syncPolicy:
+              automated:
+                prune: true
+                selfHeal: true
+              syncOptions:
+                - CreateNamespace=true
+                - ServerSideApply=true
     - id: register
       name: Register in Catalog
       action: catalog:register

@@ -7,5 +7,6 @@ minio:
   storage: 20Gi
   buckets:
     - anomaly-detection
+    - cv-detections
     - user-bucket
     - pipeline-bucket

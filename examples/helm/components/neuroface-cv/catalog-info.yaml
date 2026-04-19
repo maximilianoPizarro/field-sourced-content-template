@@ -3,11 +3,13 @@ kind: Domain
 metadata:
   name: computer-vision
   namespace: default
-  description: "Computer Vision — Facial recognition, OpenVINO inference, and event-driven notifications"
+  description: "Computer Vision — Face detection (OpenVINO), PPE safety (YOLO), Kafka streaming, Granite LLM analysis"
   tags:
     - computer-vision
     - ml
     - openvino
+    - yolo
+    - ppe
     - facial-recognition
 spec:
   owner: platform-engineering
@@ -18,21 +20,29 @@ kind: System
 metadata:
   name: neuroface-system
   namespace: default
-  description: "NeuroFace — Facial recognition with OpenVINO Model Server, Camel pollers (OVMS status + LBPH labels), Kafka event streaming, and email notifications via Mailpit"
+  description: "NeuroFace — Face recognition (OpenVINO) + PPE safety detection (YOLO) with Kafka streaming, Granite LLM analysis, Camel notifications, and Jupyter dashboards"
   annotations:
     backstage.io/techdocs-ref: dir:.
   tags:
     - neuroface
     - openvino
+    - yolo
     - kafka
     - fastapi
     - angular
+    - granite-llm
   links:
-    - url: https://neuroface-neuroface.apps.CLUSTER_DOMAIN_PLACEHOLDER
+    - url: https://neuroface-frontend-neuroface.apps.CLUSTER_DOMAIN_PLACEHOLDER
       title: NeuroFace Web App
+      icon: dashboard
+    - url: https://neuroface-frontend-neuroface.apps.CLUSTER_DOMAIN_PLACEHOLDER/ppe
+      title: PPE Safety Detection
       icon: dashboard
     - url: https://neuroface-ovms-neuroface.apps.CLUSTER_DOMAIN_PLACEHOLDER/v1/config
       title: OpenVINO Model Server
+      icon: web
+    - url: https://yolo-ppe-serving-neuroface.apps.CLUSTER_DOMAIN_PLACEHOLDER/health
+      title: YOLO PPE Serving
       icon: web
     - url: https://n8n-mailpit-openshift-lightspeed.apps.CLUSTER_DOMAIN_PLACEHOLDER/
       title: Mailpit — CV Notifications
@@ -47,7 +57,7 @@ kind: Component
 metadata:
   name: neuroface-app
   namespace: default
-  description: "NeuroFace — FastAPI backend + Angular frontend for facial recognition with OpenCV and OpenVINO inference"
+  description: "NeuroFace — FastAPI backend + Angular frontend for face recognition (OpenVINO) and PPE safety detection (YOLO → Kafka)"
   annotations:
     backstage.io/kubernetes-id: neuroface-backend
     backstage.io/kubernetes-namespace: neuroface
@@ -60,9 +70,14 @@ metadata:
     - python
     - opencv
     - facial-recognition
+    - ppe
+    - kafka-producer
   links:
-    - url: https://neuroface-neuroface.apps.CLUSTER_DOMAIN_PLACEHOLDER
+    - url: https://neuroface-frontend-neuroface.apps.CLUSTER_DOMAIN_PLACEHOLDER
       title: NeuroFace Frontend
+      icon: dashboard
+    - url: https://neuroface-frontend-neuroface.apps.CLUSTER_DOMAIN_PLACEHOLDER/ppe
+      title: PPE Safety Detection
       icon: dashboard
     - url: https://console-openshift-console.apps.CLUSTER_DOMAIN_PLACEHOLDER/k8s/ns/neuroface/deployments
       title: OpenShift Console
@@ -74,6 +89,10 @@ spec:
   system: neuroface-system
   dependsOn:
     - component:default/neuroface-ovms
+    - component:default/yolo-ppe-serving
+    - component:default/neuroface-llm
+  providesApis:
+    - cv-ppe-detection-events
 
 ---
 apiVersion: backstage.io/v1alpha1
@@ -236,7 +255,7 @@ kind: Component
 metadata:
   name: neuroface-workbench
   namespace: default
-  description: "CV Workbench — Jupyter notebook for OVMS inference testing, labels API queries, and Kafka event analysis"
+  description: "CV Workbench — Jupyter notebooks for OVMS inference, PPE compliance dashboards, and Kafka event analysis"
   annotations:
     backstage.io/kubernetes-id: neuroface-workbench
     backstage.io/kubernetes-namespace: neuroface
@@ -248,6 +267,7 @@ metadata:
     - jupyter
     - notebook
     - openvino
+    - ppe
     - data-science
   links:
     - url: https://neuroface-workbench-neuroface.apps.CLUSTER_DOMAIN_PLACEHOLDER/notebook/neuroface/neuroface-workbench
@@ -265,6 +285,7 @@ spec:
     - component:default/neuroface-ovms
     - component:default/neuroface-app
     - component:default/cv-kafka-streaming
+    - component:default/cv-ppe-streaming
 
 ---
 apiVersion: backstage.io/v1alpha1
@@ -272,7 +293,7 @@ kind: Component
 metadata:
   name: neuroface-llm
   namespace: default
-  description: "Granite LLM Server — llama.cpp inference server for NeuroFace chat functionality"
+  description: "Granite 3.1 2B Instruct — LLM for chat and PPE safety analysis (called on violations to generate natural language reports)"
   annotations:
     backstage.io/kubernetes-id: granite-llm-predictor
     backstage.io/kubernetes-namespace: neuroface
@@ -284,6 +305,7 @@ metadata:
     - granite
     - inference
     - chat
+    - ppe-analysis
   links:
     - url: https://rhods-dashboard-redhat-ods-applications.apps.CLUSTER_DOMAIN_PLACEHOLDER/projects/neuroface
       title: OpenShift AI Project
@@ -293,8 +315,6 @@ spec:
   lifecycle: production
   owner: platform-engineering
   system: neuroface-system
-  dependsOn:
-    - component:default/neuroface-app
 
 ---
 apiVersion: backstage.io/v1alpha1
@@ -441,7 +461,7 @@ kind: Component
 metadata:
   name: yolo-ppe-serving
   namespace: default
-  description: "YOLO PPE Serving — Ultralytics YOLOv8 model server for object detection with REST API (/v1/predict)"
+  description: "YOLO PPE Serving — YOLOv8n model server (Flask + Ultralytics) for PPE object detection. Called by NeuroFace backend /ppe/detect endpoint."
   annotations:
     backstage.io/kubernetes-id: yolo-ppe-serving
     backstage.io/kubernetes-namespace: neuroface
@@ -453,6 +473,7 @@ metadata:
     - object-detection
     - ppe
     - python
+    - ultralytics
   links:
     - url: https://yolo-ppe-serving-neuroface.apps.CLUSTER_DOMAIN_PLACEHOLDER/health
       title: YOLO Health Endpoint
@@ -469,14 +490,14 @@ kind: Component
 metadata:
   name: cv-ppe-streaming
   namespace: default
-  description: "PPE Kafka Topics — cv.ppe.detections (ppe_compliance_check events) and dlq.ppe-errors on cdc-cluster"
+  description: "PPE Kafka Topics — cv.ppe.detections receives ppe_compliance_check events from NeuroFace backend; consumed by Jupyter workbench"
   annotations:
     backstage.io/kubernetes-id: cdc-cluster
     backstage.io/kubernetes-namespace: kafka-cdc
     backstage.io/kubernetes-label-selector: strimzi.io/cluster=cdc-cluster
     argocd/app-name: field-content-neuroface-cv
     argocd/app-namespace: openshift-gitops
-    kafka.apache.org/consumer-groups: cdc-cluster/ppe-python-consumer
+    kafka.apache.org/consumer-groups: cdc-cluster/jupyter-ppe-consumer
   tags:
     - kafka
     - event-streaming
@@ -489,15 +510,16 @@ metadata:
     - url: https://console-openshift-console.apps.CLUSTER_DOMAIN_PLACEHOLDER/k8s/ns/kafka-cdc/kafka.strimzi.io~v1beta2~KafkaTopic/dlq.ppe-errors
       title: dlq.ppe-errors (Dead Letter Queue)
       icon: web
+    - url: https://kafka-console-kafka-cdc.apps.CLUSTER_DOMAIN_PLACEHOLDER
+      title: Kafka Console
+      icon: web
 spec:
   type: service
   lifecycle: production
   owner: platform-engineering
   system: neuroface-system
   dependsOn:
-    - component:default/yolo-ppe-serving
-  providesApis:
-    - cv-ppe-detection-events
+    - component:default/neuroface-app
 
 ---
 apiVersion: backstage.io/v1alpha1

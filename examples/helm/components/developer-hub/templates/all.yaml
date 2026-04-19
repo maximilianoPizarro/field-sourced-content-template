@@ -1151,27 +1151,29 @@ spec:
           ARGOCD_URL="https://openshift-gitops-server.openshift-gitops.svc"
 
           echo "Obtaining ArgoCD session token..."
-          SESSION_TOKEN=$(curl -sk "${ARGOCD_URL}/api/v1/session" \
+          SESSION_RESP=$(curl -sk "${ARGOCD_URL}/api/v1/session" \
             -H "Content-Type: application/json" \
-            -d "{\"username\":\"admin\",\"password\":\"${ARGOCD_PWD}\"}" \
-            | python3 -c "import sys,json; print(json.load(sys.stdin).get('token',''))" 2>/dev/null)
+            -d "{\"username\":\"admin\",\"password\":\"${ARGOCD_PWD}\"}")
+          SESSION_TOKEN=$(echo "$SESSION_RESP" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 
           if [ -z "$SESSION_TOKEN" ]; then
-            echo "ERROR: Could not obtain ArgoCD session token"
+            echo "ERROR: Could not obtain ArgoCD session token. Response: ${SESSION_RESP}"
             exit 1
           fi
+          echo "Session token obtained."
 
           echo "Creating long-lived ArgoCD API token..."
-          API_TOKEN=$(curl -sk "${ARGOCD_URL}/api/v1/account/admin/token" \
+          TOKEN_RESP=$(curl -sk "${ARGOCD_URL}/api/v1/account/admin/token" \
             -H "Authorization: Bearer ${SESSION_TOKEN}" \
             -H "Content-Type: application/json" \
-            -d "{\"name\":\"rhdh-proxy\",\"expiresIn\":\"0\"}" \
-            | python3 -c "import sys,json; print(json.load(sys.stdin).get('token',''))" 2>/dev/null)
+            -d "{\"name\":\"rhdh-proxy\"}")
+          API_TOKEN=$(echo "$TOKEN_RESP" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 
           if [ -z "$API_TOKEN" ]; then
             echo "WARN: Could not create API token (may already exist), using session token"
             API_TOKEN="${SESSION_TOKEN}"
           fi
+          echo "API token ready."
 
           echo "Creating/updating rhdh-argocd-credentials secret..."
           cat <<EOSECRET | oc apply -f -

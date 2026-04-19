@@ -1,5 +1,8 @@
 clusterDomain: ""
 
+global:
+  storageClass: ""
+
 ppe:
   enabled: false
   yolo:

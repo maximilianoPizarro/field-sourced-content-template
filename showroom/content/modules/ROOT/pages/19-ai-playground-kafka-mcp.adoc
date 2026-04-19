@@ -55,7 +55,7 @@ OpenShift AI 3.3 includes the **Gen AI Studio** (Playground) for interacting wit
 
 [source,text]
 ----
-URL:  https://mcp-gateway.apps.CLUSTER_DOMAIN/mcp
+URL:  https://mcp-gateway.{cluster_domain}/mcp
 ----
 
 == Available Kafka tools
@@ -242,7 +242,7 @@ Provide a timeline visualization in text format.
 
 == How to use
 
-. Open the https://rhods-dashboard-redhat-ods-applications.apps.CLUSTER_DOMAIN/[OpenShift AI Dashboard^]
+. Open the link:https://rhods-dashboard-redhat-ods-applications.{cluster_domain}/[OpenShift AI Dashboard^]
 . Navigate to **Gen AI Studio** → **Playground**
 . Select the **granite-llm** model (Granite 3.1 2B Instruct)
 . If MCP is configured, enable the **Kafka MCP Server** connection

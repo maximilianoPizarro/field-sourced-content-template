@@ -165,7 +165,9 @@ metadata:
   labels:
     opendatahub.io/dashboard: "true"
 spec:
-  storageClassName: ocs-external-storagecluster-ceph-rbd-immediate
+  {{- if .Values.global.storageClass }}
+  storageClassName: {{ .Values.global.storageClass }}
+  {{- end }}
   accessModes:
     - ReadWriteOnce
   resources:
@@ -703,7 +705,9 @@ metadata:
   labels:
     opendatahub.io/dashboard: "true"
 spec:
-  storageClassName: ocs-external-storagecluster-ceph-rbd-immediate
+  {{- if .Values.global.storageClass }}
+  storageClassName: {{ .Values.global.storageClass }}
+  {{- end }}
   accessModes:
     - ReadWriteOnce
   resources:
@@ -824,7 +828,9 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: ocs-external-storagecluster-ceph-rbd-immediate
+  {{- if .Values.global.storageClass }}
+  storageClassName: {{ .Values.global.storageClass }}
+  {{- end }}
   resources:
     requests:
       storage: 5Gi
@@ -1235,6 +1241,24 @@ spec:
           command: ["bash", "-c"]
           args:
             - |
+              MAX_WAIT=300
+              INTERVAL=10
+              ELAPSED=0
+              echo "Waiting for Kafka secrets in kafka-cdc namespace..."
+              while [ $ELAPSED -lt $MAX_WAIT ]; do
+                if oc get secret cdc-cluster-cluster-ca-cert -n kafka-cdc >/dev/null 2>&1 && \
+                   oc get secret cdc-user -n kafka-cdc >/dev/null 2>&1; then
+                  echo "Kafka secrets found after ${ELAPSED}s"
+                  break
+                fi
+                echo "Secrets not ready yet (${ELAPSED}/${MAX_WAIT}s)... waiting"
+                sleep $INTERVAL
+                ELAPSED=$((ELAPSED + INTERVAL))
+              done
+              if [ $ELAPSED -ge $MAX_WAIT ]; then
+                echo "ERROR: Timed out waiting for Kafka secrets"
+                exit 1
+              fi
               for SECRET_NAME in cdc-cluster-cluster-ca-cert cdc-user; do
                 if oc get secret "$SECRET_NAME" -n neuroface >/dev/null 2>&1; then
                   echo "Secret $SECRET_NAME already exists in neuroface"

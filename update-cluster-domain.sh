@@ -33,6 +33,7 @@ NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HELM_DIR="${SCRIPT_DIR}/examples/helm"
+SHOWROOM_DIR="${SCRIPT_DIR}/showroom"
 
 # --- Validate input ---
 if [ $# -lt 1 ]; then
@@ -62,7 +63,7 @@ fi
 echo -e "${CYAN}Detecting current cluster domain...${NC}"
 
 CURRENT_DOMAIN=$(grep -r -oh 'apps\.cluster-[a-z0-9]*\.dynamic\.redhatworkshops\.io' \
-    "${HELM_DIR}" --include="*.yaml" --include="*.yml" 2>/dev/null \
+    "${HELM_DIR}" "${SHOWROOM_DIR}" --include="*.yaml" --include="*.yml" 2>/dev/null \
     | sort | uniq -c | sort -rn | head -1 | awk '{print $2}')
 
 if [ -z "$CURRENT_DOMAIN" ]; then
@@ -84,7 +85,7 @@ echo ""
 echo -e "${CYAN}Scanning for files to update...${NC}"
 
 if [ "$CURRENT_DOMAIN" != "__PLACEHOLDER_DOMAIN__" ]; then
-    AFFECTED_FILES=$(grep -r -l "$CURRENT_DOMAIN" "${HELM_DIR}" \
+    AFFECTED_FILES=$(grep -r -l "$CURRENT_DOMAIN" "${HELM_DIR}" "${SHOWROOM_DIR}" \
         --include="*.yaml" --include="*.yml" 2>/dev/null || true)
 else
     AFFECTED_FILES=""

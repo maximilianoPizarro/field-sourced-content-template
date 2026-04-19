@@ -16,7 +16,7 @@ set -euo pipefail
 #
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SEARCH_DIR="${REPO_ROOT}/examples/helm"
+SEARCH_DIRS=("${REPO_ROOT}/examples/helm" "${REPO_ROOT}/showroom")
 
 NEW_ID="${1:-}"
 if [[ -z "$NEW_ID" ]]; then
@@ -25,10 +25,10 @@ if [[ -z "$NEW_ID" ]]; then
   exit 1
 fi
 
-OLD_ID=$(grep -rhoP 'cluster-\K[a-z0-9]+(?=\.dynamic\.redhatworkshops\.io)' "$SEARCH_DIR" | sort | uniq -c | sort -rn | head -1 | awk '{print $2}')
+OLD_ID=$(grep -rhoP 'cluster-\K[a-z0-9]+(?=\.dynamic\.redhatworkshops\.io)' "${SEARCH_DIRS[@]}" | sort | uniq -c | sort -rn | head -1 | awk '{print $2}')
 
 if [[ -z "$OLD_ID" ]]; then
-  echo "ERROR: Could not detect current cluster ID in $SEARCH_DIR"
+  echo "ERROR: Could not detect current cluster ID"
   exit 1
 fi
 
@@ -44,7 +44,7 @@ echo "Detected current domain: $OLD_DOMAIN"
 echo "Replacing with:          $NEW_DOMAIN"
 echo ""
 
-CHANGED_FILES=$(grep -rl "$OLD_DOMAIN" "$SEARCH_DIR" || true)
+CHANGED_FILES=$(grep -rl "$OLD_DOMAIN" "${SEARCH_DIRS[@]}" || true)
 
 if [[ -z "$CHANGED_FILES" ]]; then
   echo "No files contain '$OLD_DOMAIN'. Nothing to do."
@@ -54,7 +54,7 @@ fi
 COUNT=0
 while IFS= read -r file; do
   sed -i "s/${OLD_DOMAIN}/${NEW_DOMAIN}/g" "$file"
-  rel="${file#"$REPO_ROOT/"}"
+  rel="${file#"${REPO_ROOT}/"}"
   echo "  updated: $rel"
   COUNT=$((COUNT + 1))
 done <<< "$CHANGED_FILES"

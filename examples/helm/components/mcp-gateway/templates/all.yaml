@@ -1038,7 +1038,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: argocd-mcp-server-script
-  namespace: openshift-gitops
+  namespace: mcp-system
   annotations:
     argocd.argoproj.io/sync-wave: "3"
 data:
@@ -1309,19 +1309,105 @@ data:
   requirements.txt: |
     mcp[cli]>=1.27.0
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-secret-reader
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["openshift-gitops-cluster"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-mcp-read-secret
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argocd-secret-reader
+subjects:
+  - kind: ServiceAccount
+    name: argocd-mcp-server
+    namespace: mcp-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-secret-writer
+  namespace: mcp-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-mcp-write-secret
+  namespace: mcp-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argocd-secret-writer
+subjects:
+  - kind: ServiceAccount
+    name: argocd-mcp-server
+    namespace: mcp-system
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: argocd-mcp-server
-  namespace: openshift-gitops
+  namespace: mcp-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: argocd-secret-sync
+  namespace: mcp-system
   annotations:
     argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 4
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      serviceAccountName: argocd-mcp-server
+      restartPolicy: OnFailure
+      containers:
+        - name: sync
+          image: registry.redhat.io/openshift4/ose-cli:latest
+          command: ["bash", "-c"]
+          args:
+            - |
+              echo "Copying ArgoCD admin password to mcp-system..."
+              PASS=$(oc get secret openshift-gitops-cluster -n openshift-gitops -o jsonpath='{.data.admin\.password}' | base64 -d)
+              if [ -z "$PASS" ]; then echo "ERROR: could not read ArgoCD password"; exit 1; fi
+              oc create secret generic argocd-admin-password -n mcp-system \
+                --from-literal=password="$PASS" --dry-run=client -o yaml | oc apply -f -
+              echo "Done"
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: argocd-mcp-server
-  namespace: openshift-gitops
+  namespace: mcp-system
   annotations:
     argocd.argoproj.io/sync-wave: "3"
   labels:
@@ -1358,8 +1444,8 @@ spec:
             - name: ARGOCD_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: openshift-gitops-cluster
-                  key: admin.password
+                  name: argocd-admin-password
+                  key: password
           volumeMounts:
             - name: script
               mountPath: /config
@@ -1392,7 +1478,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: argocd-mcp-server
-  namespace: openshift-gitops
+  namespace: mcp-system
   annotations:
     argocd.argoproj.io/sync-wave: "3"
 spec:
@@ -1408,7 +1494,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: argocd-mcp-route
-  namespace: openshift-gitops
+  namespace: mcp-system
   annotations:
     argocd.argoproj.io/sync-wave: "3"
 spec:
@@ -1417,7 +1503,7 @@ spec:
       namespace: mcp-system
       sectionName: mcp
   hostnames:
-    - argocd-mcp-server.openshift-gitops.svc.cluster.local
+    - argocd-mcp-server.mcp-system.svc.cluster.local
   rules:
     - backendRefs:
         - group: ""
@@ -1430,7 +1516,7 @@ apiVersion: mcp.kuadrant.io/v1alpha1
 kind: MCPServerRegistration
 metadata:
   name: argocd-mcp-server
-  namespace: openshift-gitops
+  namespace: mcp-system
   annotations:
     argocd.argoproj.io/sync-wave: "4"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true

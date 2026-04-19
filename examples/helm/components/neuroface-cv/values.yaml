@@ -1,7 +1,7 @@
 clusterDomain: ""
 
 global:
-  storageClass: ""
+  storageClass: "ocs-external-storagecluster-ceph-rbd-immediate"
 
 ppe:
   enabled: false

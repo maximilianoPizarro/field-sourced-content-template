@@ -19,7 +19,7 @@
   var mirrorK = ThreeHelper.createNode(ctx.scene,'Mirror Kafka\n5 KRaft',0x37474F,0,Y_HUB,0);
   var mm2     = ThreeHelper.createNode(ctx.scene,'MirrorMaker2',0x9C27B0,0,Y_HUB,5);
   var minio   = ThreeHelper.createNode(ctx.scene,'MinIO\n8 nodes',0x00BCD4,7,Y_HUB,-3);
-  var ml      = ThreeHelper.createNode(ctx.scene,'OpenShift AI\nModelMesh',0xEE0000,7,Y_HUB,3);
+  var ml      = ThreeHelper.createNode(ctx.scene,'OpenShift AI\nKServe',0xEE0000,7,Y_HUB,3);
   var consumers = ThreeHelper.createNode(ctx.scene,'External\nConsumers',0xFFD600,14,Y_HUB,0);
 
   // Edge cluster
@@ -73,6 +73,192 @@
 
 This page summarizes the capacity planning for scaling the Industrial Edge platform from a demo/PoC to a production deployment supporting **20,000 IoT devices**. Full sizing details are available in the TechDocs (Developer Hub).
 
+== Current demo cluster — Measured sizing
+
+Measured resource consumption from a running cluster with all components deployed (129 workload pods across 16 namespaces).
+
+=== Cluster infrastructure
+
+[cols="1,1,1,1", options="header"]
+|===
+| Node type | Count | vCPU | Memory
+
+| Control plane
+| 3
+| 16 vCPU
+| 64 Gi
+
+| Worker
+| 3
+| 64 vCPU
+| 128 Gi
+
+| **Total capacity**
+| **6**
+| **240 vCPU**
+| **576 Gi**
+|===
+
+=== Resource allocation by component (actual)
+
+[cols="2,1,1,1,1,1", options="header"]
+|===
+| Component | Pods | CPU Req | CPU Lim | Mem Req | Mem Lim
+
+| CDC & Kafka Streaming
+| 17
+| 1.1 vCPU
+| 3.2 vCPU
+| 1.6 Gi
+| 3.5 Gi
+
+| Industrial Edge IoT (Dev)
+| 14
+| 1.8 vCPU
+| 9.1 vCPU
+| 5.1 Gi
+| 10.7 Gi
+
+| Industrial Edge IoT (Factory)
+| 12
+| 0.1 vCPU
+| 0.5 vCPU
+| 0.1 Gi
+| 0.5 Gi
+
+| Industrial Edge Data Lake
+| 6
+| 0.1 vCPU
+| 0.5 vCPU
+| 0.1 Gi
+| 0.5 Gi
+
+| Industrial Edge ML/AI
+| 11
+| 5.7 vCPU
+| 21.5 vCPU
+| 21.7 Gi
+| 33.7 Gi
+
+| NeuroFace CV Pipeline
+| 6
+| 5.7 vCPU
+| 14.8 vCPU
+| 9.4 Gi
+| 24.8 Gi
+
+| OpenShift AI (RHOAI 3.3)
+| 13
+| 8.2 vCPU
+| 11.5 vCPU
+| 12.8 Gi
+| 39.0 Gi
+
+| Observability (Grafana/Istio/Kiali)
+| 13
+| 2.3 vCPU
+| —
+| 5.6 Gi
+| —
+
+| Keycloak (RHBK)
+| 6
+| 0.9 vCPU
+| 2.4 vCPU
+| 4.7 Gi
+| 5.9 Gi
+
+| Developer Hub (RHDH)
+| 3
+| 0.5 vCPU
+| 1.8 vCPU
+| 0.6 Gi
+| 4.5 Gi
+
+| MCP Gateway (Kuadrant)
+| 3
+| 0.2 vCPU
+| 2.2 vCPU
+| 0.2 Gi
+| 1.3 Gi
+
+| Kuadrant (Connectivity Link)
+| 8
+| 0.9 vCPU
+| 2.1 vCPU
+| 0.8 Gi
+| 2.9 Gi
+
+| Mailpit
+| 1
+| 0.1 vCPU
+| 0.5 vCPU
+| 0.3 Gi
+| 0.5 Gi
+
+| Showroom
+| 2
+| 0.6 vCPU
+| 0.7 vCPU
+| 0.6 Gi
+| 1.3 Gi
+
+| GitOps & DevTools (Gitea, DevSpaces, Kogito)
+| 10
+| 1.1 vCPU
+| 1.2 vCPU
+| 1.6 Gi
+| 8.6 Gi
+
+| Cert Manager
+| 4
+| —
+| —
+| —
+| —
+
+| **WORKLOAD TOTAL**
+| **129**
+| **29.0 vCPU**
+| **71.9 vCPU**
+| **65.2 Gi**
+| **137.5 Gi**
+|===
+
+NOTE: Platform namespaces (openshift-*, kube-*) add ~28 vCPU requests / ~86 Gi memory requests. Grand total: ~57 vCPU requests / ~152 Gi memory requests.
+
+=== OOM fixes applied (lessons learned)
+
+[cols="2,1,1,1", options="header"]
+|===
+| Component | Original | Fixed To | Reason
+
+| Mailpit
+| 128 Mi
+| 512 Mi
+| OOMKilled after 24 restarts processing CV notification emails
+
+| Perses Operator (COO)
+| 512 Mi
+| 1 Gi
+| OOMKilled during Cluster Observability Operator startup
+
+| Kuadrant Operator
+| 300 Mi
+| 2 Gi
+| OOMKilled during Red Hat Connectivity Link reconciliation
+
+| Kiali
+| default
+| 2 Gi
+| OOMKilled when processing service mesh topology
+
+| Granite LLM (llama.cpp)
+| N/A
+| 4 Gi req / 8 Gi lim
+| Migrated from Deployment to KServe InferenceService for RHOAI Playground
+|===
+
 == Throughput baseline (20K devices)
 
 [cols="1,1", options="header"]
@@ -106,29 +292,35 @@ This page summarizes the capacity planning for scaling the Industrial Edge platf
 |===
 | Component | Pods | vCPU (req) | Memory (req) | Storage
 
-| CDC (Component 1)
-| 8
-| 5.5
-| 11Gi
-| 210Gi
+| CDC & Kafka
+| 17
+| 1.1
+| 1.6 Gi
+| 30 Gi
 
-| Industrial Edge (Component 2)
+| Industrial Edge (Dev + Factory + Data Lake)
+| 32
+| 2.0
+| 5.4 Gi
+| 60 Gi
+
+| ML/AI + NeuroFace + RHOAI
+| 30
+| 19.5
+| 43.9 Gi
+| 30 Gi
+
+| Platform (Observability, Keycloak, DevHub, MCP, Kuadrant, Mailpit, Showroom, GitOps)
 | 50
-| 29.7
-| 54Gi
-| 1090Gi
-
-| Mirror (Component 3)
-| 9
-| 6.0
-| 12Gi
-| 360Gi
+| 6.5
+| 14.3 Gi
+| 20 Gi
 
 | **TOTAL**
-| **67**
-| **41.2 vCPU**
-| **77Gi**
-| **1660Gi**
+| **129**
+| **29.0 vCPU**
+| **65.2 Gi**
+| **~140 Gi**
 |===
 
 === Production (20K devices)
@@ -140,124 +332,63 @@ This page summarizes the capacity planning for scaling the Industrial Edge platf
 | CDC (with 5 consumer groups)
 | 20
 | 19.5
-| 34Gi
-| 1000Gi
+| 34 Gi
+| 1000 Gi
 
 | Industrial Edge IoT
 | 70
 | 114.6
-| 212Gi
-| 17618Gi
+| 212 Gi
+| 17618 Gi
 
 | Mirror (with 7 external consumer groups)
 | 28
 | 23.0
-| 34.3Gi
-| 2500Gi
+| 34.3 Gi
+| 2500 Gi
 
 | **TOTAL**
 | **118**
 | **157.1 vCPU**
-| **280.3Gi**
+| **280.3 Gi**
 | **~20.6 TiB**
 |===
 
-== CDC consumer estimation (5 consumer groups)
+== Minimum cluster requirements (demo)
 
-[cols="1,1,1,1,1", options="header"]
+[cols="1,1,1,1", options="header"]
 |===
-| Consumer | Pods | vCPU | Memory | Purpose
+| Resource | Minimum | Recommended | Notes
 
-| Camel K (view materialization)
+| Worker nodes
 | 3
-| 1.5
-| 1.5Gi
-| Materializes views from CDC events
-
-| Notification service
-| 2
-| 0.5
-| 512Mi
-| Sends alerts on specific changes
-
-| Search indexer
 | 3
-| 3.0
-| 3Gi
-| Full-text search indexing
+| All workloads on workers; control plane dedicated
 
-| Analytics pipeline
-| 2
-| 1.0
-| 2Gi
-| Aggregates for reporting
+| Worker vCPU
+| 32 per node (96 total)
+| 64 per node (192 total)
+| Current utilization: ~29% requests
 
-| Audit logger
-| 2
-| 0.5
-| 1Gi
-| Immutable audit trail
+| Worker memory
+| 64 Gi per node (192 Gi total)
+| 128 Gi per node (384 Gi total)
+| Current utilization: ~39% requests; 128 Gi needed for OOM-safe operators
 
-| **Subtotal**
-| **12**
-| **6.5**
-| **8Gi**
-| —
-|===
+| Worker storage
+| 200 Gi per node
+| 500 Gi per node
+| PVCs for Kafka, MinIO, models, notebooks
 
-== Mirror external consumer estimation (7 consumer groups)
+| Control plane
+| 3 x 16 vCPU / 64 Gi
+| 3 x 16 vCPU / 64 Gi
+| Standard OCP control plane
 
-[cols="1,1,1,1,1", options="header"]
-|===
-| Consumer | Pods | vCPU | Memory | Purpose
-
-| Kafka REST Proxy
-| 3
-| 1.5
-| 1Gi
-| HTTP interface for external systems
-
-| Grafana / dashboards
-| 2
-| 0.5
-| 256Mi
-| Real-time operational dashboards
-
-| BI connector (Superset)
-| 3
-| 1.5
-| 1Gi
-| Analytics and business intelligence
-
-| Data science consumer
-| 2
-| 1.0
-| 512Mi
-| Feeds ML training pipelines
-
-| Partner integration
-| 3
-| 1.5
-| 512Mi
-| External partner data feeds
-
-| Audit / compliance
-| 2
-| 0.5
-| 512Mi
-| Regulatory compliance export
-
-| DR replication
-| 3
-| 1.5
-| 512Mi
-| Standby cluster sync
-
-| **Subtotal**
-| **18**
-| **8.0**
-| **4.3Gi**
-| —
+| OCS / ODF
+| External Ceph (recommended)
+| External Ceph
+| RBD for RWO, CephFS for RWX
 |===
 
 == Cluster topology options
@@ -270,8 +401,8 @@ This page summarizes the capacity planning for scaling the Industrial Edge platf
 
 | All-in-one
 | 3
-| 24
-| 96Gi
+| 64 per node (192 total)
+| 128 Gi per node (384 Gi total)
 |===
 
 Suitable for demo, dev/test, and single-site deployments.
@@ -285,19 +416,19 @@ Suitable for demo, dev/test, and single-site deployments.
 | Hub (CDC + Data Lake + ML + Mirror)
 | 12 + 1 GPU
 | 200
-| 832Gi
+| 832 Gi
 | ~18.5 TiB
 
 | Edge (Factory IoT)
 | 5
 | 80
-| 320Gi
+| 320 Gi
 | ~2.8 TiB
 
 | **Total**
 | **19**
 | **280**
-| **1152Gi**
+| **1152 Gi**
 | **~21.3 TiB**
 |===
 
@@ -312,22 +443,22 @@ Available on: *AWS (ROSA)*, *Azure (ARO)*, *On-premise* (bare metal / VMware).
 | Hub (RHACM + ArgoCD + Developer Hub + CDC)
 | 6
 | 96
-| 384Gi
+| 384 Gi
 
 | Edge (Factory IoT)
 | 5
 | 80
-| 320Gi
+| 320 Gi
 
 | Central Data (Data Lake + MinIO + Mirror)
 | 8
 | 128
-| 512Gi
+| 512 Gi
 
 | DR Standby (passive mirror)
 | 4
 | 64
-| 256Gi
+| 256 Gi
 
 | GPU (on Hub or Central)
 | 1
@@ -337,7 +468,7 @@ Available on: *AWS (ROSA)*, *Azure (ARO)*, *On-premise* (bare metal / VMware).
 | **Total**
 | **25**
 | **376**
-| **1472Gi**
+| **1472 Gi**
 |===
 
 Available on: *AWS (ROSA)*, *Azure (ARO)*, *On-premise* (bare metal / VMware).
@@ -362,6 +493,12 @@ Available on: *AWS (ROSA)*, *Azure (ARO)*, *On-premise* (bare metal / VMware).
 
 | MirrorMaker2 with 8 tasks/source
 | Handles 13K msg/sec cross-cluster replication
+
+| KServe InferenceService for LLMs
+| Integrates with RHOAI Playground; replaces standalone Deployments
+
+| Operator memory overrides (CSV patch)
+| COO, Kuadrant, Kiali require 1-2 Gi vs OLM defaults of 128-512 Mi
 |===
 
 == TechDocs reference
@@ -371,11 +508,13 @@ Full sizing details with per-component tables, YAML configurations, and operatio
 * *Component 1 — CDC*: Producer + consumer sizing, KRaft YAML, Debezium configuration
 * *Component 2 — Industrial Edge IoT*: AMQ, Kafka, Camel K, Sensors, Dashboard, OpenShift AI, MinIO
 * *Component 3 — Mirror*: MirrorMaker2, external consumer estimation, security (TLS + SCRAM-SHA-512)
+* *NeuroFace CV*: KServe InferenceService (OVMS + llama.cpp), Kafka MCP Server, Mailpit notifications
 
 == What you learned
 
-* Platform resource requirements scale from 67 pods / 41 vCPU (demo) to 118 pods / 157 vCPU (20K devices)
-* CDC and Mirror consumers add significant read amplification on Kafka brokers (5x and 7x respectively)
+* The demo cluster runs **129 workload pods** using **29 vCPU / 65 Gi** (requests) on 3 workers with 64 vCPU / 128 Gi each
+* Several operators (COO, Kuadrant, Kiali) require **memory limit overrides** via CSV patches to prevent OOMKilled loops
+* Mailpit needs at least **512 Mi** when processing continuous CV notification emails
+* Platform resource requirements scale from 129 pods / 29 vCPU (demo) to 118+ pods / 157 vCPU (20K devices)
+* Minimum demo cluster: **3 workers x 64 vCPU x 128 Gi** (192 vCPU / 384 Gi total)
 * Production deployments require 2-4 OpenShift clusters depending on HA and DR requirements
-* KRaft mode eliminates ZooKeeper, reducing complexity and pod count
-* Infrastructure options are equivalent across AWS, Azure, and on-premise — only the provisioning model differs

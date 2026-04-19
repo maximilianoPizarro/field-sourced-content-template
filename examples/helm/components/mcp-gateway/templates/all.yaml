@@ -1043,11 +1043,9 @@ metadata:
     argocd.argoproj.io/sync-wave: "3"
 data:
   server.py: |
-    import os, json, logging, urllib3
-    from datetime import datetime
+    import os, json, logging
     from mcp.server.fastmcp import FastMCP
 
-    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     logging.basicConfig(level=logging.INFO)
     log = logging.getLogger("argocd-mcp")
 

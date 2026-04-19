@@ -69,6 +69,39 @@ spec:
   name: serverless-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace
+---
+apiVersion: opendatahub.io/v1alpha1
+kind: OdhDashboardConfig
+metadata:
+  name: odh-dashboard-config
+  namespace: redhat-ods-applications
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+  labels:
+    app: rhods-dashboard
+    app.kubernetes.io/part-of: rhods-dashboard
+    app.opendatahub.io/rhods-dashboard: "true"
+    platform.opendatahub.io/part-of: dashboard
+spec:
+  dashboardConfig:
+    genAiStudio: true
+    disableModelCatalog: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gen-ai-aa-mcp-servers
+  namespace: redhat-ods-applications
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+data:
+  Kafka-MCP-Server: |
+    {
+      "url": "http://kafka-mcp-server.kafka-cdc.svc.cluster.local:8080/mcp",
+      "description": "Kafka MCP Server — provides tools to explore and query Apache Kafka clusters. Available tools: list_topics (list all topics with partition counts), describe_topic (show partition offsets and message counts), read_messages (read latest N messages from a topic), consumer_groups (list all consumer groups and their states). Connected to the CDC Kafka cluster with topics for CDC events, CV face detections, BPM workflows, and dead-letter queues."
+    }
 ## rhods-operator Subscription removed — already managed by connectivityLink.operators.subscriptions in values.yaml (channel stable-2.25)
 ## ---
 ## vLLM CPU model commented out to free cluster resources

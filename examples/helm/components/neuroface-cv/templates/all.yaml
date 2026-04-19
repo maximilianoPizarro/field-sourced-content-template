@@ -1326,7 +1326,8 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - |
-              pip install --quiet opencv-python-headless ultralytics &&
+              pip install --quiet ultralytics &&
+              pip install --quiet --force-reinstall --no-deps opencv-python-headless &&
               python /config/serve.py
           env:
             - name: YOLO_MODEL_PATH

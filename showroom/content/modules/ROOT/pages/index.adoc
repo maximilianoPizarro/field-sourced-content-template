@@ -128,6 +128,11 @@ Work through the guides in order. Each page focuses on one slice of the platform
 . xref:18-neuroface-cv.adoc[NeuroFace CV Pipeline] -- Facial recognition with OpenVINO, Kafka events, and email alerts
 . xref:20-ppe-safety.adoc[PPE Safety Detection] -- YOLO-based PPE monitoring with Kafka, Granite LLM, and Jupyter dashboards
 
+*Industrial Edge — Scale to N*
+
+[start=13]
+. xref:21-scale-to-n.adoc[Scale to N: Self-Service Edge Instances] -- Deploy isolated IoT stacks on demand via Developer Hub templates
+
 == Terminal
 
 The showroom embeds a *terminal* panel so you can run `oc`, `kubectl`, and other CLI tools without leaving the guide.

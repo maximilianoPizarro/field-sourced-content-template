@@ -44,11 +44,11 @@ Los **pasos** frecuentes en ecosistemas GitOps son:
 - **`fetch:template`** (o equivalente): copia el `skeleton` y aplica sustituciones desde los parámetros. En este workshop se genera un **nombre único** (`uniqueName`) con formato `owner-name` (e.g. `user1-neuralbank-backend`) para evitar colisiones entre usuarios.
 - **`publish:gitea`** / **`publish:github`** / similar: crea o actualiza el repositorio remoto con el contenido generado.
 - **`catalog:register`**: registra el componente (y a veces la API) en el Software Catalog para que aparezca en Developer Hub con enlaces y metadatos.
-- **Creación de ArgoCD Application** (`http:backstage:request`): crea la aplicación en ArgoCD vía API proxy con el nombre único del componente.
+- **Creación de ArgoCD Application** (`http:backstage:request`): crea la Application como un CRD de Kubernetes a través del proxy `/k8s-api` — el ServiceAccount de Developer Hub ya tiene permisos RBAC sobre `argoproj.io/applications`.
 - **Creación de Gitea Webhook** (`http:backstage:request`): configura un webhook para disparar pipelines Tekton ante cada push.
-- **Envío de notificación** (`http:backstage:request` a `/api/notifications`): notifica al owner sobre la creación exitosa del componente (in-app y por email).
+- **Envío de notificación** (`http:backstage:request` a `/proxy/mailpit/api/v1/send`): envía un email de confirmación al owner vía Mailpit.
 
-La nomenclatura exacta depende de los **scaffolder actions** instalados en tu instancia; lo importante es reconocer el patrón: *generar → publicar en Git → registrar → desplegar → notificar*.
+La nomenclatura exacta depende de los **scaffolder actions** instalados en tu instancia; lo importante es reconocer el patrón: *generar → publicar en Git → crear ArgoCD App → registrar en catálogo → notificar*.
 
 ## Naming convention multi-usuario
 
@@ -64,9 +64,9 @@ En un entorno compartido con múltiples participantes, es fundamental evitar col
 
 Los recursos **namespace-scoped** (Deployment, Service, Pipeline, etc.) mantienen el nombre base (`neuralbank-backend`) porque el namespace ya es único por usuario (`user1-neuralbank`).
 
-## Plantillas Neuralbank disponibles en el workshop
+## Plantillas disponibles en el workshop
 
-Para el caso Neuralbank trabajarás con tres plantillas pensadas para encajar entre sí:
+### Neuralbank (caso de negocio)
 
 | Plantilla | Propósito |
 | --- | --- |
@@ -74,7 +74,24 @@ Para el caso Neuralbank trabajarás con tres plantillas pensadas para encajar en
 | `neuralbank-backend` | API REST (por ejemplo Quarkus) para **créditos** y dominio bancario; incluye pipeline de build/despliegue y registro de **API** en el catálogo. |
 | `neuralbank-frontend` | Interfaz web para **visualización** de créditos, alineada con el backend y el despliegue en OpenShift. |
 
-Cada una implementa un **golden path** distinto pero coherente con el mismo dominio de negocio.
+### Industrial Edge (IoT / Scale-to-N)
+
+| Plantilla | Propósito |
+| --- | --- |
+| `industrial-edge` | Despliega un **stack IoT completo** y aislado: sensores MQTT, AMQ Broker, Kafka KRaft, Camel K (MQTT→Kafka), y Line Dashboard. Cada instancia genera su propio namespace, cluster Kafka y ArgoCD Application. Diseñada para **escalar la arquitectura validada a N instancias** de forma self-service. |
+| `remove-component` | **Cleanup template** que elimina instancias creadas por cualquier template: borra el repo en Gitea, cascade-delete del ArgoCD Application (namespace incluido), limpieza de entidades del catálogo, y notificación. |
+
+### Otras plantillas
+
+| Plantilla | Propósito |
+| --- | --- |
+| `kafka-external-consumer` | Consumer Kafka externo con configuración de tópicos y consumer groups. |
+| `kafka-cdc-mcp` | MCP Server para CDC (Change Data Capture) sobre Kafka. |
+| `k8s-ops-mcp` | MCP Server para operaciones Kubernetes. |
+| `sonataflow-bpm` | Workflow BPM con SonataFlow/Kogito. |
+| `camel-kaoto` | Integración Camel con editor visual Kaoto en Dev Spaces. |
+
+Cada una implementa un **golden path** distinto. La plantilla `industrial-edge` es especialmente relevante como ejemplo de *platform-as-a-service*: una arquitectura validada empaquetada como template para escalar bajo demanda. Ver [Scale to N: Industrial Edge Self-Service]({{ site.baseurl }}/13-industrial-edge-scale) para la documentación completa.
 
 ## Flujo de scaffolding
 

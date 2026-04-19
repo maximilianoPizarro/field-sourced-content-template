@@ -1,0 +1,353 @@
+= Scale to N: Self-Service Edge Instances
+
+++++
+<div id="scene-scale" style="width:100%;min-height:500px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../../_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-scale', {height:500, camX:6, camY:22, camZ:38, rotateSpeed:0.25});
+  if(!ctx) return;
+
+  // ── Platform layer (shared) ──
+  var Y_PLAT = 8;
+  var hub    = ThreeHelper.createNode(ctx.scene,'Developer Hub',0xEE0000, 0, Y_PLAT, 0);
+  var gitea  = ThreeHelper.createNode(ctx.scene,'Gitea SCM',0x609926, -7, Y_PLAT, 0);
+  var argocd = ThreeHelper.createNode(ctx.scene,'ArgoCD',0xEF7B4D, 7, Y_PLAT, 0);
+  var kafka0 = ThreeHelper.createNode(ctx.scene,'Central Kafka',0x231F20, 14, Y_PLAT, 0);
+
+  // ── Instance 1 (user1-edge-factory-1) ──
+  var Y_I1 = 2;
+  var i1Sensor1 = ThreeHelper.createNode(ctx.scene,'Sensor 1',0x4CAF50, -14, Y_I1, -8);
+  var i1Sensor2 = ThreeHelper.createNode(ctx.scene,'Sensor 2',0x4CAF50, -14, Y_I1, -4);
+  var i1Broker  = ThreeHelper.createNode(ctx.scene,'AMQ',0xE53935,       -8, Y_I1, -6);
+  var i1Camel   = ThreeHelper.createNode(ctx.scene,'Camel K',0xF57C00,   -2, Y_I1, -8);
+  var i1Kafka   = ThreeHelper.createNode(ctx.scene,'Kafka',0x231F20,      4, Y_I1, -8);
+  var i1Dash    = ThreeHelper.createNode(ctx.scene,'Dashboard',0x1A73E8,  4, Y_I1, -4);
+
+  // ── Instance 2 (user2-edge-plant-nyc) ──
+  var Y_I2 = -4;
+  var i2Sensor1 = ThreeHelper.createNode(ctx.scene,'Sensor 1',0x66BB6A, -14, Y_I2, -2);
+  var i2Sensor2 = ThreeHelper.createNode(ctx.scene,'Sensor 2',0x66BB6A, -14, Y_I2, 2);
+  var i2Broker  = ThreeHelper.createNode(ctx.scene,'AMQ',0xEF5350,       -8, Y_I2, 0);
+  var i2Camel   = ThreeHelper.createNode(ctx.scene,'Camel K',0xFFA726,   -2, Y_I2, -2);
+  var i2Kafka   = ThreeHelper.createNode(ctx.scene,'Kafka',0x424242,      4, Y_I2, -2);
+  var i2Dash    = ThreeHelper.createNode(ctx.scene,'Dashboard',0x42A5F5,  4, Y_I2, 2);
+
+  // ── Instance N (userN-edge-plant-X) ──
+  var Y_IN = -10;
+  var iNSensor1 = ThreeHelper.createNode(ctx.scene,'Sensor 1',0x81C784, -14, Y_IN, 4);
+  var iNSensor2 = ThreeHelper.createNode(ctx.scene,'Sensor 2',0x81C784, -14, Y_IN, 8);
+  var iNBroker  = ThreeHelper.createNode(ctx.scene,'AMQ',0xEF9A9A,       -8, Y_IN, 6);
+  var iNCamel   = ThreeHelper.createNode(ctx.scene,'Camel K',0xFFCC80,   -2, Y_IN, 4);
+  var iNKafka   = ThreeHelper.createNode(ctx.scene,'Kafka',0x757575,      4, Y_IN, 4);
+  var iNDash    = ThreeHelper.createNode(ctx.scene,'Dashboard',0x90CAF9,  4, Y_IN, 8);
+
+  // Layer labels
+  function addLabel(scene, text, x, y, z, color) {
+    var c = document.createElement('canvas');
+    c.width = 512; c.height = 48;
+    var cx = c.getContext('2d');
+    cx.font = 'bold 22px Arial';
+    cx.fillStyle = color || '#888';
+    cx.textAlign = 'left';
+    cx.fillText(text, 10, 34);
+    var t = new THREE.CanvasTexture(c);
+    var s = new THREE.SpriteMaterial({map:t, transparent:true});
+    var sp = new THREE.Sprite(s);
+    sp.position.set(x,y,z);
+    sp.scale.set(10,0.75,1);
+    scene.add(sp);
+  }
+  addLabel(ctx.scene,'\u2500\u2500 PLATFORM (shared) \u2500\u2500', -14, Y_PLAT+2.2, 0, '#EE0000');
+  addLabel(ctx.scene,'\u2500\u2500 user1-edge-factory-1 \u2500\u2500', -14, Y_I1+2.2, -6, '#4CAF50');
+  addLabel(ctx.scene,'\u2500\u2500 user2-edge-plant-nyc \u2500\u2500', -14, Y_I2+2.2, 0, '#42A5F5');
+  addLabel(ctx.scene,'\u2500\u2500 userN-edge-plant-X \u2500\u2500', -14, Y_IN+2.2, 6, '#FF8F00');
+
+  var edges = [
+    // Platform orchestration
+    ThreeHelper.createEdge(ctx.scene, hub, gitea,  0xEE0000, {speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene, hub, argocd, 0xEE0000, {speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene, argocd, kafka0, 0xEF7B4D, {speed:0.006}),
+
+    // Instance 1 internal flow
+    ThreeHelper.createEdge(ctx.scene, i1Sensor1, i1Broker, 0x4CAF50, {speed:0.012}),
+    ThreeHelper.createEdge(ctx.scene, i1Sensor2, i1Broker, 0x4CAF50, {speed:0.011}),
+    ThreeHelper.createEdge(ctx.scene, i1Broker, i1Camel,   0xE53935, {speed:0.009}),
+    ThreeHelper.createEdge(ctx.scene, i1Camel, i1Kafka,    0xF57C00, {speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene, i1Kafka, i1Dash,     0x231F20, {speed:0.007}),
+    // ArgoCD manages instance 1
+    ThreeHelper.createEdge(ctx.scene, argocd, i1Kafka, 0xEF7B4D, {speed:0.005}),
+
+    // Instance 2 internal flow
+    ThreeHelper.createEdge(ctx.scene, i2Sensor1, i2Broker, 0x66BB6A, {speed:0.011}),
+    ThreeHelper.createEdge(ctx.scene, i2Sensor2, i2Broker, 0x66BB6A, {speed:0.010}),
+    ThreeHelper.createEdge(ctx.scene, i2Broker, i2Camel,   0xEF5350, {speed:0.009}),
+    ThreeHelper.createEdge(ctx.scene, i2Camel, i2Kafka,    0xFFA726, {speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene, i2Kafka, i2Dash,     0x424242, {speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene, argocd, i2Kafka, 0xEF7B4D, {speed:0.005}),
+
+    // Instance N internal flow
+    ThreeHelper.createEdge(ctx.scene, iNSensor1, iNBroker, 0x81C784, {speed:0.010}),
+    ThreeHelper.createEdge(ctx.scene, iNSensor2, iNBroker, 0x81C784, {speed:0.009}),
+    ThreeHelper.createEdge(ctx.scene, iNBroker, iNCamel,   0xEF9A9A, {speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene, iNCamel, iNKafka,    0xFFCC80, {speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene, iNKafka, iNDash,     0x757575, {speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene, argocd, iNKafka, 0xEF7B4D, {speed:0.004})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
+The validated Industrial Edge pattern runs as a *fixed* set of namespaces.
+The *Scale-to-N* capability turns it into a **self-service platform** where any user can spin up an isolated, production-grade IoT stack on demand -- directly from Red Hat Developer Hub.
+
+== The problem
+
+A single Industrial Edge deployment proves the architecture. But what happens when:
+
+* Multiple teams need their own isolated environments?
+* A partner demo requires a fresh instance per attendee?
+* You need to test a Camel K integration change without affecting production sensors?
+
+Manually creating namespaces, Kafka clusters, and ArgoCD Applications does not scale.
+
+== The solution: Software Template as platform API
+
+The `industrial-edge` Software Template exposes the validated architecture as a **form** in Developer Hub. Each execution produces a fully autonomous edge instance with its own:
+
+[cols="1,2", options="header"]
+|===
+| Resource | Details
+
+| Namespace
+| `<owner>-<instance-name>` (e.g. `user1-edge-factory-1`)
+
+| Machine Sensors
+| 1, 2, 4 or 8 Spring Boot simulators (configurable)
+
+| AMQ Broker
+| MQTT broker receiving sensor telemetry
+
+| Kafka Cluster (KRaft)
+| 1- or 3-node cluster in the instance namespace
+
+| Camel K Integration
+| MQTT -> Kafka bridge with `camel:kafka` + `camel:paho`
+
+| Line Dashboard
+| Real-time sensor visualization with its own Route
+
+| ArgoCD Application
+| Auto-sync, auto-prune, namespace auto-creation
+
+| Catalog Entities
+| System + 5 Components + 2 APIs registered in the catalog
+
+| Kafka Streams Console
+| Link to the shared StreamsHub console
+|===
+
+== Architecture: from 1 to N
+
+The 3D scene above illustrates the pattern. The *platform layer* (Developer Hub, Gitea, ArgoCD) is shared. Each user instance is fully isolated:
+
+* **Namespace isolation** -- every instance lives in `<owner>-<name>`, with dedicated RBAC
+* **Kafka isolation** -- each instance runs its own KRaft cluster (no cross-contamination)
+* **GitOps isolation** -- each instance has its own Git repository and ArgoCD Application
+* **Catalog isolation** -- each instance registers its own System, Components, and APIs
+
+== Step-by-step: deploy a new edge instance
+
+=== 1. Open Developer Hub
+
+Navigate to link:https://backstage-developer-hub-developer-hub.{cluster_domain}[Developer Hub^] and click **Create...** in the left sidebar.
+
+=== 2. Select the Industrial Edge template
+
+Find *"Industrial Edge: IoT Manufacturing Platform"* and click **Choose**.
+
+=== 3. Fill the form
+
+[cols="1,2,1", options="header"]
+|===
+| Field | Description | Example
+
+| Instance Name
+| Unique identifier for this edge
+| `edge-factory-1`
+
+| Description
+| Free-text label
+| `Production line Buenos Aires`
+
+| User
+| Your OpenShift username (auto-detected)
+| `user1`
+
+| Number of Machine Sensors
+| Sensor simulators to deploy
+| `2`
+
+| Kafka Broker Replicas
+| 1 for dev, 3 for HA
+| `3`
+
+| Enable Anomaly Detection
+| Deploys ML InferenceService
+| `false`
+
+| Cluster Domain
+| OpenShift apps domain
+| `apps.cluster-xxx.dynamic.redhatworkshops.io`
+|===
+
+=== 4. Review and Create
+
+Click **Next Step**, review the summary, then **Create**. The scaffolder executes 5 steps:
+
+[source,text]
+----
+1. Generate Skeleton       → Renders all manifests from the skeleton template
+2. Publish to Gitea        → Creates repo ws-user1/edge-factory-1
+3. Create ArgoCD App       → POST to K8s API → Application CR in openshift-gitops
+4. Register in Catalog     → Backstage discovers System + Components + APIs
+5. Send Email Notification → Mailpit receives the deployment confirmation
+----
+
+=== 5. Watch it deploy
+
+Within 2-3 minutes ArgoCD syncs the Application:
+
+[source,bash]
+----
+# Watch namespace creation and pod startup
+oc get pods -n user1-edge-factory-1 -w
+
+# Check ArgoCD status
+oc get application user1-edge-factory-1 -n openshift-gitops -o jsonpath='{.status.sync.status}'
+----
+
+== What gets deployed
+
+After ArgoCD syncs, the namespace contains:
+
+[source,bash]
+----
+oc get pods -n user1-edge-factory-1
+
+# NAME                                         READY   STATUS    RESTARTS   AGE
+# user1-edge-factory-1-sensor-1-xxx            1/1     Running   0          2m
+# user1-edge-factory-1-sensor-2-xxx            1/1     Running   0          2m
+# broker-amq-ss-0                              1/1     Running   0          2m
+# user1-edge-factory-1-cluster-broker-0        1/1     Running   0          90s
+# user1-edge-factory-1-cluster-broker-1        1/1     Running   0          90s
+# user1-edge-factory-1-cluster-broker-2        1/1     Running   0          90s
+# mqtt2kafka-integration-xxx                   1/1     Running   0          60s
+# line-dashboard-xxx                           1/1     Running   0          60s
+----
+
+== Verify the data flow
+
+[source,bash]
+----
+# 1. Sensors → MQTT
+oc logs -f deploy/user1-edge-factory-1-sensor-1 -n user1-edge-factory-1 --tail=3
+
+# 2. MQTT → Kafka (Camel K logs)
+oc logs -f -l camel.apache.org/integration=mqtt2kafka-integration -n user1-edge-factory-1 --tail=3
+
+# 3. Kafka topics created
+oc get kafkatopics -n user1-edge-factory-1
+----
+
+Open the Line Dashboard at: `https://line-dashboard-user1-edge-factory-1.{cluster_domain}`
+
+== Clean up an instance
+
+Use the *Remove Component* template in Developer Hub:
+
+. Click **Create...** → select **Remove Component (Cleanup)**
+. Select template type: *Industrial Edge*
+. Enter the instance name and owner
+. Execute — the template:
+  * Deletes the Gitea repository
+  * Cascade-deletes the ArgoCD Application (removes namespace and all resources)
+  * Unregisters all catalog entities (System + Components + APIs)
+  * Sends a decommission notification email
+
+== Component interaction diagram
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Developer Hub (RHDH)                      │
+│  ┌──────────────┐   ┌──────────┐   ┌───────────────────┐   │
+│  │  Template     │──▶│  Gitea   │──▶│  ArgoCD (GitOps)  │   │
+│  │  industrial-  │   │  ws-user │   │  Application CR   │   │
+│  │  edge         │   │  /name   │   │  auto-sync        │   │
+│  └──────────────┘   └──────────┘   └─────────┬─────────┘   │
+└──────────────────────────────────────────────┬──────────────┘
+                                               │ sync
+                 ┌─────────────────────────────▼──────────────────┐
+                 │         Namespace: user1-edge-factory-1        │
+                 │                                                │
+                 │  ┌─────────┐  ┌─────────┐     ┌────────────┐  │
+                 │  │Sensor 1 │  │Sensor 2 │ ... │ Sensor N   │  │
+                 │  └────┬────┘  └────┬────┘     └─────┬──────┘  │
+                 │       │            │                 │  MQTT   │
+                 │       ▼            ▼                 ▼         │
+                 │  ┌────────────────────────────────────────┐    │
+                 │  │          AMQ Broker (MQTT)             │    │
+                 │  └──────────────────┬─────────────────────┘    │
+                 │                     │                          │
+                 │            ┌────────▼────────┐                 │
+                 │            │  Camel K         │                │
+                 │            │  MQTT → Kafka    │                │
+                 │            └────────┬────────┘                 │
+                 │                     │                          │
+                 │  ┌──────────────────▼─────────────────────┐    │
+                 │  │       Kafka Cluster (KRaft)            │    │
+                 │  │  iot-sensor-sw-vibration               │    │
+                 │  │  iot-sensor-sw-temperature              │    │
+                 │  └──────────────────┬─────────────────────┘    │
+                 │                     │                          │
+                 │            ┌────────▼────────┐                 │
+                 │            │ Line Dashboard   │                │
+                 │            │ (real-time UI)   │                │
+                 │            └─────────────────┘                 │
+                 └────────────────────────────────────────────────┘
+```
+
+== Scaling considerations
+
+[cols="1,3", options="header"]
+|===
+| Factor | Guidance
+
+| Cluster resources
+| Each instance requires ~2 vCPU / 4 GiB RAM (3-node Kafka). Use `kafkaReplicas: 1` for dev to halve requirements.
+
+| Max instances
+| Limited by cluster capacity. A 48-vCPU / 192 GiB worker pool supports ~15-20 concurrent 3-node instances.
+
+| Namespace quotas
+| Consider adding `ResourceQuota` and `LimitRange` to the skeleton for multi-tenant clusters.
+
+| Kafka isolation
+| Each instance runs its own Kafka cluster. For shared Kafka, modify the skeleton to point to the central cluster.
+
+| Sensor count
+| 1-8 sensors per instance. Each sensor uses ~100m CPU / 128Mi RAM.
+
+| Storage
+| Each Kafka broker requests a PVC. Ensure the cluster has sufficient `StorageClass` capacity.
+|===
+
+== Key technical decisions
+
+* **K8s API proxy for ArgoCD** -- Applications are created via the Kubernetes API (`/proxy/k8s-api/apis/argoproj.io/v1alpha1/...`) using the Developer Hub ServiceAccount. No ArgoCD-specific tokens needed.
+* **ApplicationSet exclusion** -- Repos with `argocd/application.yaml` are excluded from the global ApplicationSet to prevent duplicate Application creation.
+* **S2I for Camel K** -- The `IntegrationPlatform` uses `publishStrategy: S2I` to leverage native OpenShift builds instead of Jib.
+* **Probe tuning** -- Spring Boot sensors have `initialDelaySeconds: 60s` (liveness) to accommodate slow JVM startup.

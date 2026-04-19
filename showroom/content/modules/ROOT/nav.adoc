@@ -20,3 +20,6 @@
 * xref:15-ie-mlops.adoc[13. GitOps Config Change]
 * xref:16-ie-troubleshooting.adoc[14. MinIO Data Lake]
 * xref:17-ie-sizing.adoc[15. Capacity & Infrastructure]
+
+* xref:19-ai-playground-kafka-mcp.adoc[— AI Playground —]
+* xref:19-ai-playground-kafka-mcp.adoc[16. Kafka MCP Prompts]

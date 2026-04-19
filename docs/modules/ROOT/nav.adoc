@@ -18,3 +18,6 @@
 * xref:16-ie-sizing.adoc[Capacity Planning & Infrastructure]
 
 * xref:17-neuroface-cv.adoc[— Computer Vision Pipeline —]
+
+* xref:18-ai-playground-kafka-mcp.adoc[— AI Playground —]
+* xref:18-ai-playground-kafka-mcp.adoc[AI Playground + Kafka MCP]

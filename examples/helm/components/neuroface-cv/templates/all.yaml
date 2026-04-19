@@ -1148,6 +1148,105 @@ spec:
       configMapName: llama-stack-config
 {{- if .Values.ppe.enabled }}
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kafka-secret-reader
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["cdc-cluster-cluster-ca-cert", "cdc-user"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: neuroface-read-kafka-secrets
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kafka-secret-reader
+subjects:
+  - kind: ServiceAccount
+    name: kafka-secret-sync
+    namespace: neuroface
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kafka-secret-sync
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kafka-secret-writer
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kafka-secret-sync-writer
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kafka-secret-writer
+subjects:
+  - kind: ServiceAccount
+    name: kafka-secret-sync
+    namespace: neuroface
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-secret-sync-{{ .Release.Revision | default "1" }}
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 4
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      serviceAccountName: kafka-secret-sync
+      restartPolicy: OnFailure
+      containers:
+        - name: sync
+          image: registry.redhat.io/openshift4/ose-cli:latest
+          command: ["bash", "-c"]
+          args:
+            - |
+              for SECRET_NAME in cdc-cluster-cluster-ca-cert cdc-user; do
+                if oc get secret "$SECRET_NAME" -n neuroface >/dev/null 2>&1; then
+                  echo "Secret $SECRET_NAME already exists in neuroface"
+                  continue
+                fi
+                echo "Copying $SECRET_NAME from kafka-cdc to neuroface..."
+                oc get secret "$SECRET_NAME" -n kafka-cdc -o json \
+                  | python3 -c "import sys,json; s=json.load(sys.stdin); s['metadata']={'name':s['metadata']['name'],'namespace':'neuroface','labels':{'app.kubernetes.io/managed-by':'kafka-secret-sync'}}; json.dump(s,sys.stdout)" \
+                  | oc apply -f - -n neuroface
+              done
+              echo "Secret sync complete"
+---
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaTopic
 metadata:

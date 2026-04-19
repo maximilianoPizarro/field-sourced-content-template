@@ -1148,12 +1148,12 @@ spec:
             exit 1
           fi
 
-          ARGOCD_URL="https://openshift-gitops-server.openshift-gitops.svc"
+          ARGOCD_URL="https://openshift-gitops-server-openshift-gitops.{{ .Values.clusterDomain }}"
 
-          echo "Obtaining ArgoCD session token..."
-          SESSION_RESP=$(curl -sk "${ARGOCD_URL}/api/v1/session" \
+          echo "Obtaining ArgoCD session token from ${ARGOCD_URL}..."
+          SESSION_RESP=$(curl -sk --connect-timeout 10 --max-time 15 "${ARGOCD_URL}/api/v1/session" \
             -H "Content-Type: application/json" \
-            -d "{\"username\":\"admin\",\"password\":\"${ARGOCD_PWD}\"}")
+            -d "{\"username\":\"admin\",\"password\":\"${ARGOCD_PWD}\"}" || echo '{"error":"curl failed"}')
           SESSION_TOKEN=$(echo "$SESSION_RESP" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 
           if [ -z "$SESSION_TOKEN" ]; then
@@ -1163,10 +1163,10 @@ spec:
           echo "Session token obtained."
 
           echo "Creating long-lived ArgoCD API token..."
-          TOKEN_RESP=$(curl -sk "${ARGOCD_URL}/api/v1/account/admin/token" \
+          TOKEN_RESP=$(curl -sk --connect-timeout 10 --max-time 15 "${ARGOCD_URL}/api/v1/account/admin/token" \
             -H "Authorization: Bearer ${SESSION_TOKEN}" \
             -H "Content-Type: application/json" \
-            -d "{\"name\":\"rhdh-proxy\"}")
+            -d "{\"name\":\"rhdh-proxy\"}" || echo '{"error":"curl failed"}')
           API_TOKEN=$(echo "$TOKEN_RESP" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 
           if [ -z "$API_TOKEN" ]; then

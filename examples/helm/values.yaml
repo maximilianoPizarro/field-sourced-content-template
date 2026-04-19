@@ -273,13 +273,6 @@ connectivityLink:
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
-
-# ============================================================
-# NeuroFace CV — PPE Detection Module (YOLO)
-# ============================================================
-neurofaceCv:
-  ppe:
-    enabled: false
     # --- OpenShift Console Links ---
     - id: console-links
       enabled: true
@@ -470,6 +463,13 @@ userCount: 200
 workshopRegistration:
   adminToken: "workshop-admin-2024"
   keycloakAdminPassword: ""
+
+# ============================================================
+# NeuroFace CV — PPE Detection Module (YOLO)
+# ============================================================
+neurofaceCv:
+  ppe:
+    enabled: false
 
 # ============================================================
 # Components - Enable/disable and configure each component

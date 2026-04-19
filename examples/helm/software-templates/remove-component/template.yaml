@@ -73,14 +73,14 @@ spec:
         headers:
           Content-Type: application/json
 
-    # ── Step 2: Cascade-delete ArgoCD Application ──
+    # ── Step 2: Cascade-delete ArgoCD Application via K8s API ──
     - id: delete-argocd-app
       name: Delete ArgoCD Application (cascade)
       action: http:backstage:request
       continueOnError: true
       input:
         method: DELETE
-        path: "/proxy/argocd/api/v1/applications/${{ parameters.owner }}-${{ parameters.name }}?cascade=true"
+        path: "/proxy/k8s-api/apis/argoproj.io/v1alpha1/namespaces/openshift-gitops/applications/${{ parameters.owner }}-${{ parameters.name }}"
         headers:
           Content-Type: application/json
 

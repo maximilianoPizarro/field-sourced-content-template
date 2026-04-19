@@ -52,6 +52,9 @@ metadata:
     - url: "https://console-openshift-console.${{values.clusterDomain}}/k8s/ns/${{values.namespace}}/kafka.strimzi.io~v1beta2~Kafka/${{values.uniqueName}}-cluster"
       title: Kafka Cluster
       icon: web
+    - url: "https://kafka-console-kafka-cdc.${{values.clusterDomain}}"
+      title: Kafka Streams Console
+      icon: dashboard
 spec:
   type: service
   lifecycle: experimental

@@ -93,10 +93,12 @@ spec:
       action: http:backstage:request
       input:
         method: POST
-        path: /proxy/argocd/api/v1/applications
+        path: "/proxy/k8s-api/apis/argoproj.io/v1alpha1/namespaces/openshift-gitops/applications"
         headers:
           Content-Type: application/json
         body:
+          apiVersion: argoproj.io/v1alpha1
+          kind: Application
           metadata:
             name: "${{ parameters.owner }}-${{ parameters.name }}"
             namespace: openshift-gitops
@@ -154,6 +156,9 @@ spec:
       - title: Line Dashboard
         icon: dashboard
         url: "https://line-dashboard-${{ parameters.owner }}-${{ parameters.name }}.${{ parameters.clusterDomain }}"
+      - title: Kafka Streams Console
+        icon: dashboard
+        url: "https://kafka-console-kafka-cdc.${{ parameters.clusterDomain }}"
       - title: View in Catalog
         icon: catalog
         entityRef: ${{ steps['register'].output.entityRef }}

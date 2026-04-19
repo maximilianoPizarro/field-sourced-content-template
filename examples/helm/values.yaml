@@ -438,7 +438,7 @@ connectivityLink:
 # ============================================================
 lightspeed:
   llmApiKey: "sk-no-key"
-  llmEndpoint: "https://qwen25-7b-instruct-my-first-model.apps.ocp.xbgvw.sandbox67.opentlc.com/v1"
+  llmEndpoint: ""
   model: "qwen25-7b-instruct"
 
 # ============================================================
@@ -520,7 +520,7 @@ components:
 # Values injected by field content workload (do not modify)
 # ============================================================
 deployer:
-  domain: "apps.cluster-msf9p.dynamic.redhatworkshops.io"
+  domain: ""
   apiUrl: ""
 
 fieldContent:

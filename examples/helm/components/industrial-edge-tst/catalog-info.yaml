@@ -36,25 +36,25 @@ metadata:
     - camel-k
     - openshift-ai
   links:
-    - url: https://rhods-dashboard-redhat-ods-applications.apps.cluster-msf9p.dynamic.redhatworkshops.io/projects/ml-development?section=overview
+    - url: https://rhods-dashboard-redhat-ods-applications.apps.CLUSTER_DOMAIN_PLACEHOLDER/projects/ml-development?section=overview
       title: OpenShift AI — ML Development
       icon: dashboard
-    - url: https://jupyterlab-ml-development.apps.cluster-msf9p.dynamic.redhatworkshops.io
+    - url: https://jupyterlab-ml-development.apps.CLUSTER_DOMAIN_PLACEHOLDER
       title: JupyterLab Notebook
       icon: code
-    - url: https://minio-console-industrial-edge-ml-workspace.apps.cluster-msf9p.dynamic.redhatworkshops.io
+    - url: https://minio-console-industrial-edge-ml-workspace.apps.CLUSTER_DOMAIN_PLACEHOLDER
       title: MinIO S3 Console
       icon: storage
-    - url: https://s3-browser-ml-development.apps.cluster-msf9p.dynamic.redhatworkshops.io
+    - url: https://s3-browser-ml-development.apps.CLUSTER_DOMAIN_PLACEHOLDER
       title: S3 Browser
       icon: storage
-    - url: https://rhods-dashboard-redhat-ods-applications.apps.cluster-msf9p.dynamic.redhatworkshops.io/projects/ml-development?section=pipelines
+    - url: https://rhods-dashboard-redhat-ods-applications.apps.CLUSTER_DOMAIN_PLACEHOLDER/projects/ml-development?section=pipelines
       title: Data Science Pipelines
       icon: web
-    - url: https://line-dashboard-industrial-edge-tst-all.apps.cluster-msf9p.dynamic.redhatworkshops.io
+    - url: https://line-dashboard-industrial-edge-tst-all.apps.CLUSTER_DOMAIN_PLACEHOLDER
       title: Line Dashboard (Dev)
       icon: dashboard
-    - url: https://line-dashboard-industrial-edge-stormshift-line-dashboard.apps.cluster-msf9p.dynamic.redhatworkshops.io
+    - url: https://line-dashboard-industrial-edge-stormshift-line-dashboard.apps.CLUSTER_DOMAIN_PLACEHOLDER
       title: Line Dashboard (Factory)
       icon: dashboard
 spec:
@@ -79,10 +79,10 @@ metadata:
     - sensor
     - mqtt
   links:
-    - url: https://console-openshift-console.apps.cluster-msf9p.dynamic.redhatworkshops.io/k8s/ns/industrial-edge-tst-all/deployments/machine-sensor-1
+    - url: https://console-openshift-console.apps.CLUSTER_DOMAIN_PLACEHOLDER/k8s/ns/industrial-edge-tst-all/deployments/machine-sensor-1
       title: Sensor 1 (Dev)
       icon: web
-    - url: https://console-openshift-console.apps.cluster-msf9p.dynamic.redhatworkshops.io/k8s/ns/industrial-edge-stormshift-machine-sensor/deployments/machine-sensor-1
+    - url: https://console-openshift-console.apps.CLUSTER_DOMAIN_PLACEHOLDER/k8s/ns/industrial-edge-stormshift-machine-sensor/deployments/machine-sensor-1
       title: Sensor 1 (Factory)
       icon: web
 spec:
@@ -139,13 +139,13 @@ metadata:
     - amq-streams
     - event-streaming
   links:
-    - url: https://console-openshift-console.apps.cluster-msf9p.dynamic.redhatworkshops.io/k8s/ns/industrial-edge-tst-all/kafka.strimzi.io~v1beta2~Kafka/dev-cluster
+    - url: https://console-openshift-console.apps.CLUSTER_DOMAIN_PLACEHOLDER/k8s/ns/industrial-edge-tst-all/kafka.strimzi.io~v1beta2~Kafka/dev-cluster
       title: Dev Kafka Cluster
       icon: web
-    - url: https://console-openshift-console.apps.cluster-msf9p.dynamic.redhatworkshops.io/k8s/ns/industrial-edge-stormshift-messaging/kafka.strimzi.io~v1beta2~Kafka/factory-cluster
+    - url: https://console-openshift-console.apps.CLUSTER_DOMAIN_PLACEHOLDER/k8s/ns/industrial-edge-stormshift-messaging/kafka.strimzi.io~v1beta2~Kafka/factory-cluster
       title: Factory Kafka Cluster
       icon: web
-    - url: https://console-openshift-console.apps.cluster-msf9p.dynamic.redhatworkshops.io/k8s/ns/industrial-edge-data-lake/kafka.strimzi.io~v1beta2~Kafka/prod-cluster
+    - url: https://console-openshift-console.apps.CLUSTER_DOMAIN_PLACEHOLDER/k8s/ns/industrial-edge-data-lake/kafka.strimzi.io~v1beta2~Kafka/prod-cluster
       title: Data Lake Kafka Cluster
       icon: web
 spec:
@@ -169,19 +169,19 @@ metadata:
     backstage.io/kubernetes-label-selector: camel.apache.org/integration
     argocd/app-name: field-content-industrial-edge-tst
     argocd/app-namespace: openshift-gitops
-    che.eclipse.org/che-server: https://devspaces.apps.cluster-msf9p.dynamic.redhatworkshops.io
-    devspaces.io/factory: "https://devspaces.apps.cluster-msf9p.dynamic.redhatworkshops.io/#https://github.com/maximilianoPizarro/field-sourced-content-template/tree/one?devfilePath=examples/helm/components/industrial-edge-tst/devfile-kaoto.yaml"
+    che.eclipse.org/che-server: https://devspaces.apps.CLUSTER_DOMAIN_PLACEHOLDER
+    devspaces.io/factory: "https://devspaces.apps.CLUSTER_DOMAIN_PLACEHOLDER/#https://github.com/maximilianoPizarro/field-sourced-content-template/tree/one?devfilePath=examples/helm/components/industrial-edge-tst/devfile-kaoto.yaml"
   tags:
     - camel-k
     - integration
     - etl
     - kaoto
   links:
-    - url: "https://devspaces.apps.cluster-msf9p.dynamic.redhatworkshops.io/#https://github.com/maximilianoPizarro/field-sourced-content-template/tree/one?devfilePath=examples/helm/components/industrial-edge-tst/devfile-kaoto.yaml"
+    - url: "https://devspaces.apps.CLUSTER_DOMAIN_PLACEHOLDER/#https://github.com/maximilianoPizarro/field-sourced-content-template/tree/one?devfilePath=examples/helm/components/industrial-edge-tst/devfile-kaoto.yaml"
       title: Open in DevSpaces (Kaoto)
       icon: catalog
       type: ide
-    - url: https://console-openshift-console.apps.cluster-msf9p.dynamic.redhatworkshops.io/k8s/ns/industrial-edge-tst-all/camel.apache.org~v1~Integration
+    - url: https://console-openshift-console.apps.CLUSTER_DOMAIN_PLACEHOLDER/k8s/ns/industrial-edge-tst-all/camel.apache.org~v1~Integration
       title: Camel Integrations (Console)
       icon: web
 spec:
@@ -211,10 +211,10 @@ metadata:
     - frontend
     - websocket
   links:
-    - url: https://line-dashboard-industrial-edge-tst-all.apps.cluster-msf9p.dynamic.redhatworkshops.io
+    - url: https://line-dashboard-industrial-edge-tst-all.apps.CLUSTER_DOMAIN_PLACEHOLDER
       title: Dev Dashboard
       icon: dashboard
-    - url: https://line-dashboard-industrial-edge-stormshift-line-dashboard.apps.cluster-msf9p.dynamic.redhatworkshops.io
+    - url: https://line-dashboard-industrial-edge-stormshift-line-dashboard.apps.CLUSTER_DOMAIN_PLACEHOLDER
       title: Factory Dashboard
       icon: dashboard
 spec:
@@ -244,10 +244,10 @@ metadata:
     - data-lake
     - storage
   links:
-    - url: https://minio-console-industrial-edge-ml-workspace.apps.cluster-msf9p.dynamic.redhatworkshops.io
+    - url: https://minio-console-industrial-edge-ml-workspace.apps.CLUSTER_DOMAIN_PLACEHOLDER
       title: MinIO Console
       icon: storage
-    - url: https://s3-browser-ml-development.apps.cluster-msf9p.dynamic.redhatworkshops.io
+    - url: https://s3-browser-ml-development.apps.CLUSTER_DOMAIN_PLACEHOLDER
       title: S3 Browser
       icon: storage
 spec:
@@ -276,19 +276,19 @@ metadata:
     - sklearn
     - modelmesh
   links:
-    - url: https://rhods-dashboard-redhat-ods-applications.apps.cluster-msf9p.dynamic.redhatworkshops.io/projects/ml-development?section=overview
+    - url: https://rhods-dashboard-redhat-ods-applications.apps.CLUSTER_DOMAIN_PLACEHOLDER/projects/ml-development?section=overview
       title: OpenShift AI — ML Development
       icon: dashboard
-    - url: https://jupyterlab-ml-development.apps.cluster-msf9p.dynamic.redhatworkshops.io
+    - url: https://jupyterlab-ml-development.apps.CLUSTER_DOMAIN_PLACEHOLDER
       title: JupyterLab Notebook
       icon: code
-    - url: https://rhods-dashboard-redhat-ods-applications.apps.cluster-msf9p.dynamic.redhatworkshops.io/projects/ml-development?section=workbenches
+    - url: https://rhods-dashboard-redhat-ods-applications.apps.CLUSTER_DOMAIN_PLACEHOLDER/projects/ml-development?section=workbenches
       title: Workbenches
       icon: code
-    - url: https://rhods-dashboard-redhat-ods-applications.apps.cluster-msf9p.dynamic.redhatworkshops.io/projects/ml-development?section=model-server
+    - url: https://rhods-dashboard-redhat-ods-applications.apps.CLUSTER_DOMAIN_PLACEHOLDER/projects/ml-development?section=model-server
       title: Model Servers
       icon: web
-    - url: https://rhods-dashboard-redhat-ods-applications.apps.cluster-msf9p.dynamic.redhatworkshops.io/projects/ml-development?section=pipelines
+    - url: https://rhods-dashboard-redhat-ods-applications.apps.CLUSTER_DOMAIN_PLACEHOLDER/projects/ml-development?section=pipelines
       title: Data Science Pipelines
       icon: web
 spec:

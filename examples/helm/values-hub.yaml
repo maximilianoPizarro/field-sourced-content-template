@@ -389,7 +389,7 @@ connectivityLink:
 # LLM configuration (injected at deploy time, not in git)
 lightspeed:
   llmApiKey: "sk-no-key"
-  llmEndpoint: "https://qwen25-7b-instruct-my-first-model.apps.ocp.xbgvw.sandbox67.opentlc.com/v1"
+  llmEndpoint: ""
   model: "qwen25-7b-instruct"
 
 litemaas:

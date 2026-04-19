@@ -5,9 +5,9 @@ metadata:
   title: "Remove Component (Cleanup)"
   description: >
     Removes a previously created component from the platform:
-    deletes the Gitea repository, unregisters from the catalog, and sends
-    a notification. The ApplicationSet auto-prunes the ArgoCD
-    Application when the repo disappears (~60s).
+    deletes the Gitea repository, cascade-deletes the ArgoCD Application
+    (which removes all cluster resources including the namespace),
+    unregisters all catalog entities, and sends a notification.
   tags:
     - cleanup
     - admin
@@ -20,23 +20,49 @@ spec:
       required:
         - name
         - owner
+        - templateType
       properties:
+        templateType:
+          title: Template Type
+          type: string
+          description: "Type of component that was originally created"
+          ui:autofocus: true
+          enum:
+            - industrial-edge
+            - customer-service-mcp
+            - kafka-external-consumer
+            - kafka-cdc-mcp
+            - k8s-ops-mcp
+            - sonataflow-bpm
+            - camel-kaoto
+          enumNames:
+            - "Industrial Edge (IoT Manufacturing)"
+            - "Customer Service MCP"
+            - "Kafka External Consumer"
+            - "Kafka CDC MCP"
+            - "K8s Ops MCP"
+            - "SonataFlow BPM"
+            - "Camel Kaoto"
         name:
           title: Component Name
           type: string
-          description: "Base name of the component (e.g. customer-service-mcp)"
+          description: "Base name used when creating the component (e.g. edge-factory-1, customer-service-mcp)"
           pattern: "^[a-z0-9-]+$"
-          ui:autofocus: true
-          enum:
-            - customer-service-mcp
         owner:
           title: Owner (username)
           type: string
-          description: "Owner of the component (e.g. user1)"
+          description: "Owner of the component (e.g. user1, platformadmin)"
           default: ${{ user.entity.metadata.name }}
-          pattern: "^user[0-9]+$"
+          pattern: "^[a-z][a-z0-9-]*$"
           ui:help: "Auto-detected from your login. Change only if removing another user's component."
+        description:
+          title: Description / Reason
+          type: string
+          description: "Reason for removal (included in notification email)"
+          default: "Removing previously deployed component from the platform"
+
   steps:
+    # ── Step 1: Delete Gitea repository ──
     - id: delete-gitea-repo
       name: Delete Gitea Repository
       action: http:backstage:request
@@ -47,22 +73,203 @@ spec:
         headers:
           Content-Type: application/json
 
-    - id: fetch-entity
-      name: Fetch Catalog Entity
+    # ── Step 2: Cascade-delete ArgoCD Application ──
+    - id: delete-argocd-app
+      name: Delete ArgoCD Application (cascade)
+      action: http:backstage:request
+      continueOnError: true
+      input:
+        method: DELETE
+        path: "/proxy/argocd/api/v1/applications/${{ parameters.owner }}-${{ parameters.name }}?cascade=true"
+        headers:
+          Content-Type: application/json
+
+    # ── Step 3: Catalog cleanup — base entity ──
+    # Industrial Edge registers a System; all others register a Component
+    - id: fetch-base-system
+      name: Fetch base System entity (industrial-edge)
+      if: ${{ parameters.templateType === 'industrial-edge' }}
+      action: http:backstage:request
+      continueOnError: true
+      input:
+        method: GET
+        path: "/catalog/entities/by-name/system/default/${{ parameters.owner }}-${{ parameters.name }}"
+
+    - id: delete-base-system
+      name: Delete base System entity (industrial-edge)
+      if: ${{ parameters.templateType === 'industrial-edge' }}
+      action: http:backstage:request
+      continueOnError: true
+      input:
+        method: DELETE
+        path: "/catalog/entities/by-uid/${{ steps['fetch-base-system'].output.body.metadata.uid }}"
+
+    - id: fetch-base-component
+      name: Fetch base Component entity
+      if: ${{ parameters.templateType !== 'industrial-edge' }}
       action: http:backstage:request
       continueOnError: true
       input:
         method: GET
         path: "/catalog/entities/by-name/component/default/${{ parameters.owner }}-${{ parameters.name }}"
 
-    - id: delete-entity
-      name: Unregister from Catalog
+    - id: delete-base-component
+      name: Delete base Component entity
+      if: ${{ parameters.templateType !== 'industrial-edge' }}
       action: http:backstage:request
       continueOnError: true
       input:
         method: DELETE
-        path: "/catalog/entities/by-uid/${{ steps['fetch-entity'].output.body.metadata.uid }}"
+        path: "/catalog/entities/by-uid/${{ steps['fetch-base-component'].output.body.metadata.uid }}"
 
+    # ── Step 4: Industrial Edge — delete child Components ──
+    - id: fetch-ie-sensors
+      name: Fetch sensors Component
+      if: ${{ parameters.templateType === 'industrial-edge' }}
+      action: http:backstage:request
+      continueOnError: true
+      input:
+        method: GET
+        path: "/catalog/entities/by-name/component/default/${{ parameters.owner }}-${{ parameters.name }}-sensors"
+
+    - id: delete-ie-sensors
+      name: Delete sensors Component
+      if: ${{ parameters.templateType === 'industrial-edge' }}
+      action: http:backstage:request
+      continueOnError: true
+      input:
+        method: DELETE
+        path: "/catalog/entities/by-uid/${{ steps['fetch-ie-sensors'].output.body.metadata.uid }}"
+
+    - id: fetch-ie-kafka
+      name: Fetch kafka Component
+      if: ${{ parameters.templateType === 'industrial-edge' }}
+      action: http:backstage:request
+      continueOnError: true
+      input:
+        method: GET
+        path: "/catalog/entities/by-name/component/default/${{ parameters.owner }}-${{ parameters.name }}-kafka"
+
+    - id: delete-ie-kafka
+      name: Delete kafka Component
+      if: ${{ parameters.templateType === 'industrial-edge' }}
+      action: http:backstage:request
+      continueOnError: true
+      input:
+        method: DELETE
+        path: "/catalog/entities/by-uid/${{ steps['fetch-ie-kafka'].output.body.metadata.uid }}"
+
+    - id: fetch-ie-camel-k
+      name: Fetch camel-k Component
+      if: ${{ parameters.templateType === 'industrial-edge' }}
+      action: http:backstage:request
+      continueOnError: true
+      input:
+        method: GET
+        path: "/catalog/entities/by-name/component/default/${{ parameters.owner }}-${{ parameters.name }}-camel-k"
+
+    - id: delete-ie-camel-k
+      name: Delete camel-k Component
+      if: ${{ parameters.templateType === 'industrial-edge' }}
+      action: http:backstage:request
+      continueOnError: true
+      input:
+        method: DELETE
+        path: "/catalog/entities/by-uid/${{ steps['fetch-ie-camel-k'].output.body.metadata.uid }}"
+
+    - id: fetch-ie-dashboard
+      name: Fetch dashboard Component
+      if: ${{ parameters.templateType === 'industrial-edge' }}
+      action: http:backstage:request
+      continueOnError: true
+      input:
+        method: GET
+        path: "/catalog/entities/by-name/component/default/${{ parameters.owner }}-${{ parameters.name }}-dashboard"
+
+    - id: delete-ie-dashboard
+      name: Delete dashboard Component
+      if: ${{ parameters.templateType === 'industrial-edge' }}
+      action: http:backstage:request
+      continueOnError: true
+      input:
+        method: DELETE
+        path: "/catalog/entities/by-uid/${{ steps['fetch-ie-dashboard'].output.body.metadata.uid }}"
+
+    - id: fetch-ie-kafka-to-s3
+      name: Fetch kafka-to-s3 Component (anomaly detection)
+      if: ${{ parameters.templateType === 'industrial-edge' }}
+      action: http:backstage:request
+      continueOnError: true
+      input:
+        method: GET
+        path: "/catalog/entities/by-name/component/default/${{ parameters.owner }}-${{ parameters.name }}-kafka-to-s3"
+
+    - id: delete-ie-kafka-to-s3
+      name: Delete kafka-to-s3 Component (anomaly detection)
+      if: ${{ parameters.templateType === 'industrial-edge' }}
+      action: http:backstage:request
+      continueOnError: true
+      input:
+        method: DELETE
+        path: "/catalog/entities/by-uid/${{ steps['fetch-ie-kafka-to-s3'].output.body.metadata.uid }}"
+
+    # ── Step 5: Industrial Edge — delete APIs ──
+    - id: fetch-ie-mqtt-api
+      name: Fetch MQTT API
+      if: ${{ parameters.templateType === 'industrial-edge' }}
+      action: http:backstage:request
+      continueOnError: true
+      input:
+        method: GET
+        path: "/catalog/entities/by-name/api/default/${{ parameters.owner }}-${{ parameters.name }}-mqtt-api"
+
+    - id: delete-ie-mqtt-api
+      name: Delete MQTT API
+      if: ${{ parameters.templateType === 'industrial-edge' }}
+      action: http:backstage:request
+      continueOnError: true
+      input:
+        method: DELETE
+        path: "/catalog/entities/by-uid/${{ steps['fetch-ie-mqtt-api'].output.body.metadata.uid }}"
+
+    - id: fetch-ie-kafka-api
+      name: Fetch Kafka API
+      if: ${{ parameters.templateType === 'industrial-edge' }}
+      action: http:backstage:request
+      continueOnError: true
+      input:
+        method: GET
+        path: "/catalog/entities/by-name/api/default/${{ parameters.owner }}-${{ parameters.name }}-kafka-api"
+
+    - id: delete-ie-kafka-api
+      name: Delete Kafka API
+      if: ${{ parameters.templateType === 'industrial-edge' }}
+      action: http:backstage:request
+      continueOnError: true
+      input:
+        method: DELETE
+        path: "/catalog/entities/by-uid/${{ steps['fetch-ie-kafka-api'].output.body.metadata.uid }}"
+
+    # ── Step 6: Customer Service MCP — delete API ──
+    - id: fetch-csm-api
+      name: Fetch Customer Service API
+      if: ${{ parameters.templateType === 'customer-service-mcp' }}
+      action: http:backstage:request
+      continueOnError: true
+      input:
+        method: GET
+        path: "/catalog/entities/by-name/api/default/${{ parameters.owner }}-${{ parameters.name }}-api"
+
+    - id: delete-csm-api
+      name: Delete Customer Service API
+      if: ${{ parameters.templateType === 'customer-service-mcp' }}
+      action: http:backstage:request
+      continueOnError: true
+      input:
+        method: DELETE
+        path: "/catalog/entities/by-uid/${{ steps['fetch-csm-api'].output.body.metadata.uid }}"
+
+    # ── Step 7: Send notification ──
     - id: notify
       name: Send Email Notification
       action: http:backstage:request
@@ -79,15 +286,18 @@ spec:
             - Email: "${{ parameters.owner }}@redhat.local"
               Name: "${{ parameters.owner }}"
           Subject: "Developer Hub Platform — Component Decommissioned"
-          Text: "Developer Hub Platform Notification — Component ${{ parameters.owner }}-${{ parameters.name }} has been decommissioned. Gitea repository deleted. ArgoCD Application will be auto-pruned by the ApplicationSet (~60s). Catalog entity unregistered."
-          HTML: "<div style='font-family:Red Hat Text,Helvetica,Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden'><div style='background:#6a6e73;padding:24px 32px;text-align:center'><h1 style='color:#fff;margin:0;font-size:22px;font-weight:600;letter-spacing:0.5px'>Developer Hub Platform</h1><p style='color:#d2d2d2;margin:4px 0 0;font-size:12px'>Red Hat Developer Hub</p></div><div style='padding:32px'><h2 style='color:#151515;margin:0 0 16px;font-size:18px'>Component Decommissioned</h2><p style='color:#6a6e73;font-size:14px;line-height:1.6;margin:0 0 20px'>The following component has been removed from the Developer Hub platform.</p><table style='width:100%;border-collapse:collapse;font-size:14px;margin-bottom:24px'><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:10px 0;color:#6a6e73;width:140px'>Component</td><td style='padding:10px 0;color:#151515;font-weight:500'>${{ parameters.owner }}-${{ parameters.name }}</td></tr><tr><td style='padding:10px 0;color:#6a6e73'>Owner</td><td style='padding:10px 0;color:#151515;font-weight:500'>${{ parameters.owner }}</td></tr></table><h3 style='color:#151515;font-size:14px;margin:0 0 12px'>Actions Completed</h3><table style='width:100%;border-collapse:collapse;font-size:13px;margin-bottom:24px'><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:8px 0;color:#6a6e73;width:24px'>1.</td><td style='padding:8px 0;color:#151515'>Gitea repository deleted</td><td style='padding:8px 0;text-align:right'><span style='background:#e7f1e8;color:#3e8635;padding:2px 8px;border-radius:12px;font-size:11px'>Done</span></td></tr><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:8px 0;color:#6a6e73'>2.</td><td style='padding:8px 0;color:#151515'>ArgoCD Application auto-pruning</td><td style='padding:8px 0;text-align:right'><span style='background:#faeae8;color:#c9190b;padding:2px 8px;border-radius:12px;font-size:11px'>~60s</span></td></tr><tr><td style='padding:8px 0;color:#6a6e73'>3.</td><td style='padding:8px 0;color:#151515'>Catalog entity unregistered</td><td style='padding:8px 0;text-align:right'><span style='background:#e7f1e8;color:#3e8635;padding:2px 8px;border-radius:12px;font-size:11px'>Done</span></td></tr></table></div><div style='background:#f0f0f0;padding:16px 32px;text-align:center;font-size:11px;color:#6a6e73'>Developer Hub Platform &bull; Powered by Red Hat Developer Hub</div></div>"
+          Text: "Developer Hub Platform Notification — Component ${{ parameters.owner }}-${{ parameters.name }} (type: ${{ parameters.templateType }}) has been decommissioned. Reason: ${{ parameters.description }}. Gitea repository deleted. ArgoCD Application cascade-deleted (namespace and all resources removed). Catalog entities unregistered."
+          HTML: "<div style='font-family:Red Hat Text,Helvetica,Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden'><div style='background:#6a6e73;padding:24px 32px;text-align:center'><h1 style='color:#fff;margin:0;font-size:22px;font-weight:600;letter-spacing:0.5px'>Developer Hub Platform</h1><p style='color:#d2d2d2;margin:4px 0 0;font-size:12px'>Red Hat Developer Hub</p></div><div style='padding:32px'><h2 style='color:#151515;margin:0 0 16px;font-size:18px'>Component Decommissioned</h2><p style='color:#6a6e73;font-size:14px;line-height:1.6;margin:0 0 20px'>The following component has been removed from the Developer Hub platform.</p><table style='width:100%;border-collapse:collapse;font-size:14px;margin-bottom:24px'><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:10px 0;color:#6a6e73;width:140px'>Component</td><td style='padding:10px 0;color:#151515;font-weight:500'>${{ parameters.owner }}-${{ parameters.name }}</td></tr><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:10px 0;color:#6a6e73'>Template Type</td><td style='padding:10px 0;color:#151515;font-weight:500'>${{ parameters.templateType }}</td></tr><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:10px 0;color:#6a6e73'>Owner</td><td style='padding:10px 0;color:#151515;font-weight:500'>${{ parameters.owner }}</td></tr><tr><td style='padding:10px 0;color:#6a6e73'>Reason</td><td style='padding:10px 0;color:#151515;font-weight:500'>${{ parameters.description }}</td></tr></table><h3 style='color:#151515;font-size:14px;margin:0 0 12px'>Actions Completed</h3><table style='width:100%;border-collapse:collapse;font-size:13px;margin-bottom:24px'><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:8px 0;color:#6a6e73;width:24px'>1.</td><td style='padding:8px 0;color:#151515'>Gitea repository deleted</td><td style='padding:8px 0;text-align:right'><span style='background:#e7f1e8;color:#3e8635;padding:2px 8px;border-radius:12px;font-size:11px'>Done</span></td></tr><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:8px 0;color:#6a6e73'>2.</td><td style='padding:8px 0;color:#151515'>ArgoCD Application cascade-deleted</td><td style='padding:8px 0;text-align:right'><span style='background:#e7f1e8;color:#3e8635;padding:2px 8px;border-radius:12px;font-size:11px'>Done</span></td></tr><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:8px 0;color:#6a6e73'>3.</td><td style='padding:8px 0;color:#151515'>Namespace & cluster resources removed</td><td style='padding:8px 0;text-align:right'><span style='background:#e7f1e8;color:#3e8635;padding:2px 8px;border-radius:12px;font-size:11px'>Done</span></td></tr><tr><td style='padding:8px 0;color:#6a6e73'>4.</td><td style='padding:8px 0;color:#151515'>Catalog entities unregistered</td><td style='padding:8px 0;text-align:right'><span style='background:#e7f1e8;color:#3e8635;padding:2px 8px;border-radius:12px;font-size:11px'>Done</span></td></tr></table></div><div style='background:#f0f0f0;padding:16px 32px;text-align:center;font-size:11px;color:#6a6e73'>Developer Hub Platform &bull; Powered by Red Hat Developer Hub</div></div>"
 
   output:
     text:
       - title: Cleanup Complete
         content: |
-          Component **${{ parameters.owner }}-${{ parameters.name }}** has been removed:
+          Component **${{ parameters.owner }}-${{ parameters.name }}** (type: `${{ parameters.templateType }}`) has been removed:
+
           1. Gitea repository `ws-${{ parameters.owner }}/${{ parameters.name }}` deleted
-          2. ArgoCD Application auto-pruned by ApplicationSet (~60s)
-          3. Backstage Catalog entity unregistered
+          2. ArgoCD Application `${{ parameters.owner }}-${{ parameters.name }}` cascade-deleted (namespace and all resources removed)
+          3. All Backstage Catalog entities unregistered
           4. Notification sent
+
+          **Reason:** ${{ parameters.description }}

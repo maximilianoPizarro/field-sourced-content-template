@@ -220,6 +220,8 @@ spec:
           - repositoryMatch: ".*"
             pathsExist:
               - manifests
+            pathsDoNotExist:
+              - argocd/application.yaml
         requeueAfterSeconds: 60
   template:
     metadata:

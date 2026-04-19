@@ -98,5 +98,26 @@ spec:
                 fi
                 echo "${U}: user=${C} org=${O}"
               done
+              # Create platformadmin user and org (same pattern as workshop users)
+              for PA_USER in platformadmin; do
+                PA_ORG="ws-${PA_USER}"
+                PA_JSON=$(printf '{"username":"%s","password":"Welcome123!","email":"%s@developer-hub.local","must_change_password":false,"send_notify":false}' "$PA_USER" "$PA_USER")
+                PA_C=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$BASE/api/v1/admin/users" \
+                  -u "${ADMIN_USER}:${ADMIN_PASS}" \
+                  -H "Content-Type: application/json" \
+                  -d "$PA_JSON" || true)
+                PA_O_JSON=$(printf '{"username":"%s","visibility":"public","description":"Platform admin repos"}' "$PA_ORG")
+                PA_O=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$BASE/api/v1/orgs" \
+                  -u "${ADMIN_USER}:${ADMIN_PASS}" \
+                  -H "Content-Type: application/json" \
+                  -d "$PA_O_JSON" || true)
+                PA_TID=$(curl -sS -u "${ADMIN_USER}:${ADMIN_PASS}" "$BASE/api/v1/orgs/${PA_ORG}/teams" 2>/dev/null \
+                  | sed -n 's/.*"id":\([0-9]*\).*"name":"Owners".*/\1/p')
+                if [ -n "$PA_TID" ]; then
+                  curl -sS -o /dev/null -X PUT "$BASE/api/v1/teams/${PA_TID}/members/${PA_USER}" \
+                    -u "${ADMIN_USER}:${ADMIN_PASS}" || true
+                fi
+                echo "${PA_USER}: user=${PA_C} org=${PA_O}"
+              done
               echo "All users and orgs created."
   backoffLimit: 3

@@ -34,6 +34,27 @@ ui:
           border-left: 3px solid var(--color-brand-red);
           font-weight: 700;
         }
+        .mobile-nav-toggle {
+          display: none;
+          position: fixed;
+          bottom: 16px;
+          right: 16px;
+          z-index: 9000;
+          background: var(--color-brand-red);
+          color: #fff;
+          border: none;
+          border-radius: 50%;
+          width: 52px;
+          height: 52px;
+          font-size: 24px;
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+          transition: transform 0.2s, background 0.2s;
+          align-items: center;
+          justify-content: center;
+        }
+        .mobile-nav-toggle:hover { background: #a30000; transform: scale(1.1); }
+        .mobile-nav-toggle.is-active { background: var(--color-brand-dark); }
         .doc a { color: var(--color-brand-blue); }
         .doc th { background: var(--color-brand-dark); color: #fff; }
         pre.highlight code { font-size: 0.85rem; }
@@ -120,7 +141,51 @@ ui:
           display: none;
         }
         @media (max-width: 768px) {
-          .nav-container { display: none; }
+          .nav-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 85vw;
+            max-width: 320px;
+            height: 100vh;
+            z-index: 8500;
+            background: #1a1a1a;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.5);
+          }
+          .nav-container.is-active {
+            transform: translateX(0);
+          }
+          .nav-container .nav-panel-menu {
+            padding: 16px 12px;
+          }
+          .nav-container .nav-panel-menu .nav-link {
+            color: #e0e0e0;
+            padding: 10px 12px;
+            display: block;
+            font-size: 0.95rem;
+            border-radius: 4px;
+          }
+          .nav-container .nav-panel-menu .nav-link:hover {
+            background: rgba(204,0,0,0.15);
+            color: #fff;
+          }
+          .nav-container .nav-panel-menu .nav-link.is-current-page {
+            background: rgba(204,0,0,0.1);
+            border-left: 3px solid var(--color-brand-red);
+          }
+          .mobile-nav-toggle { display: flex; }
+          .mobile-nav-backdrop {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.5);
+            z-index: 8000;
+          }
+          .mobile-nav-backdrop.is-active { display: block; }
           .doc { padding: 0.5rem; }
           .doc table { display: block; overflow-x: auto; }
           .doc pre { font-size: 0.75rem; overflow-x: auto; }
@@ -317,6 +382,45 @@ ui:
             }
           } catch(err) {}
         }, true);
+
+        // Mobile nav toggle
+        document.addEventListener('DOMContentLoaded', function() {
+          var navContainer = document.querySelector('.nav-container');
+          if (!navContainer) return;
+
+          var toggle = document.createElement('button');
+          toggle.className = 'mobile-nav-toggle';
+          toggle.innerHTML = '\u2630';
+          toggle.setAttribute('aria-label', 'Toggle navigation');
+          document.body.appendChild(toggle);
+
+          var backdrop = document.createElement('div');
+          backdrop.className = 'mobile-nav-backdrop';
+          document.body.appendChild(backdrop);
+
+          function openNav() {
+            navContainer.classList.add('is-active');
+            backdrop.classList.add('is-active');
+            toggle.classList.add('is-active');
+            toggle.innerHTML = '\u2715';
+          }
+          function closeNav() {
+            navContainer.classList.remove('is-active');
+            backdrop.classList.remove('is-active');
+            toggle.classList.remove('is-active');
+            toggle.innerHTML = '\u2630';
+          }
+
+          toggle.addEventListener('click', function() {
+            if (navContainer.classList.contains('is-active')) closeNav();
+            else openNav();
+          });
+          backdrop.addEventListener('click', closeNav);
+
+          navContainer.addEventListener('click', function(e) {
+            if (e.target.closest('a')) setTimeout(closeNav, 150);
+          });
+        });
 
         // Image fullscreen on click
         document.addEventListener('DOMContentLoaded', function() {

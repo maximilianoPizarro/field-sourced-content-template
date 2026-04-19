@@ -296,7 +296,7 @@ data:
         url: 'https://neuroface-frontend-neuroface.{{ .Values.deployer.domain }}'
         external: true
       - name: OpenShift AI
-        url: 'https://rhods-dashboard-redhat-ods-applications.{{ .Values.deployer.domain }}'
+        url: 'https://data-science-gateway.{{ .Values.deployer.domain }}'
         external: true
       - name: Mailpit
         url: 'https://n8n-mailpit-openshift-lightspeed.{{ .Values.deployer.domain }}'

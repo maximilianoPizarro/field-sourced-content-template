@@ -726,7 +726,7 @@ metadata:
     opendatahub.io/image-display-name: "Standard Data Science"
     openshift.io/display-name: "NeuroFace CV Pipeline"
     openshift.io/description: "Workbench for testing OpenVINO face detection, NeuroFace labels API, and Kafka CV events"
-    notebooks.opendatahub.io/oauth-logout-url: "https://rhods-dashboard-redhat-ods-applications.{{ .Values.clusterDomain }}/projects/neuroface?notebookLogout=neuroface-workbench"
+    notebooks.opendatahub.io/oauth-logout-url: "https://data-science-gateway.{{ .Values.clusterDomain }}/projects/neuroface?notebookLogout=neuroface-workbench"
   labels:
     app: neuroface-workbench
     opendatahub.io/dashboard: "true"

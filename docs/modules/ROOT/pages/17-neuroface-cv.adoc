@@ -204,7 +204,7 @@ Abrir *Mailpit* (`\https://n8n-mailpit-openshift-lightspeed.{cluster_domain}`) p
 | `\https://neuroface-frontend-neuroface.{cluster_domain}`
 
 | *OpenShift AI*
-| `\https://rhods-dashboard-redhat-ods-applications.{cluster_domain}/projects/neuroface`
+| `\https://data-science-gateway.{cluster_domain}/projects/neuroface`
 
 | *Kafka Console*
 | `\https://kafka-console-kafka-cdc.{cluster_domain}`

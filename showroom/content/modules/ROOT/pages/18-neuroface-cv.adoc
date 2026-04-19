@@ -176,7 +176,7 @@ The NeuroFace model is served through *OpenShift AI* using KServe:
 * *InferenceService*: `face-detection-retail-0005` — RawDeployment mode, storage from PVC
 * *Jupyter Workbench*: `neuroface-workbench` — for model experimentation and debugging
 
-Access the OpenShift AI dashboard at link:https://rhods-dashboard-redhat-ods-applications.{cluster_domain}/projects/neuroface[OpenShift AI -> neuroface project^].
+Access the OpenShift AI dashboard at link:https://data-science-gateway.{cluster_domain}/projects/neuroface[OpenShift AI -> neuroface project^].
 
 == PPE Safety Detection (YOLO)
 

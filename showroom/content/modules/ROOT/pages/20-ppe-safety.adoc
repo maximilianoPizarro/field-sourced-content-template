@@ -187,7 +187,7 @@ The `ppe-yolo-detection.ipynb` notebook (seeded into the workbench on first boot
 * *Compliance Dashboard* — pie charts for PPE status distribution, bar charts for missing items frequency
 * *Granite LLM Analysis* — sends detection summaries to the LLM and displays the safety report
 
-Access the notebook at link:https://rhods-dashboard-redhat-ods-applications.{cluster_domain}/projects/neuroface[OpenShift AI -> neuroface project^].
+Access the notebook at link:https://data-science-gateway.{cluster_domain}/projects/neuroface[OpenShift AI -> neuroface project^].
 
 == Security
 

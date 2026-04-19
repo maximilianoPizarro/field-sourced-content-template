@@ -96,7 +96,7 @@ This environment wires a production-style event backbone: relational data change
 
 | OpenVINO Model Server
 | Intel inference server deployed as KServe InferenceService on OpenShift AI
-| link:https://rhods-dashboard-redhat-ods-applications.{cluster_domain}/projects/neuroface[OpenShift AI^]
+| link:https://data-science-gateway.{cluster_domain}/projects/neuroface[OpenShift AI^]
 
 | CV Processor (Python)
 | Polls OVMS and NeuroFace labels, publishes events to Kafka topic `cv.face.detections`

@@ -14,7 +14,7 @@ stringData:
         "engine": "Argo",
         "auth_type": "KUBERNETES_SERVICE_ACCOUNT_TOKEN",
         "api_endpoint": "https://ds-pipeline-dspa-ml-development.{{ .Values.clusterDomain }}",
-        "public_api_endpoint": "https://rhods-dashboard-redhat-ods-applications.{{ .Values.clusterDomain }}/experiments/ml-development/",
+        "public_api_endpoint": "https://data-science-gateway.{{ .Values.clusterDomain }}/experiments/ml-development/",
         "cos_auth_type": "KUBERNETES_SECRET",
         "cos_secret": "aws-connection-pipeline-bucket",
         "cos_endpoint": "{{ .Values.s3.default_endpoint }}",

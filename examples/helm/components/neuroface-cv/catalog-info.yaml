@@ -273,7 +273,7 @@ metadata:
     - url: https://neuroface-workbench-neuroface.apps.cluster-msf9p.dynamic.redhatworkshops.io/notebook/neuroface/neuroface-workbench
       title: Open Workbench
       icon: dashboard
-    - url: https://rhods-dashboard-redhat-ods-applications.apps.cluster-msf9p.dynamic.redhatworkshops.io/projects/neuroface
+    - url: https://data-science-gateway.apps.cluster-msf9p.dynamic.redhatworkshops.io/projects/neuroface
       title: OpenShift AI Project
       icon: web
 spec:
@@ -307,7 +307,7 @@ metadata:
     - chat
     - ppe-analysis
   links:
-    - url: https://rhods-dashboard-redhat-ods-applications.apps.cluster-msf9p.dynamic.redhatworkshops.io/projects/neuroface
+    - url: https://data-science-gateway.apps.cluster-msf9p.dynamic.redhatworkshops.io/projects/neuroface
       title: OpenShift AI Project
       icon: web
 spec:
@@ -335,7 +335,7 @@ metadata:
     - inference
     - ml
   links:
-    - url: https://rhods-dashboard-redhat-ods-applications.apps.cluster-msf9p.dynamic.redhatworkshops.io/projects/neuroface?section=model-server
+    - url: https://data-science-gateway.apps.cluster-msf9p.dynamic.redhatworkshops.io/projects/neuroface?section=model-server
       title: Model Servers
       icon: web
 spec:

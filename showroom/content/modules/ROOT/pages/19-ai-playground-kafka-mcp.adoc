@@ -242,7 +242,7 @@ Provide a timeline visualization in text format.
 
 == How to use
 
-. Open the link:https://rhods-dashboard-redhat-ods-applications.{cluster_domain}/[OpenShift AI Dashboard^]
+. Open the link:https://data-science-gateway.{cluster_domain}/[OpenShift AI Dashboard^]
 . Navigate to **Gen AI Studio** → **Playground**
 . Select the **granite-llm** model (Granite 3.1 2B Instruct)
 . If MCP is configured, enable the **Kafka MCP Server** connection

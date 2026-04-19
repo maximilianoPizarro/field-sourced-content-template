@@ -103,7 +103,7 @@
               "description": "Message retention period in milliseconds (default 7 days)"
             }
           }
-        },
+        }
       }
     },
     "workbench": {

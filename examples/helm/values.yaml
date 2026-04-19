@@ -413,7 +413,7 @@ connectivityLink:
       enabled: true
       repoURL: "https://maximilianopizarro.github.io/neuroface/"
       chart: neuroface
-      targetRevision: "1.2.1"
+      targetRevision: "1.3.0"
       destinationNamespace: neuroface
       syncWave: "10"
       values:
@@ -428,6 +428,18 @@ connectivityLink:
           enabled: true
           modelEndpoint: "http://granite-llm-metrics.neuroface.svc:8080"
           modelName: "granite-3.1-2b-instruct"
+        ppe:
+          enabled: true
+          endpoint: "http://yolo-ppe-serving.neuroface.svc:8000"
+          classes: "hardhat,safety-vest,goggles"
+          confidence: "0.5"
+          kafka:
+            enabled: true
+            bootstrap: "cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093"
+            user: "cdc-user"
+            topic: "cv.ppe.detections"
+            secretName: "cdc-user"
+            caCertSecret: "cdc-cluster-cluster-ca-cert"
         persistence:
           enabled: true
           size: 1Gi
@@ -469,7 +481,7 @@ workshopRegistration:
 # ============================================================
 neurofaceCv:
   ppe:
-    enabled: false
+    enabled: true
 
 # ============================================================
 # Components - Enable/disable and configure each component

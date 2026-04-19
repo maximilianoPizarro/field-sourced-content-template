@@ -57,7 +57,7 @@ Namespace: neuroface                    Namespace: kafka-cdc
 
 | Application | Chart/Path | Namespace | Sync Wave |
 |-------------|------------|-----------|-----------|
-| `field-content-helm-neuroface` | `neuroface` Helm chart v1.2.1 | `neuroface` | 10 |
+| `field-content-helm-neuroface` | `neuroface` Helm chart v1.3.0 | `neuroface` | 10 |
 | `field-content-neuroface-cv` | `neuroface-cv` local component | `kafka-cdc` | 11 |
 
 ## PPE Safety Detection (YOLO) — Optional Module

@@ -8,7 +8,7 @@ content:
       start_path: showroom/content
 asciidoc:
   attributes:
-    cluster_domain: "<CLUSTER_DOMAIN>"
+    cluster_domain: "apps.cluster-msf9p.dynamic.redhatworkshops.io"
     user: "%user%"
 ui:
   bundle:
@@ -306,13 +306,16 @@ ui:
           var href = link.getAttribute('href');
           if (!href || href.charAt(0) === '#' || href.charAt(0) === '/') return;
           if (href.indexOf('http') !== 0) return;
-          var isExternal = link.getAttribute('target') === '_blank' ||
-                           link.hostname !== window.location.hostname;
-          if (isExternal && window.top !== window.self) {
-            e.preventDefault();
-            e.stopPropagation();
-            window.top.open(href, '_blank', 'noopener,noreferrer');
-          }
+          try {
+            var linkUrl = new URL(href, window.location.origin);
+            var isExternal = link.getAttribute('target') === '_blank' ||
+                             linkUrl.hostname !== window.location.hostname;
+            if (isExternal && window.top !== window.self) {
+              e.preventDefault();
+              e.stopPropagation();
+              window.top.open(href, '_blank', 'noopener,noreferrer');
+            }
+          } catch(err) {}
         }, true);
 
         // Image fullscreen on click

@@ -1314,6 +1314,8 @@ metadata:
 data:
   serve.py: |
     import os, io, json, logging
+    import numpy as np
+    import cv2
     from http.server import HTTPServer, BaseHTTPRequestHandler
     from ultralytics import YOLO
 
@@ -1326,6 +1328,13 @@ data:
     log.info("Loading YOLO model from %s ...", MODEL_PATH)
     model = YOLO(MODEL_PATH)
     log.info("Model loaded: %s — %d classes", MODEL_PATH, len(model.names))
+
+    def _decode_image(raw_bytes):
+        arr = np.frombuffer(raw_bytes, dtype=np.uint8)
+        img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        if img is None:
+            raise ValueError("Failed to decode image bytes")
+        return img
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
@@ -1351,7 +1360,8 @@ data:
                     results = model.predict(source=image_url, conf=conf, verbose=False)
                 elif "image/" in content_type or "multipart" in content_type or "octet-stream" in content_type:
                     conf = float(self.headers.get("X-Confidence", "0.5"))
-                    results = model.predict(source=io.BytesIO(body), conf=conf, verbose=False)
+                    img = _decode_image(body)
+                    results = model.predict(source=img, conf=conf, verbose=False)
                 else:
                     self._json_response(400, {"error": "unsupported content type"})
                     return

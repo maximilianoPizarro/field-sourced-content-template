@@ -102,6 +102,110 @@ data:
       "url": "http://kafka-mcp-server.kafka-cdc.svc.cluster.local:8080/mcp",
       "description": "Kafka MCP Server — provides tools to explore and query Apache Kafka clusters. Available tools: list_topics (list all topics with partition counts), describe_topic (show partition offsets and message counts), read_messages (read latest N messages from a topic), consumer_groups (list all consumer groups and their states). Connected to the CDC Kafka cluster with topics for CDC events, CV face detections, BPM workflows, and dead-letter queues."
     }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: operator-memory-patcher
+  namespace: redhat-ods-applications
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: operator-memory-patcher
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "patch"]
+- apiGroups: ["kiali.io"]
+  resources: ["kialis"]
+  verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: operator-memory-patcher
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: operator-memory-patcher
+subjects:
+- kind: ServiceAccount
+  name: operator-memory-patcher
+  namespace: redhat-ods-applications
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: patch-operator-memory-limits
+  namespace: redhat-ods-applications
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 5
+  activeDeadlineSeconds: 600
+  template:
+    spec:
+      serviceAccountName: operator-memory-patcher
+      restartPolicy: OnFailure
+      containers:
+      - name: patcher
+        image: registry.redhat.io/openshift4/ose-cli:latest
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          echo "=== Operator Memory Patcher ==="
+          echo "Patching operators that require memory overrides to prevent OOMKilled..."
+
+          patch_deploy() {
+            local ns=$1 deploy=$2 mem_limit=$3 mem_request=$4
+            current=$(oc get deploy "$deploy" -n "$ns" -o jsonpath='{.spec.template.spec.containers[0].resources.limits.memory}' 2>/dev/null || echo "")
+            if [ "$current" = "$mem_limit" ]; then
+              echo "[OK] $ns/$deploy already at $mem_limit"
+              return 0
+            fi
+            echo "[PATCH] $ns/$deploy: $current -> limits=$mem_limit, requests=$mem_request"
+            oc patch deploy "$deploy" -n "$ns" --type json -p \
+              "[{\"op\":\"replace\",\"path\":\"/spec/template/spec/containers/0/resources/limits/memory\",\"value\":\"$mem_limit\"},{\"op\":\"replace\",\"path\":\"/spec/template/spec/containers/0/resources/requests/memory\",\"value\":\"$mem_request\"}]"
+          }
+
+          # LlamaStack Operator: 1Gi -> 2Gi (OOMKilled during reconciliation)
+          if oc get deploy llama-stack-k8s-operator-controller-manager -n redhat-ods-applications &>/dev/null; then
+            patch_deploy redhat-ods-applications llama-stack-k8s-operator-controller-manager 2Gi 512Mi
+          fi
+
+          # Kuadrant Operator: 300Mi -> 2Gi (OOMKilled during reconciliation)
+          if oc get deploy kuadrant-operator-controller-manager -n kuadrant-system &>/dev/null; then
+            patch_deploy kuadrant-system kuadrant-operator-controller-manager 2Gi 512Mi
+          fi
+
+          # Perses Operator (COO): 512Mi -> 1Gi (OOMKilled during startup)
+          if oc get deploy perses-operator -n openshift-cluster-observability-operator &>/dev/null; then
+            patch_deploy openshift-cluster-observability-operator perses-operator 1Gi 256Mi
+          fi
+
+          # Kiali Server: default -> 2Gi (OOMKilled processing mesh topology)
+          if oc get deploy kiali -n openshift-cluster-observability-operator &>/dev/null; then
+            patch_deploy openshift-cluster-observability-operator kiali 2Gi 512Mi
+          fi
+
+          echo "=== All patches applied ==="
 ## rhods-operator Subscription removed — already managed by connectivityLink.operators.subscriptions in values.yaml (channel stable-2.25)
 ## ---
 ## vLLM CPU model commented out to free cluster resources

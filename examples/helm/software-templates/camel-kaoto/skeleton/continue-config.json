@@ -5,7 +5,11 @@
       "model": "granite-3.1-2b-instruct-Q4_K_M.gguf",
       "apiBase": "http://granite-llm-predictor.neuroface.svc.cluster.local:8080/v1",
       "provider": "openai",
-      "apiKey": "no-key"
+      "apiKey": "no-key",
+      "contextLength": 1024,
+      "completionOptions": {
+        "maxTokens": 256
+      }
     }
   ],
   "tabAutocompleteModel": {
@@ -13,7 +17,11 @@
     "model": "granite-3.1-2b-instruct-Q4_K_M.gguf",
     "apiBase": "http://granite-llm-predictor.neuroface.svc.cluster.local:8080/v1",
     "provider": "openai",
-    "apiKey": "no-key"
+    "apiKey": "no-key",
+    "contextLength": 1024,
+    "completionOptions": {
+      "maxTokens": 64
+    }
   },
   "allowAnonymousTelemetry": false
 }

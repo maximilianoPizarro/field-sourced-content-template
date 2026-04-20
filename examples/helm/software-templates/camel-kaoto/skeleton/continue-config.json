@@ -1,0 +1,19 @@
+{
+  "models": [
+    {
+      "title": "Granite 3.1 2B (OpenShift AI)",
+      "model": "granite-3.1-2b-instruct-Q4_K_M.gguf",
+      "apiBase": "http://granite-llm-predictor.neuroface.svc.cluster.local:8080/v1",
+      "provider": "openai",
+      "apiKey": "no-key"
+    }
+  ],
+  "tabAutocompleteModel": {
+    "title": "Granite 3.1 2B Autocomplete",
+    "model": "granite-3.1-2b-instruct-Q4_K_M.gguf",
+    "apiBase": "http://granite-llm-predictor.neuroface.svc.cluster.local:8080/v1",
+    "provider": "openai",
+    "apiKey": "no-key"
+  },
+  "allowAnonymousTelemetry": false
+}

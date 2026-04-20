@@ -3,7 +3,7 @@ metadata:
   name: ${{ values.name }}
   version: 1.0.0
   displayName: Camel CDC Route
-  description: Apache Camel CDC route with Kaoto visual designer
+  description: Apache Camel CDC route with Kaoto visual designer + Continue AI (Granite via OpenShift AI)
   language: yaml
   projectType: camel
   tags:
@@ -11,6 +11,8 @@ metadata:
     - Kaoto
     - CDC
     - Kafka
+    - AI
+    - Continue
 attributes:
   .vscode/extensions.json: |
     {
@@ -22,7 +24,8 @@ attributes:
         "redhat.java",
         "redhat.vscode-quarkus",
         "jbangdev.jbang-vscode",
-        "redhat.vscode-openshift-connector"
+        "redhat.vscode-openshift-connector",
+        "Continue.continue"
       ]
     }
 components:
@@ -32,9 +35,6 @@ components:
       memoryLimit: 2Gi
       cpuLimit: "1"
       mountSources: true
-      env:
-        - name: DEFAULT_EXTENSIONS
-          value: "/home/user/.vsix-cache/kaoto.vsix;/home/user/.vsix-cache/camel.vsix"
       volumeMounts:
         - name: m2
           path: /home/user/.m2
@@ -54,6 +54,10 @@ commands:
         [ -f /home/user/.vsix-cache/jbang.vsix ] || \
           curl -sL "https://jbangdev.gallerycdn.vsassets.io/extensions/jbangdev/jbang-vscode/0.12.0/1734960116430/Microsoft.VisualStudio.Services.VSIXPackage" -o /home/user/.vsix-cache/jbang.vsix
         which jbang >/dev/null 2>&1 || curl -Ls https://sh.jbang.dev | bash -s - app setup
+  - id: setup-continue
+    exec:
+      component: tools
+      commandLine: "mkdir -p /home/user/.continue && cp /projects/${{ values.name }}/continue-config.json /home/user/.continue/config.json"
   - id: build
     exec:
       component: tools
@@ -67,3 +71,4 @@ commands:
 events:
   postStart:
     - install-vsix-extensions
+    - setup-continue

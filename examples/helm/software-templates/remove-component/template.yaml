@@ -97,7 +97,7 @@ spec:
 
     - id: delete-base-system
       name: Delete base System entity (industrial-edge)
-      if: ${{ parameters.templateType === 'industrial-edge' }}
+      if: ${{ parameters.templateType === 'industrial-edge' and steps['fetch-base-system'].output.body.metadata.uid }}
       action: http:backstage:request
       continueOnError: true
       input:
@@ -115,7 +115,7 @@ spec:
 
     - id: delete-base-component
       name: Delete base Component entity
-      if: ${{ parameters.templateType !== 'industrial-edge' }}
+      if: ${{ parameters.templateType !== 'industrial-edge' and steps['fetch-base-component'].output.body.metadata.uid }}
       action: http:backstage:request
       continueOnError: true
       input:
@@ -134,7 +134,7 @@ spec:
 
     - id: delete-ie-sensors
       name: Delete sensors Component
-      if: ${{ parameters.templateType === 'industrial-edge' }}
+      if: ${{ parameters.templateType === 'industrial-edge' and steps['fetch-ie-sensors'].output.body.metadata.uid }}
       action: http:backstage:request
       continueOnError: true
       input:
@@ -152,7 +152,7 @@ spec:
 
     - id: delete-ie-kafka
       name: Delete kafka Component
-      if: ${{ parameters.templateType === 'industrial-edge' }}
+      if: ${{ parameters.templateType === 'industrial-edge' and steps['fetch-ie-kafka'].output.body.metadata.uid }}
       action: http:backstage:request
       continueOnError: true
       input:
@@ -170,7 +170,7 @@ spec:
 
     - id: delete-ie-camel-k
       name: Delete camel-k Component
-      if: ${{ parameters.templateType === 'industrial-edge' }}
+      if: ${{ parameters.templateType === 'industrial-edge' and steps['fetch-ie-camel-k'].output.body.metadata.uid }}
       action: http:backstage:request
       continueOnError: true
       input:
@@ -188,7 +188,7 @@ spec:
 
     - id: delete-ie-dashboard
       name: Delete dashboard Component
-      if: ${{ parameters.templateType === 'industrial-edge' }}
+      if: ${{ parameters.templateType === 'industrial-edge' and steps['fetch-ie-dashboard'].output.body.metadata.uid }}
       action: http:backstage:request
       continueOnError: true
       input:
@@ -206,7 +206,7 @@ spec:
 
     - id: delete-ie-kafka-to-s3
       name: Delete kafka-to-s3 Component (anomaly detection)
-      if: ${{ parameters.templateType === 'industrial-edge' }}
+      if: ${{ parameters.templateType === 'industrial-edge' and steps['fetch-ie-kafka-to-s3'].output.body.metadata.uid }}
       action: http:backstage:request
       continueOnError: true
       input:
@@ -225,7 +225,7 @@ spec:
 
     - id: delete-ie-mqtt-api
       name: Delete MQTT API
-      if: ${{ parameters.templateType === 'industrial-edge' }}
+      if: ${{ parameters.templateType === 'industrial-edge' and steps['fetch-ie-mqtt-api'].output.body.metadata.uid }}
       action: http:backstage:request
       continueOnError: true
       input:
@@ -243,7 +243,7 @@ spec:
 
     - id: delete-ie-kafka-api
       name: Delete Kafka API
-      if: ${{ parameters.templateType === 'industrial-edge' }}
+      if: ${{ parameters.templateType === 'industrial-edge' and steps['fetch-ie-kafka-api'].output.body.metadata.uid }}
       action: http:backstage:request
       continueOnError: true
       input:
@@ -262,7 +262,7 @@ spec:
 
     - id: delete-csm-api
       name: Delete Customer Service API
-      if: ${{ parameters.templateType === 'customer-service-mcp' }}
+      if: ${{ parameters.templateType === 'customer-service-mcp' and steps['fetch-csm-api'].output.body.metadata.uid }}
       action: http:backstage:request
       continueOnError: true
       input:

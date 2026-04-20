@@ -41,164 +41,122 @@ connectivityLink:
         channel: stable-2.25
         source: redhat-operators
 
-  neuralbank:
-    global:
-      postgresql:
-        auth:
-          postgresPassword: "supersecretpassword"
-          username: "neuralbank"
-          password: "neuralbank123!"
-          database: "neuralbank"
-    backend:
-      image:
-        repository: quay.io/maximilianopizarro/neuralbank-backend
-        tag: "latest"
-        pullPolicy: Always
-      service:
-        port: 8080
-      replicaCount: 1
-    frontend:
-      image:
-        repository: quay.io/maximilianopizarro/neuralbank-front
-        tag: "pkce"
-        pullPolicy: Always
-      service:
-        port: 8080
-      replicaCount: 1
-    keycloak:
-      clientId: "neuralbank-frontend"
-      clientSecret: ""
-      issuerUrl: ""
-      authorizationEndpoint: ""
-      redirectUri: ""
-      tokenEndpoint: ""
-      postLogoutRedirectUri: ""
-    api:
-      baseUrl: "/api"
-
   # ArgoCD Applications — full profile (all components enabled)
   # For lite profile, use values-lite.yaml overlay to disable heavy components
   apps:
     # --- Core platform ---
-    - id: connectivity-link-namespaces
+    - id: namespaces
       enabled: true
-      path: connectivity-link-namespaces
+      path: namespaces
       destinationNamespace: openshift-gitops
       syncWave: "1"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: false
-    - id: connectivity-link-openshift-gitops
+    - id: openshift-gitops
       enabled: true
-      path: connectivity-link-openshift-gitops
+      path: openshift-gitops
       destinationNamespace: openshift-gitops
       syncWave: "0"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
-    - id: connectivity-link-operators
+    - id: operators
       enabled: true
-      path: connectivity-link-operators
+      path: operators
       destinationNamespace: openshift-operators
       syncWave: "2"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
-    - id: connectivity-link-servicemeshoperator3
+    - id: servicemeshoperator3
       enabled: true
-      path: connectivity-link-servicemeshoperator3
+      path: servicemeshoperator3
       destinationNamespace: openshift-operators
       syncWave: "3"
       prune: false
       selfHeal: true
       skipDryRunOnMissingResource: true
-    - id: connectivity-link-rhbk
+    - id: rhbk
       enabled: true
-      path: connectivity-link-rhbk
+      path: rhbk
       destinationNamespace: rhbk-operator
       syncWave: "2"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
-    - id: connectivity-link-developer-hub
+    - id: developer-hub
       enabled: true
-      path: connectivity-link-developer-hub
+      path: developer-hub
       destinationNamespace: developer-hub
       syncWave: "3"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
-    - id: connectivity-link-rhcl-operator
+    - id: rhcl-operator
       enabled: true
-      path: connectivity-link-rhcl-operator
+      path: rhcl-operator
       destinationNamespace: kuadrant-system
       syncWave: "6"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
     # --- Observability ---
-    - id: connectivity-link-observability
+    - id: observability
       enabled: true
-      path: connectivity-link-observability
+      path: observability
       destinationNamespace: openshift-cluster-observability-operator
       syncWave: "5"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
-    - id: connectivity-link-kiali
+    - id: kiali
       enabled: true
-      path: connectivity-link-kiali
+      path: kiali
       destinationNamespace: openshift-cluster-observability-operator
       syncWave: "6"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
-    - id: connectivity-link-opentelemetry
+    - id: opentelemetry
       enabled: true
-      path: connectivity-link-opentelemetry
+      path: opentelemetry
       destinationNamespace: openshift-opentelemetry
       syncWave: "6"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
     # --- AI / ML ---
-    - id: connectivity-link-litemaas
+    - id: litemaas
       enabled: true
-      path: connectivity-link-litemaas
+      path: litemaas
       destinationNamespace: litemaas
       syncWave: "6"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
-    - id: connectivity-link-openshift-ai
+    - id: openshift-ai
       enabled: true
-      path: connectivity-link-openshift-ai
+      path: openshift-ai
       destinationNamespace: openshift-ai
       syncWave: "6"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
+      serverSideApply: false
     # --- Developer tools ---
-    - id: connectivity-link-devspaces
+    - id: devspaces
       enabled: true
-      path: connectivity-link-devspaces
+      path: devspaces
       destinationNamespace: devspaces
       syncWave: "7"
       prune: false
       selfHeal: true
       skipDryRunOnMissingResource: true
     # --- Demo applications ---
-    - id: connectivity-link-neuralbank-stack
-      enabled: true
-      path: connectivity-link-neuralbank-stack
-      destinationNamespace: neuralbank-stack
-      syncWave: "5"
-      prune: true
-      selfHeal: true
-      skipDryRunOnMissingResource: true
     - id: ols
       enabled: true
-      path: connectivity-link-openshift-lightspeed
+      path: openshift-lightspeed
       destinationNamespace: openshift-lightspeed
       syncWave: "8"
       prune: true
@@ -206,7 +164,7 @@ connectivityLink:
       skipDryRunOnMissingResource: true
     - id: mcp-gateway
       enabled: true
-      path: connectivity-link-mcp-gateway
+      path: mcp-gateway
       destinationNamespace: mcp-system
       syncWave: "9"
       prune: true
@@ -214,106 +172,98 @@ connectivityLink:
       skipDryRunOnMissingResource: true
     - id: gitea
       enabled: true
-      path: connectivity-link-gitea
+      path: gitea
       destinationNamespace: gitea
       syncWave: "3"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: false
-    - id: connectivity-link-applicationsets
+    - id: applicationsets
       enabled: true
-      path: connectivity-link-applicationsets
+      path: applicationsets
       destinationNamespace: openshift-gitops
       syncWave: "4"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
-    - id: connectivity-link-oauth-users
+    - id: oauth-users
       enabled: true
-      path: connectivity-link-oauth-users
+      path: oauth-users
       destinationNamespace: openshift-config
       syncWave: "2"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
-    - id: connectivity-link-nfl-wallet
-      enabled: true
-      path: connectivity-link-nfl-wallet
-      destinationNamespace: nfl-wallet-prod
-      syncWave: "7"
-      prune: true
-      selfHeal: true
-      skipDryRunOnMissingResource: true
     - id: workshop-registration
       enabled: true
-      path: connectivity-link-workshop-registration
+      path: workshop-registration
       destinationNamespace: showroom
       syncWave: "10"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: false
     # --- Kafka CDC pipeline ---
-    - id: connectivity-link-kafka
+    - id: kafka
       enabled: true
-      path: connectivity-link-kafka
+      path: kafka
       destinationNamespace: kafka-cdc
       syncWave: "4"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
-    - id: connectivity-link-kafka-console
+    - id: kafka-console
       enabled: true
-      path: connectivity-link-kafka-console
+      path: kafka-console
       destinationNamespace: kafka-cdc
       syncWave: "5"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
-    - id: connectivity-link-apicurio-registry
+    - id: apicurio-registry
       enabled: true
-      path: connectivity-link-apicurio-registry
+      path: apicurio-registry
       destinationNamespace: kafka-cdc
       syncWave: "5"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
-    - id: connectivity-link-cdc-demo
+    - id: cdc-demo
       enabled: true
-      path: connectivity-link-cdc-demo
+      path: cdc-demo
       destinationNamespace: kafka-cdc
       syncWave: "6"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
-    - id: connectivity-link-camel-cdc
+    - id: camel-cdc
       enabled: true
-      path: connectivity-link-camel-cdc
+      path: camel-cdc
       destinationNamespace: kafka-cdc
       syncWave: "7"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
     # --- BPM / workflows ---
-    - id: connectivity-link-kogito-bpm
+    - id: kogito-bpm
       enabled: true
-      path: connectivity-link-kogito-bpm
+      path: kogito-bpm
       destinationNamespace: kogito-bpm
       syncWave: "8"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
     # --- UI and utilities ---
-    - id: connectivity-link-console-links
+    - id: console-links
       enabled: true
-      path: connectivity-link-console-links
+      path: console-links
       destinationNamespace: openshift-gitops
       syncWave: "10"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: false
-    - id: connectivity-link-cleanup
+    - id: cleanup
       enabled: true
-      path: connectivity-link-cleanup
+      path: cleanup
       destinationNamespace: kafka-cdc
       syncWave: "9"
       prune: true
@@ -377,10 +327,69 @@ connectivityLink:
       selfHeal: true
       skipDryRunOnMissingResource: true
 
+# ============================================================
+# Helm Chart Applications (deployed via ArgoCD Helm source)
+# ============================================================
+  helmApps:
+    - id: gitea
+      enabled: true
+      repoURL: "https://dl.gitea.com/charts/"
+      chart: gitea
+      targetRevision: "12.5.0"
+      destinationNamespace: gitea
+      syncWave: "3"
+      values:
+        global:
+          compatibility:
+            openshift:
+              adaptSecurityContext: force
+        gitea:
+          admin:
+            username: gitea_admin
+            password: openshift
+            email: admin@gitea.local
+          config:
+            server:
+              ROOT_URL: ""
+        image:
+          rootless: true
+        podSecurityContext:
+          fsGroup: null
+        containerSecurityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+        initContainers:
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+        postgresql-ha:
+          enabled: false
+        postgresql:
+          enabled: true
+        redis-cluster:
+          enabled: false
+        redis:
+          enabled: true
+        persistence:
+          enabled: true
+          size: 10Gi
+        service:
+          http:
+            type: ClusterIP
+            port: 3000
+
 # LLM configuration (injected at deploy time, not in git)
 lightspeed:
   llmApiKey: "sk-no-key"
-  llmEndpoint: "https://qwen25-7b-instruct-my-first-model.apps.ocp.xbgvw.sandbox67.opentlc.com/v1"
+  llmEndpoint: ""
   model: "qwen25-7b-instruct"
 
 litemaas:
@@ -415,6 +424,7 @@ components:
     enabled: true
     namespace: showroom
     name: showroom
+    observabilityAccess: true
     content:
       repoUrl: "https://github.com/maximilianoPizarro/field-sourced-content-template.git"
       repoRef: "main"

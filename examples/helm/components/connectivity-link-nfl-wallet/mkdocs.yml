@@ -1,9 +1,0 @@
-site_name: NFL Wallet API
-site_description: Documentación de la API de billetera digital NFL Wallet con autenticación API Key
-nav:
-  - Home: index.md
-  - Arquitectura: architecture.md
-  - API Key Auth: api-key-auth.md
-  - Swagger: swagger.md
-plugins:
-  - techdocs-core

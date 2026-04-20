@@ -1,6 +1,0 @@
-apiVersion: v2
-name: connectivity-link-rhcl-operator
-description: Connectivity-link component — rhcl-operator (upstream snapshot)
-type: application
-version: 0.1.0
-appVersion: "1.0"

@@ -220,13 +220,13 @@ This parameter drives all user provisioning via Helm `range` loops:
 
 | Resource | Template | Per-User Objects |
 |----------|----------|-----------------|
-| Keycloak users (`user1`…`userN`) | `connectivity-link-rhbk` | 1 user in backstage realm |
-| DevSpaces namespaces (`userN-devspaces`) | `connectivity-link-namespaces` | Namespace + 3 RoleBindings |
-| Neuralbank namespaces (`userN-neuralbank`) | `connectivity-link-namespaces` | Namespace + 3 RoleBindings |
-| Gitea users + organizations (`ws-userN`) | `connectivity-link-gitea` | 1 user + 1 org |
-| ArgoCD ApplicationSets | `connectivity-link-applicationsets` | 1 ApplicationSet (SCM Provider) |
-| Backstage RBAC assignments | `connectivity-link-developer-hub` | 1 policy line (`role:default/authenticated`) |
-| Workshop registration seats | `connectivity-link-workshop-registration` | 1 seat (up to `maxUsers`) |
+| Keycloak users (`user1`…`userN`) | `rhbk` | 1 user in backstage realm |
+| DevSpaces namespaces (`userN-devspaces`) | `namespaces` | Namespace + 3 RoleBindings |
+| Neuralbank namespaces (`userN-neuralbank`) | `namespaces` | Namespace + 3 RoleBindings |
+| Gitea users + organizations (`ws-userN`) | `gitea` | 1 user + 1 org |
+| ArgoCD ApplicationSets | `applicationsets` | 1 ApplicationSet (SCM Provider) |
+| Backstage RBAC assignments | `developer-hub` | 1 policy line (`role:default/authenticated`) |
+| Workshop registration seats | `workshop-registration` | 1 seat (up to `maxUsers`) |
 
 ### Pre-deployed Components (Neuralbank Stack)
 
@@ -557,8 +557,8 @@ field-content/
 │   │   ├── values-hub.yaml               # VP convention: hub cluster config
 │   │   ├── templates/                     # ArgoCD Application definitions
 │   │   ├── components/                    # Per-component Helm sub-charts
-│   │   │   ├── connectivity-link-*/       # Infrastructure components
-│   │   │   ├── connectivity-link-workshop-registration/  # Self-service registration portal
+│   │   │   ├── */       # Infrastructure components
+│   │   │   ├── workshop-registration/  # Self-service registration portal
 │   │   │   ├── industrial-edge-tst/              # IoT test env (sensors, messaging, dashboard)
 │   │   │   ├── industrial-edge-data-lake/        # Central Kafka + Camel K S3 integration
 │   │   │   ├── industrial-edge-stormshift/       # Factory edge (sensors, MirrorMaker2, dashboard)

@@ -1,0 +1,233 @@
+= Observability + Service Mesh
+:navtitle: Observability + Service Mesh
+
+++++
+<div id="scene-grafana" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-grafana', {height:380, camY:12, camZ:22});
+  if(!ctx) return;
+  var graf = ThreeHelper.createNode(ctx.scene,'Grafana',0xF46800,0,4,0,{width:3});
+  var prom = ThreeHelper.createNode(ctx.scene,'Prometheus',0xE6522C,-5,0,0,{width:2.5});
+  var thanos = ThreeHelper.createNode(ctx.scene,'Thanos',0x6C63FF,5,0,0,{width:2.5});
+  var kf = ThreeHelper.createNode(ctx.scene,'Kafka Metrics',0x231F20,-5,-3,-3,{width:3});
+  var cam = ThreeHelper.createNode(ctx.scene,'Camel Metrics',0xF57C00,0,-3,-3,{width:3});
+  var mesh = ThreeHelper.createNode(ctx.scene,'Service Mesh',0x00BCD4,5,-3,-3,{width:3});
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,prom,graf,0xE6522C,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,thanos,graf,0x6C63FF,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,kf,prom,0x231F20,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,cam,prom,0xF57C00,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,mesh,thanos,0x00BCD4,{speed:0.008})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
+== CDC Pipeline Observability
+
+The full pipeline is instrumented with Prometheus metrics, Grafana dashboards, and tracing via the Service Mesh.
+
+=== Observability stack
+
+[cols="1,2",options="header"]
+|===
+| Component | Role
+
+| *Prometheus* (via Cluster Observability Operator)
+| Scrapes JMX metrics from Kafka, Debezium, and Camel
+
+| *Grafana*
+| "Kafka CDC Pipeline" dashboard with throughput, lag, and latency panels
+
+| *Kiali*
+| Visualization of traffic between services in the Service Mesh
+
+| *Kafka Exporter*
+| Exports consumer group lag metrics to Prometheus
+|===
+
+== Grafana Dashboard — Kafka CDC Pipeline
+
+Access: `https://grafana-observability.{cluster_domain}`
+
+The dashboard is bound to the Grafana instance via `instanceSelector`. The label must match the `Grafana` CR instance label:
+
+[source,yaml]
+----
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: kafka-cdc-pipeline
+  namespace: openshift-cluster-observability-operator
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana-observability
+  json: |
+    { ... }
+----
+
+IMPORTANT: The label `dashboards: grafana-observability` must match the `Grafana` CR instance label exactly. A mismatch (for example `connectivity-link`) will prevent the dashboard from ever mounting.
+
+The *"Kafka CDC Pipeline"* dashboard includes the following panels:
+
+[cols="1,2",options="header"]
+|===
+| Panel | Metric
+
+| *Kafka Broker — Messages In/s*
+| `sum(rate(kafka_server_brokertopicmetrics_messagesin_total[5m])) by (topic)`
+
+| *Kafka Broker — Bytes In/Out*
+| Byte throughput per second (in and out)
+
+| *Consumer Group Lag*
+| `kafka_consumergroup_lag > 0` — lag per partition and consumer group
+
+| *Debezium — Streaming Duration*
+| `debezium_postgres_MilliSecondsSinceLastEvent` — CDC latency
+
+| *KafkaConnect — Task Status*
+| Number of active connectors
+
+| *KafkaConnect — Records Processed/s*
+| `rate(kafka_connect_task_sink_record_send_total[5m])` — records processed per second
+|===
+
+== PodMonitors for metrics
+
+PodMonitors are configured for each pipeline component:
+
+[source,yaml]
+----
+apiVersion: monitoring.rhobs/v1
+kind: PodMonitor
+metadata:
+  name: kafka-cluster-metrics
+  namespace: openshift-cluster-observability-operator
+spec:
+  namespaceSelector:
+    matchNames:
+    - kafka-cdc
+  podMetricsEndpoints:
+  - interval: 30s
+    port: tcp-prometheus
+  selector:
+    matchLabels:
+      strimzi.io/cluster: cdc-cluster
+      strimzi.io/kind: Kafka
+----
+
+== How it Works
+
+=== Metrics pipeline: from JMX to Grafana
+
+CDC pipeline metrics pass through four layers before visualization:
+
+. **Exposure (JMX → Prometheus format)** — Each Kafka broker and KafkaConnect exposes internal JMX metrics. A *JMX Prometheus Exporter* agent (configured via `metricsConfig` in the Strimzi CR) converts JMX metrics to Prometheus text format on port 9404. Camel uses *Micrometer* to expose its metrics natively at `/q/metrics`.
+
+. **Scraping (Prometheus)** — `PodMonitor` CRs tell Prometheus which pods to scrape, on which port, and how often (`interval: 30s`). Prometheus stores time series with labels (topic, partition, consumer group, connector) that enable granular queries.
+
+. **Query (PromQL → panels)** — Each Grafana dashboard panel runs a PromQL query. For example, `sum(rate(kafka_server_brokertopicmetrics_messagesin_total[5m])) by (topic)` computes message throughput per second grouped by topic, using a 5-minute window to smooth spikes.
+
+. **Alerts (PrometheusRule → Alertmanager)** — Alert rules are evaluated continuously by Prometheus. When an expression holds for the defined `for` period (e.g. `kafka_consumergroup_lag > 1000` for 5 minutes), Prometheus fires an alert to Alertmanager, which can notify via email, Slack, PagerDuty, etc.
+
+=== Kafka Exporter: consumer lag metrics
+
+The `kafkaExporter` deployed by Strimzi is a dedicated process that:
+
+* Connects to the Kafka cluster and reads offsets for all consumer groups
+* Computes *lag* per partition: `lag = highWaterMark - consumerOffset`
+* Exposes the `kafka_consumergroup_lag` metric that Prometheus scrapes
+* This helps detect bottlenecks: if lag grows, consumers are not keeping up with producers
+
+== Service Mesh — Istio Ambient Mode
+
+The `kafka-cdc` namespace is enrolled in the Service Mesh using *Istio ambient mode* (no sidecars):
+
+[source,yaml]
+----
+metadata:
+  labels:
+    istio.io/dataplane-mode: ambient
+    istio-discovery: enabled
+----
+
+=== Traffic visible in Kiali
+
+Access: `https://kiali-openshift-cluster-observability-operator.{cluster_domain}`
+
+In Kiali you can see the service graph for the `kafka-cdc` namespace:
+
+* PostgreSQL → KafkaConnect (Debezium)
+* KafkaConnect → Kafka brokers
+* Kafka → Camel CDC Processor
+* Camel → Mailpit (HTTP)
+
+Ambient mode provides:
+
+* Automatic mTLS between all pods in the namespace
+* L4/L7 metrics without sidecars (via ztunnel)
+* Traffic visibility in Kiali without per-sidecar CPU/RAM overhead
+
+== Alerts — PrometheusRule
+
+Alerts are deployed as a `PrometheusRule` resource that Prometheus evaluates automatically:
+
+[source,yaml]
+----
+apiVersion: monitoring.rhobs/v1
+kind: PrometheusRule
+metadata:
+  name: kafka-cdc-alerts
+  namespace: openshift-cluster-observability-operator
+  labels:
+    openshift.io/user-monitoring: "true"
+spec:
+  groups:
+    - name: kafka-cdc
+      rules:
+        - alert: KafkaConsumerLagHigh
+          expr: kafka_consumergroup_lag > 1000
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High consumer lag on {{ $labels.consumergroup }}"
+        - alert: DebeziumDisconnected
+          expr: debezium_postgres_Connected == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Debezium disconnected from PostgreSQL"
+        - alert: KafkaConnectTaskFailed
+          expr: kafka_connect_worker_connector_failed_task_count > 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "KafkaConnect connector in FAILED state"
+----
+
+To verify that alerts are active:
+
+[source,bash]
+----
+oc get prometheusrule kafka-cdc-alerts -n openshift-cluster-observability-operator -o yaml
+----
+
+== Official Documentation
+
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/monitoring/index[OpenShift Monitoring^] — Integrated monitoring with Prometheus and Alertmanager
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cluster_observability_operator/index[Cluster Observability Operator^] — Multi-signal observability on OpenShift
+* https://docs.redhat.com/en/documentation/openshift_service_mesh[Red Hat OpenShift Service Mesh^] — Service Mesh with Istio, including ambient mode
+* https://grafana.com/docs/grafana/latest/[Grafana Documentation^] — Dashboards and metric visualization
+* https://kiali.io/docs/[Kiali Documentation^] — Service Mesh observability console
+* https://prometheus.io/docs/[Prometheus Documentation^] — Monitoring and alerting
+* https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka/2.9/html/deploying_and_managing_amq_streams_on_openshift/assembly-metrics-str[Kafka Metrics and Monitoring^] — Export Kafka metrics to Prometheus

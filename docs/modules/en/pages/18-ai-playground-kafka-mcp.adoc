@@ -1,0 +1,186 @@
+= AI Playground + Kafka MCP
+:toc: left
+:toclevels: 3
+
+[.lead]
+OpenShift AI 3.3 includes the *Gen AI Studio* (Playground) for interacting with deployed LLMs. Combined with the *Kafka MCP Server* registered through Kuadrant's MCP Gateway, the Playground becomes an AI agent capable of querying live Kafka data.
+
+== Architecture
+
+[cols="1,2", options="header"]
+|===
+| Component | Role
+
+| *RHOAI Playground* | Chat UI connected to the Granite 3.1 2B InferenceService (KServe)
+| *Granite 3.1 2B Instruct* | Small-footprint LLM running via llama.cpp on KServe — handles natural-language reasoning
+| *MCP Gateway (Kuadrant)* | Streamable-HTTP proxy that exposes registered MCP servers under a unified endpoint
+| *Kafka MCP Server* | Python FastMCP server with 4 tools: `kafka_list_topics`, `kafka_describe_topic`, `kafka_read_messages`, `kafka_consumer_groups`
+| *Kafka Cluster* | CDC cluster (`cdc-cluster`) in `kafka-cdc` namespace with 12+ topics
+|===
+
+== MCP Gateway Endpoint
+
+[source,text]
+----
+URL:  https://mcp-gateway.apps.<CLUSTER_DOMAIN>/mcp
+----
+
+== Available Kafka Tools
+
+[cols="1,2,1", options="header"]
+|===
+| Tool | Description | Parameters
+
+| `kafka_list_topics` | Lists all non-internal Kafka topics with partition counts | _none_
+| `kafka_describe_topic` | Shows partition offsets, message counts, and watermarks for a topic | `topic_name` (string)
+| `kafka_read_messages` | Reads the latest N messages from a topic (max 20) | `topic_name` (string), `count` (int, default 5)
+| `kafka_consumer_groups` | Lists all consumer groups with their states | _none_
+|===
+
+== Available Kafka Topics
+
+[cols="1,2", options="header"]
+|===
+| Topic | Content
+
+| `cv.face.detections` | NeuroFace CV events: `person_registered`, `person_detected`, `ovms_model_status`
+| `cdc.public.customers` | CDC change events from the `customers` table
+| `cdc.public.orders` | CDC change events from the `orders` table
+| `bpm.approval.requests` | BPM approval workflow events from Kogito/SonataFlow
+| `bpm.onboarding.metrics` | BPM onboarding metrics and process telemetry
+| `dlq.cdc-errors` | Dead-letter queue for failed CDC events
+| `dlq.cv-errors` | Dead-letter queue for failed CV pipeline events
+| `dlq.cdc-camel-errors` | Dead-letter queue for failed Camel K integrations
+|===
+
+== Playground Prompts
+
+=== Prompt 1 — Inventory Overview
+
+[source,text]
+----
+List all Kafka topics available in the cluster.
+For each topic, show the name and number of partitions.
+Highlight any topics related to face detection or computer vision.
+----
+
+=== Prompt 2 — CV Pipeline Analysis
+
+[source,text]
+----
+Read the last 10 messages from the topic cv.face.detections.
+Summarize:
+- How many unique people were detected?
+- What detection methods are being used?
+- What is the average confidence score?
+- Are there any OVMS model status events? If so, is the model healthy?
+----
+
+=== Prompt 3 — CDC Event Inspection
+
+[source,text]
+----
+Describe the topic cdc.public.orders and tell me how many total messages it has.
+Then read the last 5 messages and summarize the order data:
+- What fields are in each record?
+- Are these INSERT, UPDATE, or DELETE operations?
+- Show a brief table with customer_id, amount, and operation type.
+----
+
+=== Prompt 4 — Consumer Group Health
+
+[source,text]
+----
+List all consumer groups in the Kafka cluster.
+For each group, show the state (Stable, Empty, Dead, etc.).
+Identify any consumer groups that might indicate a problem
+(e.g., Dead or with rebalancing state).
+----
+
+=== Prompt 5 — Dead Letter Queue Analysis
+
+[source,text]
+----
+Check the following dead-letter queue topics:
+- dlq.cdc-errors
+- dlq.cv-errors
+- dlq.cdc-camel-errors
+
+For each one, tell me how many messages are in it.
+If there are messages, read the latest 3 and summarize
+what errors occurred and which components generated them.
+----
+
+=== Prompt 6 — Security Face Detection Report
+
+[source,text]
+----
+Read the last 20 messages from cv.face.detections.
+Generate a security report with:
+1. Timeline of detections (person name + timestamp)
+2. Total unique identities currently registered
+3. Detection frequency (events per minute estimate)
+4. Model server health status
+Format the report as a professional security briefing.
+----
+
+=== Prompt 7 — BPM Workflow Events
+
+[source,text]
+----
+Describe the topics bpm.approval.requests and bpm.onboarding.metrics.
+Read the last 5 messages from each and explain:
+- What business processes are generating events?
+- What is the approval workflow doing?
+- Are there any onboarding metrics available?
+----
+
+=== Prompt 8 — Cluster-wide Topic Health
+
+[source,text]
+----
+List all topics and describe each one that has more than 0 messages.
+Create a dashboard-style summary:
+- Topic name
+- Total messages
+- Number of partitions
+- Category (CDC / CV / BPM / DLQ / Internal)
+Flag any topic that looks unhealthy (e.g., too many DLQ messages
+relative to the source topic).
+----
+
+=== Prompt 9 — NeuroFace End-to-End Pipeline
+
+[source,text]
+----
+I want to understand the NeuroFace CV pipeline end-to-end.
+1. Read the latest messages from cv.face.detections
+2. Check if there are any errors in dlq.cv-errors
+3. Describe the cv.face.detections topic to see throughput
+
+Based on this data, explain:
+- Is the pipeline healthy?
+- How many events are being generated per hour (estimate)?
+- Are any detections failing?
+----
+
+=== Prompt 10 — Cross-system Correlation
+
+[source,text]
+----
+Read the last 5 messages from these topics:
+- cv.face.detections
+- cdc.public.orders
+- bpm.approval.requests
+
+Find any correlations:
+- Are detections happening around the same time as orders?
+- Is there any pattern between face detection events and BPM workflows?
+Provide a timeline visualization in text format.
+----
+
+== References
+
+* xref:08-mcp-lightspeed.adoc[MCP + Lightspeed]
+* xref:17-neuroface-cv.adoc[NeuroFace CV Pipeline]
+* xref:02-kafka-setup.adoc[Streams for Apache Kafka]

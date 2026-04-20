@@ -1,0 +1,6 @@
+apiVersion: v2
+name: developer-hub
+description: Connectivity-link component — developer-hub (upstream snapshot)
+type: application
+version: 0.1.0
+appVersion: "1.0"

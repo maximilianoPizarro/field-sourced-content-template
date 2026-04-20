@@ -4,11 +4,11 @@ site:
 content:
   sources:
     - url: https://github.com/maximilianoPizarro/field-sourced-content-template.git
-      branches: main
+      branches: one
       start_path: showroom/content
 asciidoc:
   attributes:
-    cluster_domain: "apps.cluster-l9nhj.dynamic.redhatworkshops.io"
+    cluster_domain: "apps.cluster-msf9p.dynamic.redhatworkshops.io"
     user: "%user%"
 ui:
   bundle:
@@ -34,6 +34,27 @@ ui:
           border-left: 3px solid var(--color-brand-red);
           font-weight: 700;
         }
+        .mobile-nav-toggle {
+          display: none;
+          position: fixed;
+          bottom: 16px;
+          right: 16px;
+          z-index: 9000;
+          background: var(--color-brand-red);
+          color: #fff;
+          border: none;
+          border-radius: 50%;
+          width: 52px;
+          height: 52px;
+          font-size: 24px;
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+          transition: transform 0.2s, background 0.2s;
+          align-items: center;
+          justify-content: center;
+        }
+        .mobile-nav-toggle:hover { background: #a30000; transform: scale(1.1); }
+        .mobile-nav-toggle.is-active { background: var(--color-brand-dark); }
         .doc a { color: var(--color-brand-blue); }
         .doc th { background: var(--color-brand-dark); color: #fff; }
         pre.highlight code { font-size: 0.85rem; }
@@ -48,19 +69,27 @@ ui:
         }
         .fullscreen-btn {
           position: absolute;
-          top: 8px;
-          right: 8px;
+          top: 10px;
+          right: 10px;
           z-index: 100;
-          background: rgba(0,0,0,0.7);
+          background: rgba(0,0,0,0.75);
           color: #fff;
-          border: 1px solid #555;
-          border-radius: 4px;
-          padding: 4px 10px;
+          border: 1px solid rgba(255,255,255,0.25);
+          border-radius: 6px;
+          padding: 6px 14px;
           cursor: pointer;
-          font-size: 13px;
-          transition: background 0.2s;
+          font-size: 14px;
+          transition: background 0.2s, border-color 0.2s, transform 0.15s;
+          backdrop-filter: blur(4px);
+          display: flex;
+          align-items: center;
+          gap: 6px;
         }
-        .fullscreen-btn:hover { background: rgba(80,80,80,0.9); }
+        .fullscreen-btn:hover {
+          background: rgba(0,102,204,0.8);
+          border-color: rgba(255,255,255,0.5);
+          transform: scale(1.05);
+        }
         .doc .imageblock img {
           cursor: pointer;
           transition: transform 0.2s;
@@ -83,13 +112,80 @@ ui:
           box-shadow: 0 0 40px rgba(0,102,204,0.3);
         }
         [id^="scene-"]:fullscreen,
-        .three-container:fullscreen {
+        .three-container:fullscreen,
+        [id^="scene-"]:-webkit-full-screen,
+        .three-container:-webkit-full-screen {
           background: #0a0a1a;
           width: 100vw !important;
           height: 100vh !important;
+          border: none !important;
+          border-radius: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          overflow: hidden !important;
+        }
+        :fullscreen .fullscreen-btn,
+        :-webkit-full-screen .fullscreen-btn {
+          top: 16px;
+          right: 16px;
+          padding: 8px 18px;
+          font-size: 15px;
+        }
+        :fullscreen canvas,
+        :-webkit-full-screen canvas {
+          width: 100vw !important;
+          height: 100vh !important;
+        }
+        :fullscreen::-webkit-scrollbar,
+        :-webkit-full-screen::-webkit-scrollbar {
+          display: none;
         }
         @media (max-width: 768px) {
-          .nav-container { display: none; }
+          .nav-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 85vw;
+            max-width: 320px;
+            height: 100vh;
+            z-index: 8500;
+            background: #1a1a1a;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.5);
+          }
+          .nav-container.is-active {
+            transform: translateX(0);
+          }
+          .nav-container .nav-panel-menu {
+            padding: 16px 12px;
+          }
+          .nav-container .nav-panel-menu .nav-link {
+            color: #e0e0e0;
+            padding: 10px 12px;
+            display: block;
+            font-size: 0.95rem;
+            border-radius: 4px;
+          }
+          .nav-container .nav-panel-menu .nav-link:hover {
+            background: rgba(204,0,0,0.15);
+            color: #fff;
+          }
+          .nav-container .nav-panel-menu .nav-link.is-current-page {
+            background: rgba(204,0,0,0.1);
+            border-left: 3px solid var(--color-brand-red);
+          }
+          .mobile-nav-toggle { display: flex; }
+          .mobile-nav-backdrop {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.5);
+            z-index: 8000;
+          }
+          .mobile-nav-backdrop.is-active { display: block; }
           .doc { padding: 0.5rem; }
           .doc table { display: block; overflow-x: auto; }
           .doc pre { font-size: 0.75rem; overflow-x: auto; }
@@ -140,23 +236,42 @@ ui:
             gridHelper.position.y = -2;
             scene.add(gridHelper);
 
-            // Fullscreen button
             var fsBtn = document.createElement('button');
             fsBtn.className = 'fullscreen-btn';
-            fsBtn.textContent = '⛶ Fullscreen';
-            fsBtn.onclick = function() {
-              if (container.requestFullscreen) container.requestFullscreen();
-              else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
-            };
-            container.appendChild(fsBtn);
+            fsBtn.innerHTML = '⛶ Fullscreen';
+            var isFullscreen = false;
 
-            window.addEventListener('resize', function() {
-              var nw = container.clientWidth;
-              var nh = document.fullscreenElement === container ? window.innerHeight : h;
+            function resizeRenderer() {
+              var fs = document.fullscreenElement === container || document.webkitFullscreenElement === container;
+              var nw = fs ? window.innerWidth : container.clientWidth;
+              var nh = fs ? window.innerHeight : h;
               camera.aspect = nw / nh;
               camera.updateProjectionMatrix();
               renderer.setSize(nw, nh);
-            });
+              renderer.domElement.style.width = nw + 'px';
+              renderer.domElement.style.height = nh + 'px';
+            }
+
+            fsBtn.onclick = function() {
+              if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                if (container.requestFullscreen) container.requestFullscreen();
+                else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
+              } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+              }
+            };
+            container.appendChild(fsBtn);
+
+            function onFullscreenChange() {
+              var fs = document.fullscreenElement === container || document.webkitFullscreenElement === container;
+              isFullscreen = fs;
+              fsBtn.innerHTML = fs ? '✕ Exit' : '⛶ Fullscreen';
+              setTimeout(resizeRenderer, 50);
+            }
+            document.addEventListener('fullscreenchange', onFullscreenChange);
+            document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+            window.addEventListener('resize', resizeRenderer);
 
             return { scene: scene, camera: camera, renderer: renderer, controls: controls };
           },
@@ -249,6 +364,64 @@ ui:
           }
         };
 
+        // Fix links blocked by iframe sandbox (about:blank#blocked)
+        document.addEventListener('click', function(e) {
+          var link = e.target.closest('a[href]');
+          if (!link) return;
+          var href = link.getAttribute('href');
+          if (!href || href.charAt(0) === '#' || href.charAt(0) === '/') return;
+          if (href.indexOf('http') !== 0) return;
+          try {
+            var linkUrl = new URL(href, window.location.origin);
+            var isExternal = link.getAttribute('target') === '_blank' ||
+                             linkUrl.hostname !== window.location.hostname;
+            if (isExternal && window.top !== window.self) {
+              e.preventDefault();
+              e.stopPropagation();
+              window.top.open(href, '_blank', 'noopener,noreferrer');
+            }
+          } catch(err) {}
+        }, true);
+
+        // Mobile nav toggle
+        document.addEventListener('DOMContentLoaded', function() {
+          var navContainer = document.querySelector('.nav-container');
+          if (!navContainer) return;
+
+          var toggle = document.createElement('button');
+          toggle.className = 'mobile-nav-toggle';
+          toggle.innerHTML = '\u2630';
+          toggle.setAttribute('aria-label', 'Toggle navigation');
+          document.body.appendChild(toggle);
+
+          var backdrop = document.createElement('div');
+          backdrop.className = 'mobile-nav-backdrop';
+          document.body.appendChild(backdrop);
+
+          function openNav() {
+            navContainer.classList.add('is-active');
+            backdrop.classList.add('is-active');
+            toggle.classList.add('is-active');
+            toggle.innerHTML = '\u2715';
+          }
+          function closeNav() {
+            navContainer.classList.remove('is-active');
+            backdrop.classList.remove('is-active');
+            toggle.classList.remove('is-active');
+            toggle.innerHTML = '\u2630';
+          }
+
+          toggle.addEventListener('click', function() {
+            if (navContainer.classList.contains('is-active')) closeNav();
+            else openNav();
+          });
+          backdrop.addEventListener('click', closeNav);
+
+          navContainer.addEventListener('click', function(e) {
+            if (e.target.closest('a')) setTimeout(closeNav, 150);
+          });
+        });
+
         // Image fullscreen on click
         document.addEventListener('DOMContentLoaded', function() {
           document.querySelectorAll('.doc .imageblock img').forEach(function(img) {
@@ -261,18 +434,35 @@ ui:
               document.body.appendChild(overlay);
             });
           });
-          // Ensure all 3D containers have a fullscreen button
           var selectors = document.querySelectorAll('.three-container, [id^="scene-"]');
           selectors.forEach(function(el) {
             if (el.querySelector('.fullscreen-btn')) return;
             el.style.position = el.style.position || 'relative';
             var btn = document.createElement('button');
             btn.className = 'fullscreen-btn';
-            btn.textContent = '\u26F6 Fullscreen';
+            btn.innerHTML = '\u26F6 Fullscreen';
             btn.onclick = function() {
-              if (el.requestFullscreen) el.requestFullscreen();
-              else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+              if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                if (el.requestFullscreen) el.requestFullscreen();
+                else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+              } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+              }
             };
             el.appendChild(btn);
+            function onFsChange() {
+              var fs = document.fullscreenElement === el || document.webkitFullscreenElement === el;
+              btn.innerHTML = fs ? '\u2715 Exit' : '\u26F6 Fullscreen';
+              var canvas = el.querySelector('canvas');
+              if (canvas) {
+                var nw = fs ? window.innerWidth : el.clientWidth;
+                var nh = fs ? window.innerHeight : (parseInt(el.style.height) || 400);
+                canvas.style.width = nw + 'px';
+                canvas.style.height = nh + 'px';
+              }
+            }
+            document.addEventListener('fullscreenchange', onFsChange);
+            document.addEventListener('webkitfullscreenchange', onFsChange);
           });
         });

@@ -1,0 +1,426 @@
+= Operational Cluster Verification
+:page-layout: default
+
+This page documents the operational state of the full CDC pipeline deployed on the OpenShift cluster, including screenshots of each component and the YAML blocks that define the configuration.
+
+== General Status of the `kafka-cdc` Namespace
+
+All CDC pipeline components are operational in the `kafka-cdc` namespace:
+
+[cols="3,1,1,2",options="header"]
+|===
+|Component |Pods |Status |Function
+
+|**Kafka Cluster** (cdc-cluster)
+|3 brokers
+|Ready (KRaft)
+|Kafka cluster in KRaft mode with 3 broker/controller nodes
+
+|**KafkaConnect** (cdc-connect)
+|2 replicas
+|Ready
+|Connector framework with Debezium and HTTP Sink
+
+|**PostgreSQL** (cdc-postgresql)
+|1
+|Running
+|Source database with logical WAL level
+
+|**Kafka Bridge** (cdc-bridge)
+|1
+|Ready
+|REST HTTP API to produce/consume messages
+
+|**Apicurio Registry**
+|1
+|Running
+|Schema Registry for schema governance
+
+|**Kafka Console**
+|2 (UI + API)
+|Running
+|Web console for topic and message monitoring
+
+|**Kafka Exporter**
+|1
+|Running
+|Exports Kafka metrics to Prometheus
+
+|**Entity Operator**
+|2 containers
+|Running
+|Manages topics and users via CRDs
+|===
+
+== Kafka Cluster — KRaft Mode
+
+The Kafka cluster runs in KRaft mode (without ZooKeeper) with 3 nodes that act as both brokers and controllers.
+
+.KafkaNodePool definition
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: broker
+  namespace: kafka-cdc
+  labels:
+    strimzi.io/cluster: cdc-cluster
+spec:
+  replicas: 3
+  roles:
+    - broker
+    - controller
+  storage:
+    type: persistent-claim
+    size: 10Gi
+    deleteClaim: false
+----
+
+.Kafka CR definition with KRaft enabled
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: cdc-cluster
+  namespace: kafka-cdc
+  annotations:
+    strimzi.io/node-pools: enabled
+    strimzi.io/kraft: enabled
+spec:
+  kafka:
+    version: "4.0.0"
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+        authentication:
+          type: scram-sha-512
+    config:
+      offsets.topic.replication.factor: 3
+      transaction.state.log.replication.factor: 3
+      transaction.state.log.min.isr: 2
+      default.replication.factor: 3
+      min.insync.replicas: 2
+----
+
+== Streams for Apache Kafka Console
+
+The Streams console lets you view the cluster, topics, consumer groups, and individual messages with their CDC payload.
+
+image::ROOT:kafka-console-cluster-overview.png[Kafka Console - Cluster Overview,width=100%]
+
+The cluster overview shows: **3/3 brokers online**, **Kafka 4.0.0**, **8 topics**, **44 partitions**, and **2 active consumer groups**.
+
+image::ROOT:kafka-console-topic-messages.png[Kafka Console - CDC Messages,width=100%]
+
+Messages on the `cdc.public.customers` topic show Debezium payloads with full schema and `after` data for each record.
+
+.Console CR definition
+[source,yaml]
+----
+apiVersion: console.streamshub.github.com/v1alpha1
+kind: Console
+metadata:
+  name: kafka-console
+  namespace: kafka-cdc
+spec:
+  hostname: kafka-console-kafka-cdc.<CLUSTER_DOMAIN>
+  kafkaClusters:
+    - name: cdc-cluster
+      namespace: kafka-cdc
+      listener: plain
+----
+
+== KafkaConnect with Debezium and HTTP Sink
+
+KafkaConnect runs 2 replicas with Debezium PostgreSQL 3.0.2 and Aiven HTTP Sink 0.9.0 plugins, both built into a custom image via OpenShift Build.
+
+.KafkaConnect definition with plugin build
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnect
+metadata:
+  name: cdc-connect
+  namespace: kafka-cdc
+  annotations:
+    strimzi.io/use-connector-resources: "true"
+spec:
+  version: "4.0.0"
+  replicas: 2
+  bootstrapServers: cdc-cluster-kafka-bootstrap:9093
+  authentication:
+    type: scram-sha-512
+    username: cdc-user
+    passwordSecret:
+      secretName: cdc-user
+      password: password
+  tls:
+    trustedCertificates:
+      - secretName: cdc-cluster-cluster-ca-cert
+        certificate: ca.crt
+  build:
+    output:
+      type: docker
+      image: image-registry.openshift-image-registry.svc:5000/kafka-cdc/cdc-connect:latest
+    plugins:
+      - name: debezium-postgresql
+        artifacts:
+          - type: zip
+            url: https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/3.0.2.Final/debezium-connector-postgres-3.0.2.Final-plugin.zip
+      - name: http-sink
+        artifacts:
+          - type: zip
+            url: https://github.com/Aiven-Open/http-connector-for-apache-kafka/releases/download/v0.9.0/http-connector-for-apache-kafka-0.9.0.zip
+----
+
+== Debezium PostgreSQL Source Connector
+
+Captures changes on the `customers` and `orders` tables using logical replication with `pgoutput`.
+
+.Debezium KafkaConnector definition
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnector
+metadata:
+  name: debezium-postgresql-source
+  namespace: kafka-cdc
+  labels:
+    strimzi.io/cluster: cdc-connect
+spec:
+  class: io.debezium.connector.postgresql.PostgresConnector
+  tasksMax: 1
+  config:
+    database.hostname: cdc-postgresql
+    database.port: "5432"
+    database.dbname: cdcdb
+    topic.prefix: cdc
+    schema.include.list: public
+    table.include.list: "public.customers,public.orders"
+    plugin.name: pgoutput
+    publication.name: cdc_publication
+    slot.name: debezium_cdc
+    snapshot.mode: initial
+    errors.tolerance: all
+    errors.deadletterqueue.topic.name: dlq.cdc-errors
+    errors.deadletterqueue.topic.replication.factor: 3
+    errors.deadletterqueue.context.headers.enable: true
+----
+
+== HTTP Sink Connector — Mailpit Notifications
+
+Forwards CDC events to Mailpit for email notifications.
+
+image::ROOT:mailpit-inbox.png[Mailpit - CDC Notifications,width=100%]
+
+.HTTP Sink KafkaConnector definition
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnector
+metadata:
+  name: mailpit-http-sink
+  namespace: kafka-cdc
+  labels:
+    strimzi.io/cluster: cdc-connect
+spec:
+  class: io.aiven.kafka.connect.http.HttpSinkConnector
+  tasksMax: 1
+  config:
+    topics: "cdc.public.customers,cdc.public.orders"
+    http.url: "http://n8n-mailpit.openshift-lightspeed.svc:8025/api/v1/send"
+    http.authorization.type: none
+    http.headers.content.type: "application/json"
+    batching.enabled: "false"
+    errors.tolerance: all
+    errors.deadletterqueue.topic.name: dlq.cdc-errors
+    errors.deadletterqueue.topic.replication.factor: 3
+    errors.deadletterqueue.context.headers.enable: true
+----
+
+== Apicurio Registry
+
+image::ROOT:apicurio-registry.png[Apicurio Registry,width=100%]
+
+Red Hat build of Apicurio Registry deployed for schema governance (Avro, Protobuf, JSON Schema).
+
+== KafkaUser — SCRAM-SHA-512 Authentication
+
+.KafkaUser definition
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: cdc-user
+  namespace: kafka-cdc
+  labels:
+    strimzi.io/cluster: cdc-cluster
+spec:
+  authentication:
+    type: scram-sha-512
+----
+
+== Kafka Topics
+
+[cols="2,1,1,2",options="header"]
+|===
+|Topic |Partitions |Replication Factor |Purpose
+
+|`cdc.public.customers`
+|3
+|3
+|CDC events from the customers table
+
+|`cdc.public.orders`
+|3
+|3
+|CDC events from the orders table
+
+|`dlq.cdc-errors`
+|3
+|3
+|Dead Letter Queue for connector errors
+
+|`dlq.cdc-camel-errors`
+|3
+|3
+|Dead Letter Queue for Camel errors
+|===
+
+.KafkaTopic definition
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: cdc.public.customers
+  namespace: kafka-cdc
+  labels:
+    strimzi.io/cluster: cdc-cluster
+spec:
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: 604800000
+    cleanup.policy: compact
+----
+
+== PostgreSQL with Logical WAL Level
+
+The source database uses PostgreSQL 16 with logical WAL level configured via ConfigMap:
+
+.PostgreSQL configuration ConfigMap
+[source,yaml]
+----
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cdc-postgresql-cfg
+  namespace: kafka-cdc
+data:
+  custom.conf: |
+    wal_level = logical
+    max_replication_slots = 4
+    max_wal_senders = 4
+----
+
+The volume is mounted at `/opt/app-root/src/postgresql-cfg` so the Red Hat PostgreSQL 16 image applies it automatically.
+
+== NetworkPolicy
+
+The NetworkPolicy restricts ingress to the namespace, allowing only internal communication and health check probes:
+
+.`kafka-cdc` namespace NetworkPolicy
+[source,yaml]
+----
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kafka-cdc-allow-internal
+  namespace: kafka-cdc
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kafka-cdc
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshift-cluster-observability-operator
+      ports:
+        - protocol: TCP
+          port: 9404
+    - ports:
+        - protocol: TCP
+          port: 3000
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8083
+        - protocol: TCP
+          port: 9090
+        - protocol: TCP
+          port: 9092
+        - protocol: TCP
+          port: 9093
+        - protocol: TCP
+          port: 5432
+----
+
+== Access URLs
+
+[cols="2,3",options="header"]
+|===
+|Service |URL
+
+|Kafka Console
+|https://kafka-console-kafka-cdc.<CLUSTER_DOMAIN>/
+
+|Apicurio Registry
+|https://apicurio-registry-kafka-cdc.<CLUSTER_DOMAIN>/
+
+|Kafka Bridge REST API
+|https://kafka-bridge-kafka-cdc.<CLUSTER_DOMAIN>/
+
+|Mailpit
+|https://n8n-mailpit-openshift-lightspeed.<CLUSTER_DOMAIN>/
+|===
+
+== End-to-End Verification
+
+To validate the full pipeline, insert a row in PostgreSQL:
+
+[source,sql]
+----
+INSERT INTO customers (first_name, last_name, email)
+VALUES ('Test', 'User', 'test@neuralbank.io');
+----
+
+The full flow is:
+
+1. PostgreSQL → Debezium captures the WAL change
+2. Debezium → Publishes to the `cdc.public.customers` topic
+3. Kafka → Stores with 3 replicas and compaction
+4. HTTP Sink → Sends the event to Mailpit
+5. Mailpit → Shows the notification in the inbox
+
+== Official Documentation
+
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cli_tools/oc-cli-getting-started[OpenShift CLI (oc)^] — Commands for operational verification
+* https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka[Red Hat Streams for Apache Kafka^] — Kafka cluster operation and monitoring
+* https://docs.redhat.com/en/documentation/red_hat_build_of_debezium[Red Hat build of Debezium^] — CDC connector troubleshooting
+* https://docs.redhat.com/en/documentation/red_hat_build_of_apicurio_registry[Apicurio Registry^] — Schema Registry verification
+* https://strimzi.io/docs/operators/latest/deploying.html[Strimzi Deploying Guide^] — Operator and Strimzi resource verification

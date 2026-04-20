@@ -1,0 +1,219 @@
+= PPE Safety Detection (YOLO)
+
+++++
+<div id="scene-ppe" style="width:100%;min-height:380px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../../_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-ppe', {height:400, camX:2, camY:12, camZ:26, rotateSpeed:0.4});
+  if(!ctx) return;
+
+  var cam    = ThreeHelper.createNode(ctx.scene,'Webcam',0x607D8B,-14,0,0);
+  var fe     = ThreeHelper.createNode(ctx.scene,'Angular\nFrontend',0x9C27B0,-8,0,0);
+  var be     = ThreeHelper.createNode(ctx.scene,'FastAPI\nBackend',0x9C27B0,-2,0,0);
+  var yolo   = ThreeHelper.createNode(ctx.scene,'YOLO v8n\nServing',0x43A047,4,0,-3);
+  var llm    = ThreeHelper.createNode(ctx.scene,'Granite\n3.1 LLM',0x1A73E8,4,0,3);
+  var kafka  = ThreeHelper.createNode(ctx.scene,'Kafka\ncv.ppe.detections',0x231F20,10,0,0,{width:3.5});
+  var jup    = ThreeHelper.createNode(ctx.scene,'Jupyter\nNotebook',0xFF9800,16,0,-3);
+  var dash   = ThreeHelper.createNode(ctx.scene,'Compliance\nDashboard',0x42A5F5,16,0,3);
+
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,cam,fe,0x607D8B,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,fe,be,0x9C27B0,{speed:0.009}),
+    ThreeHelper.createEdge(ctx.scene,be,yolo,0x43A047,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,be,llm,0x1A73E8,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,be,kafka,0x231F20,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,kafka,jup,0xFF9800,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,kafka,dash,0x42A5F5,{speed:0.006})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
+== Overview
+
+The *PPE Safety Detection* module extends the NeuroFace platform with real-time Personal Protective Equipment monitoring. Webcam frames captured by the Angular frontend are sent to the FastAPI backend, which forwards them to a *YOLOv8n* serving endpoint for object detection. The backend classifies compliance against expected PPE items (hardhat, safety vest, goggles), optionally calls the *Granite 3.1 LLM* for natural-language safety analysis, and publishes each detection event to the Kafka topic `cv.ppe.detections`. A Jupyter notebook consumes these events for visualization and compliance dashboards.
+
+== Architecture
+
+[cols="1,2,1",options="header"]
+|===
+| Component | Role | Namespace
+
+| *NeuroFace Frontend*
+| Angular UI — captures webcam frames via WebRTC and sends base64 images to the PPE API
+| `neuroface`
+
+| *NeuroFace Backend*
+| FastAPI — `/ppe/detect` endpoint decodes image, calls YOLO, classifies compliance, calls LLM, publishes to Kafka
+| `neuroface`
+
+| *YOLO PPE Serving*
+| Python HTTP server running Ultralytics YOLOv8n — receives raw JPEG bytes, returns bounding boxes and class labels
+| `neuroface`
+
+| *Granite 3.1 2B LLM*
+| KServe InferenceService — generates natural-language safety analysis when a PPE violation is detected
+| `neuroface` / `sandbox-shared-models`
+
+| *Kafka Topic*
+| `cv.ppe.detections` on Strimzi `cdc-cluster` with SASL_SSL + SCRAM-SHA-512
+| `kafka-cdc`
+
+| *Kafka DLQ*
+| `dlq.ppe-errors` — dead letter queue for failed processing
+| `kafka-cdc`
+
+| *Jupyter Workbench*
+| OpenShift AI Notebook (`ppe-yolo-detection.ipynb`) — consumes Kafka events, plots compliance charts
+| `neuroface`
+|===
+
+== Data Flow
+
+Each webcam frame follows this path:
+
+. *Capture* — The Angular frontend captures a frame from the browser webcam via WebRTC
+. *Send to Backend* — The frame is base64-encoded and `POST`-ed to `/ppe/detect`
+. *YOLO Inference* — The backend re-encodes to JPEG and forwards to the YOLO serving endpoint (`/v1/predict`), receiving bounding boxes with class names and confidence scores
+. *Compliance Check* — The backend compares detected objects against expected PPE classes (`hardhat`, `safety-vest`, `goggles`) and assigns a status: `compliant`, `violation`, or `no_persons`
+. *LLM Analysis* (on violation) — When PPE is missing, the backend calls Granite 3.1 with a structured prompt to generate a safety analysis
+. *Kafka Publish* — The full detection event (objects, status, LLM analysis, timestamp) is published to `cv.ppe.detections` using `confluent-kafka` with SASL_SSL
+. *Notebook Consumption* — The Jupyter notebook consumes events from Kafka and renders compliance dashboards with matplotlib
+
+== Sample Kafka Event
+
+[source,json]
+----
+{
+  "event_type": "ppe_compliance_check",
+  "source": "neuroface-ppe-backend",
+  "timestamp": "2026-04-19T18:30:00Z",
+  "ppe_status": "violation",
+  "person_count": 1,
+  "expected_ppe": ["hardhat", "safety-vest", "goggles"],
+  "present_ppe": ["safety-vest"],
+  "missing_ppe": ["hardhat", "goggles"],
+  "detections": [
+    {
+      "class_name": "person",
+      "confidence": 0.92,
+      "bbox": {"x1": 120, "y1": 50, "x2": 380, "y2": 470}
+    },
+    {
+      "class_name": "safety-vest",
+      "confidence": 0.87,
+      "bbox": {"x1": 145, "y1": 180, "x2": 355, "y2": 390}
+    }
+  ],
+  "llm_analysis": "PPE violation detected: 1 operator missing hardhat and goggles. Risk: head injury from falling objects and eye exposure to hazardous materials. Immediate corrective action required."
+}
+----
+
+== Verify the Pipeline
+
+=== Open the PPE Module
+
+Navigate to link:https://neuroface-frontend-neuroface.{cluster_domain}[NeuroFace App^] and select *PPE Safety* from the sidebar. Allow webcam access and observe real-time bounding boxes over detected PPE items.
+
+=== Read from Kafka Topic
+
+Open the link:https://kafka-console-kafka-cdc.{cluster_domain}[Kafka Console^] and navigate to *Topics -> cv.ppe.detections -> Messages* to see PPE detection events arriving in real time.
+
+=== Check via CLI
+
+[source,bash]
+----
+oc exec -n kafka-cdc deploy/cv-processor -- \
+  python3 -c "
+from confluent_kafka import Consumer
+import json, ssl
+
+c = Consumer({
+    'bootstrap.servers': 'cdc-cluster-kafka-bootstrap:9093',
+    'group.id': 'showroom-ppe-check',
+    'auto.offset.reset': 'latest',
+    'security.protocol': 'SASL_SSL',
+    'sasl.mechanism': 'SCRAM-SHA-512',
+    'sasl.username': 'cdc-user',
+    'sasl.password': open('/etc/kafka-certs/user-password').read().strip(),
+    'ssl.ca.location': '/etc/kafka-certs/ca.crt'
+})
+c.subscribe(['cv.ppe.detections'])
+msg = c.poll(30.0)
+if msg and not msg.error():
+    print(json.dumps(json.loads(msg.value()), indent=2))
+else:
+    print('No messages yet — trigger a detection from the PPE UI')
+c.close()
+"
+----
+
+=== Check YOLO Serving Health
+
+[source,bash]
+----
+oc exec -n neuroface deploy/neuroface-backend -- \
+  curl -s http://yolo-ppe-serving.neuroface.svc:8000/health
+----
+
+== Granite LLM Integration
+
+When the compliance check returns `violation`, the backend constructs a prompt:
+
+[source,text]
+----
+You are a workplace safety AI assistant. Analyze these YOLO detections from a factory floor camera:
+- Persons detected: 1
+- Objects detected: person, safety-vest
+- Expected PPE: hardhat, safety-vest, goggles
+
+Determine if each operator is in compliance with safety protocol.
+List any missing PPE and explain the risk in 2-3 sentences.
+----
+
+The LLM response is included in the Kafka event under `llm_analysis` and displayed in the frontend UI.
+
+== Jupyter Notebook
+
+The `ppe-yolo-detection.ipynb` notebook (seeded into the workbench on first boot) provides:
+
+* *YOLO Health Check* — verifies the serving endpoint is reachable
+* *PPE Detection & Visualization* — sends test images and draws bounding boxes with matplotlib
+* *Kafka Consumer* — reads events from `cv.ppe.detections` and displays them as a DataFrame
+* *Compliance Dashboard* — pie charts for PPE status distribution, bar charts for missing items frequency
+* *Granite LLM Analysis* — sends detection summaries to the LLM and displays the safety report
+
+Access the notebook at link:https://data-science-gateway.{cluster_domain}/projects/neuroface[OpenShift AI -> neuroface project^].
+
+== Security
+
+* *Kafka authentication*: SASL_SSL with SCRAM-SHA-512 (`cdc-user` credentials from Kubernetes secret)
+* *YOLO Serving*: Cluster-internal access only (no external route)
+* *LLM endpoint*: KServe with ServiceAccount token injection
+* *Inter-namespace traffic*: All Kafka connections use TLS with CA certificate from `cdc-cluster-cluster-ca-cert`
+
+== Configuration
+
+The PPE module is toggled via Helm values:
+
+[source,yaml]
+----
+ppe:
+  enabled: true
+  endpoint: "http://yolo-ppe-serving.neuroface.svc:8000"
+  classes: "hardhat,safety-vest,goggles"
+  confidence: "0.5"
+  kafka:
+    enabled: true
+    bootstrap: "cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093"
+    user: "cdc-user"
+    topic: "cv.ppe.detections"
+    secretName: "cdc-user"
+    caCertSecret: "cdc-cluster-cluster-ca-cert"
+----
+
+All parameters are validated by `values.schema.json` and exposed as environment variables to the backend via ConfigMap.

@@ -1,0 +1,9 @@
+site_name: NeuroFace CV Pipeline
+site_description: Computer Vision pipeline — OpenVINO face detection, Kafka event streaming, Camel notifications, and Jupyter workbench
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - OVMS Inference: ovms.md
+  - Kafka Events: kafka-events.md
+plugins:
+  - techdocs-core

@@ -1,0 +1,1439 @@
+##
+## 1. Namespace
+##
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mcp-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+---
+##
+## 2. CRDs — MCPServerRegistration, MCPGatewayExtension, MCPVirtualServer
+##
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.0
+    argocd.argoproj.io/sync-wave: "-1"
+  name: mcpserverregistrations.mcp.kuadrant.io
+spec:
+  group: mcp.kuadrant.io
+  names:
+    kind: MCPServerRegistration
+    listKind: MCPServerRegistrationList
+    plural: mcpserverregistrations
+    shortNames:
+      - mcpsr
+    singular: mcpserverregistration
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - description: Tool prefix for federation
+          jsonPath: .spec.toolPrefix
+          name: Prefix
+          type: string
+        - description: Target HTTPRoute
+          jsonPath: .spec.targetRef.name
+          name: Target
+          type: string
+        - description: MCP endpoint path
+          jsonPath: .spec.path
+          name: Path
+          type: string
+        - description: Ready status
+          jsonPath: .status.conditions[?(@.type=='Ready')].status
+          name: Ready
+          type: string
+        - description: Number of discovered tools
+          jsonPath: .status.discoveredTools
+          name: Tools
+          type: integer
+        - jsonPath: .spec.credentialRef.name
+          name: Credentials
+          type: string
+        - jsonPath: .metadata.creationTimestamp
+          name: Age
+          type: date
+      name: v1alpha1
+      schema:
+        openAPIV3Schema:
+          description: MCPServerRegistration defines a collection of MCP servers to be aggregated by the gateway.
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              properties:
+                credentialRef:
+                  properties:
+                    key:
+                      default: token
+                      type: string
+                    name:
+                      minLength: 1
+                      type: string
+                  required:
+                    - name
+                  type: object
+                path:
+                  default: /mcp
+                  type: string
+                targetRef:
+                  properties:
+                    group:
+                      default: gateway.networking.k8s.io
+                      enum:
+                        - gateway.networking.k8s.io
+                      type: string
+                    kind:
+                      default: HTTPRoute
+                      enum:
+                        - HTTPRoute
+                      type: string
+                    name:
+                      minLength: 1
+                      type: string
+                    namespace:
+                      type: string
+                  required:
+                    - name
+                  type: object
+                toolPrefix:
+                  type: string
+                  x-kubernetes-validations:
+                    - message: toolPrefix is immutable once set
+                      rule: self == oldSelf
+              required:
+                - targetRef
+              type: object
+            status:
+              properties:
+                conditions:
+                  items:
+                    properties:
+                      lastTransitionTime:
+                        format: date-time
+                        type: string
+                      message:
+                        maxLength: 32768
+                        type: string
+                      observedGeneration:
+                        format: int64
+                        minimum: 0
+                        type: integer
+                      reason:
+                        maxLength: 1024
+                        minLength: 1
+                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                        type: string
+                      status:
+                        enum:
+                          - "True"
+                          - "False"
+                          - Unknown
+                        type: string
+                      type:
+                        maxLength: 316
+                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                        type: string
+                    required:
+                      - lastTransitionTime
+                      - message
+                      - reason
+                      - status
+                      - type
+                    type: object
+                  type: array
+                  x-kubernetes-list-map-keys:
+                    - type
+                  x-kubernetes-list-type: map
+                discoveredTools:
+                  format: int32
+                  type: integer
+              type: object
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.0
+    argocd.argoproj.io/sync-wave: "-1"
+  name: mcpgatewayextensions.mcp.kuadrant.io
+spec:
+  group: mcp.kuadrant.io
+  names:
+    kind: MCPGatewayExtension
+    listKind: MCPGatewayExtensionList
+    plural: mcpgatewayextensions
+    singular: mcpgatewayextension
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - description: Ready status
+          jsonPath: .status.conditions[?(@.type=='Ready')].status
+          name: Ready
+          type: string
+        - jsonPath: .metadata.creationTimestamp
+          name: Age
+          type: date
+      name: v1alpha1
+      schema:
+        openAPIV3Schema:
+          description: MCPGatewayExtension extends a Gateway API Gateway to handle MCP.
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              properties:
+                backendPingIntervalSeconds:
+                  default: 60
+                  format: int32
+                  maximum: 7200
+                  minimum: 10
+                  type: integer
+                httpRouteManagement:
+                  default: Enabled
+                  enum:
+                    - Enabled
+                    - Disabled
+                  type: string
+                privateHost:
+                  type: string
+                publicHost:
+                  type: string
+                sessionStore:
+                  properties:
+                    secretName:
+                      minLength: 1
+                      type: string
+                  required:
+                    - secretName
+                  type: object
+                targetRef:
+                  properties:
+                    group:
+                      default: gateway.networking.k8s.io
+                      enum:
+                        - gateway.networking.k8s.io
+                      type: string
+                    kind:
+                      default: Gateway
+                      enum:
+                        - Gateway
+                      type: string
+                    name:
+                      minLength: 1
+                      type: string
+                    namespace:
+                      type: string
+                    sectionName:
+                      maxLength: 253
+                      minLength: 1
+                      type: string
+                  required:
+                    - name
+                    - sectionName
+                  type: object
+                trustedHeadersKey:
+                  properties:
+                    generate:
+                      default: Disabled
+                      enum:
+                        - Enabled
+                        - Disabled
+                      type: string
+                    secretName:
+                      minLength: 1
+                      type: string
+                  required:
+                    - secretName
+                  type: object
+              required:
+                - targetRef
+              type: object
+            status:
+              properties:
+                conditions:
+                  items:
+                    properties:
+                      lastTransitionTime:
+                        format: date-time
+                        type: string
+                      message:
+                        maxLength: 32768
+                        type: string
+                      observedGeneration:
+                        format: int64
+                        minimum: 0
+                        type: integer
+                      reason:
+                        maxLength: 1024
+                        minLength: 1
+                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                        type: string
+                      status:
+                        enum:
+                          - "True"
+                          - "False"
+                          - Unknown
+                        type: string
+                      type:
+                        maxLength: 316
+                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                        type: string
+                    required:
+                      - lastTransitionTime
+                      - message
+                      - reason
+                      - status
+                      - type
+                    type: object
+                  type: array
+                  x-kubernetes-list-map-keys:
+                    - type
+                  x-kubernetes-list-type: map
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.0
+    argocd.argoproj.io/sync-wave: "-1"
+  name: mcpvirtualservers.mcp.kuadrant.io
+spec:
+  group: mcp.kuadrant.io
+  names:
+    kind: MCPVirtualServer
+    listKind: MCPVirtualServerList
+    plural: mcpvirtualservers
+    singular: mcpvirtualserver
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      schema:
+        openAPIV3Schema:
+          description: MCPVirtualServer represents a virtual MCP server that acts as
+            a proxy to a backend MCP server.
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              properties:
+                backendRef:
+                  properties:
+                    httpRouteRef:
+                      properties:
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                      required:
+                        - name
+                      type: object
+                    path:
+                      default: /mcp
+                      type: string
+                  required:
+                    - httpRouteRef
+                  type: object
+                publicTools:
+                  items:
+                    properties:
+                      description:
+                        type: string
+                      name:
+                        type: string
+                    required:
+                      - description
+                      - name
+                    type: object
+                  type: array
+                toolPrefix:
+                  type: string
+              required:
+                - backendRef
+              type: object
+            status:
+              properties:
+                conditions:
+                  items:
+                    properties:
+                      lastTransitionTime:
+                        format: date-time
+                        type: string
+                      message:
+                        maxLength: 32768
+                        type: string
+                      observedGeneration:
+                        format: int64
+                        minimum: 0
+                        type: integer
+                      reason:
+                        maxLength: 1024
+                        minLength: 1
+                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                        type: string
+                      status:
+                        enum:
+                          - "True"
+                          - "False"
+                          - Unknown
+                        type: string
+                      type:
+                        maxLength: 316
+                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                        type: string
+                    required:
+                      - lastTransitionTime
+                      - message
+                      - reason
+                      - status
+                      - type
+                    type: object
+                  type: array
+                  x-kubernetes-list-map-keys:
+                    - type
+                  x-kubernetes-list-type: map
+              type: object
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
+---
+##
+## 3. RBAC
+##
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mcp-broker-router
+  namespace: mcp-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mcp-controller
+  namespace: mcp-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: mcp-controller
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+rules:
+  - apiGroups: ['mcp.kuadrant.io']
+    resources: ['mcpserverregistrations', 'mcpserverregistrations/status', 'mcpvirtualservers', 'mcpgatewayextensions', 'mcpgatewayextensions/status', 'mcpgatewayextensions/finalizers']
+    verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete']
+  - apiGroups: ['gateway.networking.k8s.io']
+    resources: ['httproutes', 'httproutes/status', 'gateways', 'gateways/status', 'referencegrants']
+    verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete']
+  - apiGroups: ['']
+    resources: ['services', 'serviceaccounts', 'secrets', 'endpoints', 'events', 'namespaces', 'configmaps']
+    verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete']
+  - apiGroups: ['discovery.k8s.io']
+    resources: ['endpointslices']
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['networking.istio.io']
+    resources: ['envoyfilters']
+    verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete']
+  - apiGroups: ['apps']
+    resources: ['deployments']
+    verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: mcp-controller
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: mcp-controller
+subjects:
+  - kind: ServiceAccount
+    name: mcp-controller
+    namespace: mcp-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mcp-broker-router
+  namespace: mcp-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+rules:
+  - apiGroups: ['']
+    resources: ['configmaps']
+    resourceNames: ['mcp-gateway-config']
+    verbs: ['get', 'watch']
+  - apiGroups: ['']
+    resources: ['secrets']
+    resourceNames: ['mcp-gateway-config']
+    verbs: ['get', 'watch']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mcp-broker-router
+  namespace: mcp-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: mcp-broker-router
+subjects:
+  - kind: ServiceAccount
+    name: mcp-broker-router
+    namespace: mcp-system
+---
+##
+## 4. Trusted Header Public Key
+##
+apiVersion: v1
+kind: Secret
+metadata:
+  name: trusted-headers-public-key
+  namespace: mcp-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+stringData:
+  key: |
+    -----BEGIN PUBLIC KEY-----
+    MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE7WdMdvC8hviEAL4wcebqaYbLEtVO
+    VEiyi/nozagw7BaWXmzbOWyy95gZLirTkhUb1P4Z4lgKLU2rD5NCbGPHAA==
+    -----END PUBLIC KEY-----
+type: Opaque
+---
+##
+## 5. MCP Controller Deployment
+##
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-controller
+  namespace: mcp-system
+  labels:
+    app: mcp-controller
+    app.kubernetes.io/part-of: mcp-gateway
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-controller
+  template:
+    metadata:
+      labels:
+        app: mcp-controller
+        app.kubernetes.io/part-of: mcp-gateway
+    spec:
+      serviceAccountName: mcp-controller
+      containers:
+        - name: controller
+          image: ghcr.io/kuadrant/mcp-controller:latest
+          command:
+            - ./mcp_controller
+          args:
+            - --log-level=0
+          ports:
+            - name: health
+              containerPort: 8081
+              protocol: TCP
+            - name: metrics
+              containerPort: 8082
+              protocol: TCP
+          resources:
+            requests:
+              memory: '64Mi'
+              cpu: '50m'
+            limits:
+              memory: '256Mi'
+              cpu: '200m'
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+##
+## 6. Gateway
+##
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: mcp-gateway
+  namespace: mcp-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    networking.istio.io/service-type: ClusterIP
+spec:
+  gatewayClassName: istio
+  listeners:
+    - name: mcp
+      protocol: HTTP
+      port: 8080
+      allowedRoutes:
+        namespaces:
+          from: All
+---
+##
+## 7. MCPGatewayExtension (controller creates broker, HTTPRoute, and service)
+##
+apiVersion: mcp.kuadrant.io/v1alpha1
+kind: MCPGatewayExtension
+metadata:
+  name: mcp-gateway-extension
+  namespace: mcp-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: Gateway
+    name: mcp-gateway
+    namespace: mcp-system
+    sectionName: mcp
+  publicHost: mcp-gateway.{{ .Values.clusterDomain }}
+  trustedHeadersKey:
+    secretName: trusted-headers-public-key
+---
+##
+## 8. Route — OpenShift route to expose the gateway
+##
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: mcp-gateway
+  namespace: mcp-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  host: mcp-gateway.{{ .Values.clusterDomain }}
+  to:
+    kind: Service
+    name: mcp-gateway-istio
+    weight: 100
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+  wildcardPolicy: None
+---
+##
+## 9. HTTPRoute — openshift-mcp-server backend
+##
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: openshift-mcp-route
+  namespace: openshift-lightspeed
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  parentRefs:
+    - name: mcp-gateway
+      namespace: mcp-system
+      sectionName: mcp
+  hostnames:
+    - field-content-ols.openshift-lightspeed.svc.cluster.local
+  rules:
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: field-content-ols
+          port: 8080
+          weight: 1
+---
+##
+## 10. HTTPRoute — kubernetes-mcp-server backend
+##
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: kubernetes-mcp-route
+  namespace: openshift-lightspeed
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  parentRefs:
+    - name: mcp-gateway
+      namespace: mcp-system
+      sectionName: mcp
+  hostnames:
+    - field-content-ols-k8s-mcp.openshift-lightspeed.svc.cluster.local
+  rules:
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: field-content-ols-k8s-mcp
+          port: 8085
+          weight: 1
+---
+##
+## Kafka MCP Server — Deployment, Service, HTTPRoute, MCPServerRegistration
+##
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-mcp-server-script
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+data:
+  server.py: |
+    import os, json, logging, ssl
+    from mcp.server.fastmcp import FastMCP
+    from confluent_kafka import Consumer, TopicPartition
+    from confluent_kafka.admin import AdminClient
+
+    logging.basicConfig(level=logging.INFO)
+    log = logging.getLogger("kafka-mcp")
+
+    BOOTSTRAP = os.environ["KAFKA_BOOTSTRAP"]
+    USER      = os.environ.get("KAFKA_USER", "")
+    PASSWORD  = os.environ.get("KAFKA_PASSWORD", "")
+    CA_CERT   = os.environ.get("KAFKA_CA_CERT", "")
+
+    def _kafka_conf(extra=None):
+        cfg = {"bootstrap.servers": BOOTSTRAP}
+        if USER and PASSWORD:
+            cfg.update({
+                "security.protocol": "SASL_SSL",
+                "sasl.mechanism": "SCRAM-SHA-512",
+                "sasl.username": USER,
+                "sasl.password": PASSWORD,
+                "ssl.ca.location": CA_CERT,
+            })
+        if extra:
+            cfg.update(extra)
+        return cfg
+
+    mcp = FastMCP("kafka-mcp-server", host="0.0.0.0", port=8080)
+
+    @mcp.tool()
+    def list_topics() -> str:
+        """List all Kafka topics with their partition counts."""
+        admin = AdminClient(_kafka_conf())
+        metadata = admin.list_topics(timeout=10)
+        topics = []
+        for name, topic_meta in sorted(metadata.topics.items()):
+            if not name.startswith("__"):
+                topics.append({
+                    "name": name,
+                    "partitions": len(topic_meta.partitions),
+                })
+        return json.dumps(topics, indent=2)
+
+    @mcp.tool()
+    def describe_topic(topic_name: str) -> str:
+        """Describe a Kafka topic: partitions, offsets, and configuration.
+
+        Args:
+            topic_name: Name of the Kafka topic to describe.
+        """
+        admin = AdminClient(_kafka_conf())
+        metadata = admin.list_topics(topic=topic_name, timeout=10)
+        t = metadata.topics.get(topic_name)
+        if not t:
+            return json.dumps({"error": f"Topic '{topic_name}' not found"})
+        c = Consumer(_kafka_conf({"group.id": "mcp-describe-tmp", "enable.auto.commit": False}))
+        partitions = []
+        for pid in sorted(t.partitions.keys()):
+            tp = TopicPartition(topic_name, pid)
+            low, high = c.get_watermark_offsets(tp, timeout=5)
+            partitions.append({"partition": pid, "low_offset": low, "high_offset": high, "messages": high - low})
+        c.close()
+        return json.dumps({"topic": topic_name, "partitions": partitions, "total_messages": sum(p["messages"] for p in partitions)}, indent=2)
+
+    @mcp.tool()
+    def read_messages(topic_name: str, count: int = 5) -> str:
+        """Read the latest messages from a Kafka topic.
+
+        Args:
+            topic_name: Name of the Kafka topic to read from.
+            count: Number of recent messages to retrieve (default 5, max 20).
+        """
+        count = min(int(count), 20)
+        c = Consumer(_kafka_conf({
+            "group.id": "mcp-reader-tmp",
+            "auto.offset.reset": "latest",
+            "enable.auto.commit": False,
+        }))
+        metadata = c.list_topics(topic=topic_name, timeout=10)
+        t = metadata.topics.get(topic_name)
+        if not t:
+            c.close()
+            return json.dumps({"error": f"Topic '{topic_name}' not found"})
+        assignments = []
+        for pid in t.partitions:
+            tp = TopicPartition(topic_name, pid)
+            low, high = c.get_watermark_offsets(tp, timeout=5)
+            start = max(low, high - count)
+            assignments.append(TopicPartition(topic_name, pid, start))
+        c.assign(assignments)
+        messages = []
+        for _ in range(count * 3):
+            msg = c.poll(timeout=2.0)
+            if msg is None:
+                break
+            if msg.error():
+                continue
+            try:
+                val = json.loads(msg.value().decode())
+            except Exception:
+                val = msg.value().decode(errors="replace")
+            messages.append({
+                "partition": msg.partition(),
+                "offset": msg.offset(),
+                "timestamp": msg.timestamp()[1] if msg.timestamp()[0] else None,
+                "key": msg.key().decode() if msg.key() else None,
+                "value": val,
+            })
+            if len(messages) >= count:
+                break
+        c.close()
+        return json.dumps(messages, indent=2, default=str)
+
+    @mcp.tool()
+    def consumer_groups() -> str:
+        """List all Kafka consumer groups and their states."""
+        admin = AdminClient(_kafka_conf())
+        groups = admin.list_consumer_groups(timeout=10)
+        result = []
+        for g in groups.result().valid:
+            result.append({"group_id": g.group_id, "state": str(g.state), "type": str(g.type)})
+        return json.dumps(result, indent=2)
+
+    if __name__ == "__main__":
+        mcp.run(transport="streamable-http")
+  requirements.txt: |
+    mcp[cli]>=1.27.0
+    confluent-kafka>=2.6.0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-mcp-server
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  labels:
+    app: kafka-mcp-server
+    app.kubernetes.io/part-of: mcp-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-mcp-server
+  template:
+    metadata:
+      labels:
+        app: kafka-mcp-server
+    spec:
+      containers:
+        - name: mcp-server
+          image: registry.access.redhat.com/ubi9/python-312:latest
+          command:
+            - bash
+            - -c
+            - |
+              pip install --quiet -r /config/requirements.txt
+              python /config/server.py
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          env:
+            - name: KAFKA_BOOTSTRAP
+              value: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093
+            - name: KAFKA_USER
+              value: cdc-user
+            - name: KAFKA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cdc-user
+                  key: password
+            - name: KAFKA_CA_CERT
+              value: /certs/ca.crt
+          volumeMounts:
+            - name: script
+              mountPath: /config
+            - name: ca-cert
+              mountPath: /certs
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /mcp
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /mcp
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+      volumes:
+        - name: script
+          configMap:
+            name: kafka-mcp-server-script
+        - name: ca-cert
+          secret:
+            secretName: cdc-cluster-cluster-ca-cert
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-mcp-server
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  selector:
+    app: kafka-mcp-server
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: kafka-mcp-route
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  parentRefs:
+    - name: mcp-gateway
+      namespace: mcp-system
+      sectionName: mcp
+  hostnames:
+    - kafka-mcp-server.kafka-cdc.svc.cluster.local
+  rules:
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: kafka-mcp-server
+          port: 8080
+          weight: 1
+---
+apiVersion: mcp.kuadrant.io/v1alpha1
+kind: MCPServerRegistration
+metadata:
+  name: kafka-mcp-server
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  toolPrefix: kafka_
+  path: /mcp
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: kafka-mcp-route
+---
+##
+## 11. MCPServerRegistration — openshift-mcp-server
+##
+apiVersion: mcp.kuadrant.io/v1alpha1
+kind: MCPServerRegistration
+metadata:
+  name: openshift-mcp-server
+  namespace: openshift-lightspeed
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  toolPrefix: ocp_
+  path: /mcp
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: openshift-mcp-route
+---
+##
+## 12. MCPServerRegistration — kubernetes-mcp-server
+##
+apiVersion: mcp.kuadrant.io/v1alpha1
+kind: MCPServerRegistration
+metadata:
+  name: kubernetes-mcp-server
+  namespace: openshift-lightspeed
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  toolPrefix: k8s_
+  path: /mcp
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: kubernetes-mcp-route
+---
+##
+## ArgoCD MCP Server — ConfigMap, ServiceAccount, RBAC, Deployment, Service, HTTPRoute, MCPServerRegistration
+##
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-mcp-server-script
+  namespace: mcp-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+data:
+  server.py: |
+    import os, json, logging
+    from mcp.server.fastmcp import FastMCP
+
+    logging.basicConfig(level=logging.INFO)
+    log = logging.getLogger("argocd-mcp")
+
+    ARGOCD_URL = os.environ.get("ARGOCD_SERVER_URL", "https://openshift-gitops-server.openshift-gitops.svc")
+    ARGOCD_USER = os.environ.get("ARGOCD_USERNAME", "admin")
+    ARGOCD_PASS = os.environ.get("ARGOCD_PASSWORD", "")
+
+    _token_cache = {"token": None, "expires": 0}
+
+    def _get_token():
+        import time
+        if _token_cache["token"] and time.time() < _token_cache["expires"]:
+            return _token_cache["token"]
+        import urllib.request, ssl
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        body = json.dumps({"username": ARGOCD_USER, "password": ARGOCD_PASS}).encode()
+        req = urllib.request.Request(f"{ARGOCD_URL}/api/v1/session", data=body,
+            headers={"Content-Type": "application/json"}, method="POST")
+        resp = urllib.request.urlopen(req, context=ctx, timeout=10)
+        data = json.loads(resp.read())
+        _token_cache["token"] = data["token"]
+        _token_cache["expires"] = time.time() + 3500
+        return _token_cache["token"]
+
+    def _api(path, method="GET", body=None):
+        import urllib.request, ssl
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        headers = {"Authorization": f"Bearer {_get_token()}", "Content-Type": "application/json"}
+        data = json.dumps(body).encode() if body else None
+        req = urllib.request.Request(f"{ARGOCD_URL}{path}", data=data, headers=headers, method=method)
+        resp = urllib.request.urlopen(req, context=ctx, timeout=30)
+        return json.loads(resp.read())
+
+    mcp = FastMCP("argocd-mcp-server", host="0.0.0.0", port=8080)
+
+    @mcp.tool()
+    def list_applications() -> str:
+        """List all ArgoCD applications with their sync status, health, and target revision."""
+        data = _api("/api/v1/applications")
+        apps = []
+        for app in data.get("items", []):
+            meta = app.get("metadata", {})
+            status = app.get("status", {})
+            sync = status.get("sync", {})
+            health = status.get("health", {})
+            spec = app.get("spec", {})
+            source = spec.get("source", {})
+            apps.append({
+                "name": meta.get("name"),
+                "namespace": spec.get("destination", {}).get("namespace"),
+                "sync_status": sync.get("status"),
+                "health": health.get("status"),
+                "repo": source.get("repoURL", ""),
+                "revision": sync.get("revision", "")[:8],
+                "target_revision": source.get("targetRevision", ""),
+            })
+        apps.sort(key=lambda a: a["name"])
+        return json.dumps(apps, indent=2)
+
+    @mcp.tool()
+    def get_application_detail(app_name: str) -> str:
+        """Get detailed status of a specific ArgoCD application including sync status, health, conditions, and recent operations.
+
+        Args:
+            app_name: Name of the ArgoCD application.
+        """
+        app = _api(f"/api/v1/applications/{app_name}")
+        status = app.get("status", {})
+        sync = status.get("sync", {})
+        health = status.get("health", {})
+        op_state = status.get("operationState", {})
+        conditions = status.get("conditions", [])
+        spec = app.get("spec", {})
+        source = spec.get("source", {})
+        result = {
+            "name": app_name,
+            "project": spec.get("project"),
+            "repo": source.get("repoURL"),
+            "path": source.get("path"),
+            "target_revision": source.get("targetRevision"),
+            "sync_status": sync.get("status"),
+            "sync_revision": sync.get("revision", "")[:12],
+            "health": health.get("status"),
+            "health_message": health.get("message"),
+            "auto_sync": bool(spec.get("syncPolicy", {}).get("automated")),
+            "last_operation": {
+                "phase": op_state.get("phase"),
+                "message": op_state.get("message", "")[:500],
+                "started_at": op_state.get("startedAt"),
+                "finished_at": op_state.get("finishedAt"),
+            } if op_state else None,
+            "conditions": [{"type": c.get("type"), "message": c.get("message", "")[:200]} for c in conditions],
+        }
+        resources = status.get("resources", [])
+        degraded = [r for r in resources if r.get("health", {}).get("status") in ("Degraded", "Missing")]
+        out_of_sync = [r for r in resources if r.get("status") == "OutOfSync"]
+        if degraded:
+            result["degraded_resources"] = [
+                {"kind": r["kind"], "name": r["name"], "namespace": r.get("namespace", ""),
+                 "health": r.get("health", {}).get("status"), "message": r.get("health", {}).get("message", "")[:200]}
+                for r in degraded[:10]
+            ]
+        if out_of_sync:
+            result["out_of_sync_resources"] = [
+                {"kind": r["kind"], "name": r["name"], "namespace": r.get("namespace", "")}
+                for r in out_of_sync[:10]
+            ]
+        return json.dumps(result, indent=2)
+
+    @mcp.tool()
+    def sync_application(app_name: str, prune: bool = False) -> str:
+        """Trigger a sync operation on an ArgoCD application. This will reconcile the live state with the desired state in Git.
+
+        Args:
+            app_name: Name of the ArgoCD application to sync.
+            prune: If true, resources that are no longer in Git will be deleted (default: false).
+        """
+        body = {"prune": prune}
+        try:
+            result = _api(f"/api/v1/applications/{app_name}/sync", method="POST", body=body)
+            phase = result.get("status", {}).get("operationState", {}).get("phase", "Initiated")
+            return json.dumps({
+                "action": "sync_triggered",
+                "application": app_name,
+                "prune": prune,
+                "phase": phase,
+                "message": f"Sync initiated for {app_name}. Use get_application_detail to monitor progress.",
+            }, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e), "application": app_name})
+
+    @mcp.tool()
+    def hard_refresh_application(app_name: str) -> str:
+        """Force ArgoCD to re-read the Git repository and invalidate the manifest cache for an application.
+
+        Args:
+            app_name: Name of the ArgoCD application to refresh.
+        """
+        try:
+            result = _api(f"/api/v1/applications/{app_name}?refresh=hard", method="GET")
+            sync = result.get("status", {}).get("sync", {})
+            return json.dumps({
+                "action": "hard_refresh",
+                "application": app_name,
+                "sync_status": sync.get("status"),
+                "revision": sync.get("revision", "")[:12],
+                "message": f"Cache invalidated and Git re-read for {app_name}.",
+            }, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e), "application": app_name})
+
+    @mcp.tool()
+    def get_resource_diff(app_name: str) -> str:
+        """Get the diff between the desired (Git) and live (cluster) state for out-of-sync resources.
+
+        Args:
+            app_name: Name of the ArgoCD application.
+        """
+        try:
+            app = _api(f"/api/v1/applications/{app_name}")
+            resources = app.get("status", {}).get("resources", [])
+            oos = [r for r in resources if r.get("status") == "OutOfSync"]
+            if not oos:
+                return json.dumps({"application": app_name, "message": "All resources are in sync.", "out_of_sync_count": 0})
+            summary = []
+            for r in oos[:15]:
+                summary.append({
+                    "kind": r["kind"], "name": r["name"], "namespace": r.get("namespace", ""),
+                    "requires_pruning": r.get("requiresPruning", False),
+                })
+            return json.dumps({"application": app_name, "out_of_sync_count": len(oos), "resources": summary}, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e)})
+
+    @mcp.tool()
+    def rollback_application(app_name: str, revision_id: int = 0) -> str:
+        """Rollback an ArgoCD application to a previous sync revision.
+
+        Args:
+            app_name: Name of the ArgoCD application to rollback.
+            revision_id: The history ID to rollback to. Use 0 for the previous revision.
+        """
+        try:
+            app = _api(f"/api/v1/applications/{app_name}")
+            history = app.get("status", {}).get("history", [])
+            if not history:
+                return json.dumps({"error": "No sync history available", "application": app_name})
+            if revision_id == 0:
+                target = history[-2] if len(history) >= 2 else history[-1]
+                revision_id = target.get("id", 0)
+            result = _api(f"/api/v1/applications/{app_name}/rollback", method="POST", body={"id": revision_id})
+            return json.dumps({
+                "action": "rollback",
+                "application": app_name,
+                "target_revision_id": revision_id,
+                "message": f"Rollback initiated to revision {revision_id}.",
+            }, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e), "application": app_name})
+
+    @mcp.tool()
+    def diagnose_application(app_name: str) -> str:
+        """Diagnose issues with an ArgoCD application. Checks sync errors, degraded resources, conditions, and suggests remediation actions.
+
+        Args:
+            app_name: Name of the ArgoCD application to diagnose.
+        """
+        try:
+            app = _api(f"/api/v1/applications/{app_name}")
+            status = app.get("status", {})
+            sync = status.get("sync", {})
+            health = status.get("health", {})
+            op_state = status.get("operationState", {})
+            conditions = status.get("conditions", [])
+            resources = status.get("resources", [])
+
+            issues = []
+            recommendations = []
+
+            if sync.get("status") == "OutOfSync":
+                oos = [r for r in resources if r.get("status") == "OutOfSync"]
+                issues.append(f"Application is OutOfSync with {len(oos)} resource(s) diverged from Git.")
+                recommendations.append("Run sync_application to reconcile, or hard_refresh_application if Git was recently updated.")
+
+            if health.get("status") in ("Degraded", "Missing"):
+                degraded = [r for r in resources if r.get("health", {}).get("status") in ("Degraded", "Missing")]
+                for r in degraded[:5]:
+                    msg = r.get("health", {}).get("message", "no details")
+                    issues.append(f"{r['kind']}/{r['name']} is {r['health']['status']}: {msg[:200]}")
+                recommendations.append("Check pod logs and events for degraded resources. Fix the root cause then sync.")
+
+            if op_state.get("phase") == "Failed":
+                issues.append(f"Last sync operation FAILED: {op_state.get('message', '')[:300]}")
+                recommendations.append("Review the error message. Common fixes: fix YAML errors, resolve immutable field changes, ensure secrets exist.")
+
+            for c in conditions:
+                issues.append(f"Condition [{c.get('type')}]: {c.get('message', '')[:200]}")
+
+            if not issues:
+                issues.append("No issues detected. Application is healthy and in sync.")
+                recommendations.append("No action needed.")
+
+            return json.dumps({
+                "application": app_name,
+                "sync_status": sync.get("status"),
+                "health": health.get("status"),
+                "issues": issues,
+                "recommendations": recommendations,
+            }, indent=2)
+        except Exception as e:
+            return json.dumps({"error": str(e)})
+
+    if __name__ == "__main__":
+        mcp.run(transport="streamable-http")
+  requirements.txt: |
+    mcp[cli]>=1.27.0
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-mcp-server
+  namespace: mcp-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-mcp-server
+  namespace: mcp-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  labels:
+    app: argocd-mcp-server
+    app.kubernetes.io/part-of: mcp-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: argocd-mcp-server
+  template:
+    metadata:
+      labels:
+        app: argocd-mcp-server
+    spec:
+      serviceAccountName: argocd-mcp-server
+      containers:
+        - name: mcp-server
+          image: registry.access.redhat.com/ubi9/python-312:latest
+          command:
+            - bash
+            - -c
+            - |
+              pip install --quiet -r /config/requirements.txt
+              python /config/server.py
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          env:
+            - name: ARGOCD_SERVER_URL
+              value: "https://openshift-gitops-server.openshift-gitops.svc"
+            - name: ARGOCD_USERNAME
+              value: "admin"
+            - name: ARGOCD_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: argocd-admin-password
+                  key: password
+          volumeMounts:
+            - name: script
+              mountPath: /config
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+      volumes:
+        - name: script
+          configMap:
+            name: argocd-mcp-server-script
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-mcp-server
+  namespace: mcp-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  selector:
+    app: argocd-mcp-server
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: argocd-mcp-route
+  namespace: mcp-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  parentRefs:
+    - name: mcp-gateway
+      namespace: mcp-system
+      sectionName: mcp
+  hostnames:
+    - argocd-mcp-server.mcp-system.svc.cluster.local
+  rules:
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: argocd-mcp-server
+          port: 8080
+          weight: 1
+---
+apiVersion: mcp.kuadrant.io/v1alpha1
+kind: MCPServerRegistration
+metadata:
+  name: argocd-mcp-server
+  namespace: mcp-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  toolPrefix: argocd_
+  path: /mcp
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: argocd-mcp-route

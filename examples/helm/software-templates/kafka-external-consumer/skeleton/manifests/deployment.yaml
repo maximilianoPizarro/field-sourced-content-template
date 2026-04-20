@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${{ values.uniqueName }}
+  namespace: ${{ values.namespace }}
+  labels:
+    app: ${{ values.uniqueName }}
+    app.kubernetes.io/name: ${{ values.uniqueName }}
+    app.kubernetes.io/part-of: ${{ values.owner }}-apps
+    backstage.io/kubernetes-id: ${{ values.uniqueName }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ${{ values.uniqueName }}
+  template:
+    metadata:
+      labels:
+        app: ${{ values.uniqueName }}
+        app.kubernetes.io/name: ${{ values.uniqueName }}
+        backstage.io/kubernetes-id: ${{ values.uniqueName }}
+    spec:
+      containers:
+        - name: consumer
+          image: registry.access.redhat.com/ubi9/openjdk-21-runtime:latest
+          command: ["java", "-jar", "/deployments/app.jar"]
+          envFrom:
+            - configMapRef:
+                name: ${{ values.uniqueName }}-config
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /q/health/ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /q/health/live
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${{ values.uniqueName }}
+  namespace: ${{ values.namespace }}
+  labels:
+    app: ${{ values.uniqueName }}
+    backstage.io/kubernetes-id: ${{ values.uniqueName }}
+spec:
+  selector:
+    app: ${{ values.uniqueName }}
+  ports:
+    - port: 8080
+      targetPort: http
+      protocol: TCP
+      name: http
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ${{ values.uniqueName }}-config
+  namespace: ${{ values.namespace }}
+  labels:
+    app: ${{ values.uniqueName }}
+data:
+  KAFKA_BOOTSTRAP_SERVERS: "${{ values.kafkaBootstrap }}"
+  KAFKA_TOPIC: "${{ values.kafkaTopic }}"
+  KAFKA_GROUP_ID: "${{ values.consumerGroup }}"
+  QUARKUS_HTTP_PORT: "8080"
+  QUARKUS_LOG_LEVEL: "INFO"

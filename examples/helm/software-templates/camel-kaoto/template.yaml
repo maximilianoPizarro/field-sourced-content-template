@@ -18,6 +18,7 @@ spec:
       required:
         - name
         - owner
+        - clusterDomain
       properties:
         name:
           title: Application Name
@@ -29,10 +30,10 @@ spec:
         owner:
           title: User (OpenShift username)
           type: string
-          description: "Your OpenShift username. Defines the deploy namespace: <username>-neuralbank"
+          description: "Your OpenShift username. Defines the deploy namespace: <username>-apps"
           default: ${{ user.entity.metadata.name }}
           pattern: "^user[0-9]+$"
-          ui:help: "E.g.: user1 → namespace user1-neuralbank"
+          ui:help: "E.g.: user1 → namespace user1-apps"
         description:
           title: Description
           type: string
@@ -41,8 +42,8 @@ spec:
         clusterDomain:
           title: Cluster Domain
           type: string
-          default: "apps.cluster-l9nhj.dynamic.redhatworkshops.io"
-          ui:widget: hidden
+          description: "OpenShift apps domain"
+          ui:help: "Run: oc get ingresses.config cluster -o jsonpath='{.spec.domain}'"
     - title: Kafka Configuration
       properties:
         kafkaBootstrap:
@@ -66,7 +67,7 @@ spec:
           description: ${{ parameters.description }}
           kafkaBootstrap: ${{ parameters.kafkaBootstrap }}
           kafkaTopic: ${{ parameters.kafkaTopic }}
-          namespace: "${{ parameters.owner }}-neuralbank"
+          namespace: "${{ parameters.owner }}-apps"
           clusterDomain: ${{ parameters.clusterDomain }}
 
     - id: publish
@@ -91,7 +92,7 @@ spec:
         url: ${{ steps['publish'].output.remoteUrl }}
       - title: Open in DevSpaces
         icon: chat
-        url: "https://devspaces.${{ parameters.clusterDomain }}/#https://gitea-gitea.${{ parameters.clusterDomain }}/ws-${{ parameters.owner }}/${{ parameters.name }}"
+        url: "https://devspaces.${{ parameters.clusterDomain }}/#https://gitea-gitea.${{ parameters.clusterDomain }}/ws-${{ parameters.owner }}/${{ parameters.name }}/raw/branch/main/devfile.yaml"
       - title: View in Catalog
         icon: catalog
         entityRef: ${{ steps['register'].output.entityRef }}

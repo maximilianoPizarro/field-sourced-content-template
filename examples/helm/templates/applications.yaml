@@ -1,6 +1,6 @@
 # App of Apps Pattern
 # This template generates ArgoCD Applications for each enabled component
-# Connectivity-link components: see connectivity-link-applications.yaml
+# Connectivity-link components: see applications.yaml
 
 {{- if .Values.components.operator.enabled }}
 ---
@@ -128,6 +128,7 @@ spec:
               limits:
                 cpu: {{ .Values.components.showroom.terminal.resources.limits.cpu | quote }}
                 memory: {{ .Values.components.showroom.terminal.resources.limits.memory | quote }}
+        observabilityAccess: {{ .Values.components.showroom.observabilityAccess | default false }}
         deployer:
           domain: {{ .Values.deployer.domain | quote }}
         demo:
@@ -142,4 +143,5 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - SkipDryRunOnMissingResource=true
 {{- end }}

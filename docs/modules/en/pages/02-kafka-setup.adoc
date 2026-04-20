@@ -1,0 +1,406 @@
+= Streams for Apache Kafka
+:navtitle: Streams for Apache Kafka
+
+++++
+<div id="scene-kafka" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-kafka', {height:380, camY:12, camZ:22});
+  if(!ctx) return;
+  var b0 = ThreeHelper.createNode(ctx.scene,'Broker 0',0xD32F2F,-5,0,0);
+  var b1 = ThreeHelper.createNode(ctx.scene,'Broker 1',0xD32F2F,0,0,-4);
+  var b2 = ThreeHelper.createNode(ctx.scene,'Broker 2',0xD32F2F,5,0,0);
+  var kraft = ThreeHelper.createNode(ctx.scene,'KRaft',0xFF9800,0,3,0,{width:2,height:0.8});
+  var cg = ThreeHelper.createNode(ctx.scene,'Consumer Group',0x4CAF50,0,-3,5,{width:3.5,height:0.8});
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,b0,b1,0x666666,{speed:0.003}),
+    ThreeHelper.createEdge(ctx.scene,b1,b2,0x666666,{speed:0.003}),
+    ThreeHelper.createEdge(ctx.scene,b2,b0,0x666666,{speed:0.003}),
+    ThreeHelper.createEdge(ctx.scene,kraft,b0,0xFF9800,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,kraft,b1,0xFF9800,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,kraft,b2,0xFF9800,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,b1,cg,0x4CAF50,{speed:0.008})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
+== What is Streams for Apache Kafka?
+
+Self-managed distribution of Apache Kafka designed to deliver a superior install, configuration, and management experience on *Red Hat OpenShift*.
+
+Based on the open source https://strimzi.io/[Strimzi] project (CNCF Incubation project), it provides:
+
+* Container images for Apache Kafka
+* Operators to manage clusters, topics, and users
+* HTTP Bridge for Apache Kafka
+* Console UI (StreamsHub)
+
+== Apache Kafka — Fundamentals
+
+Apache Kafka is a distributed data streaming system built on a publish-subscribe model.
+
+*Key characteristics:*
+
+* Horizontal scalability
+* Fault tolerance
+* Immutable data (append-only log)
+* Open source (Apache License 2.0)
+
+*Use cases:*
+
+* Real-time recommendations
+* IoT applications
+* Data gathering for AI
+* *Change Data Capture (CDC)*
+
+== Strimzi Operators
+
+[mermaid]
+....
+graph TB
+    CO["Cluster Operator"]
+    KC["Kafka CR"]
+    TO["Topic Operator"]
+    UO["User Operator"]
+    EO["Entity Operator"]
+    B1["Broker 1"]
+    B2["Broker 2"]
+    B3["Broker 3"]
+    CTRL["Controller<br/>(KRaft)"]
+
+    CO -->|reconcilia| KC
+    KC --> EO
+    EO --> TO
+    EO --> UO
+    KC --> B1
+    KC --> B2
+    KC --> B3
+    KC --> CTRL
+....
+
+The Cluster Operator watches the `Kafka` CR and reconciles desired state. The Topic and User Operators run as containers inside the Entity Operator.
+
+== KRaft deployment (without Zookeeper)
+
+Starting with Streams for Apache Kafka 3.x, metadata is stored *inside Kafka* using KRaft, removing the Zookeeper dependency.
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: cdc-cluster
+  namespace: kafka-cdc
+spec:
+  kafka:
+    version: "4.0.0"
+    replicas: 3
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+    config:
+      offsets.topic.replication.factor: 3
+      transaction.state.log.replication.factor: 3
+      transaction.state.log.min.isr: 2
+      default.replication.factor: 3
+      min.insync.replicas: 2
+    storage:
+      type: persistent-claim
+      size: 10Gi
+      deleteClaim: false
+    metricsConfig:
+      type: jmxPrometheusExporter
+      valueFrom:
+        configMapKeyRef:
+          name: kafka-metrics-config
+          key: kafka-metrics-config.yml
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
+  kafkaExporter:
+    topicRegex: ".*"
+    groupRegex: ".*"
+----
+
+=== KRaft cluster: 3 nodes
+
+++++
+<div id="kraft-cluster-3d" class="three-container" style="height:400px;"></div>
+<script>
+(function() {
+  const container = document.getElementById('kraft-cluster-3d');
+  if (!container) return;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.setClearColor(0x0a0a0a);
+  container.appendChild(renderer.domElement);
+
+  var fsBtn = document.createElement('button');
+  fsBtn.className = 'fullscreen-btn';
+  fsBtn.textContent = '\u26F6 Fullscreen';
+  fsBtn.onclick = function() {
+    if (container.requestFullscreen) container.requestFullscreen();
+    else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
+  };
+  container.appendChild(fsBtn);
+
+  const brokers = [];
+  const angleStep = (2 * Math.PI) / 3;
+  const radius = 3;
+
+  for (let i = 0; i < 3; i++) {
+    const x = Math.cos(angleStep * i) * radius;
+    const z = Math.sin(angleStep * i) * radius;
+    const geo = new THREE.CylinderGeometry(0.8, 0.8, 2, 6);
+    const mat = new THREE.MeshPhongMaterial({ color: 0xCC0000, transparent: true, opacity: 0.8 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, 0, z);
+    scene.add(mesh);
+    brokers.push(mesh);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 128; canvas.height = 48;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 18px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Broker ' + i, 64, 32);
+    const texture = new THREE.CanvasTexture(canvas);
+    const spriteMat = new THREE.SpriteMaterial({ map: texture });
+    const sprite = new THREE.Sprite(spriteMat);
+    sprite.position.set(x, 1.8, z);
+    sprite.scale.set(2, 0.6, 1);
+    scene.add(sprite);
+  }
+
+  for (let i = 0; i < 3; i++) {
+    for (let j = i + 1; j < 3; j++) {
+      const points = [brokers[i].position.clone(), brokers[j].position.clone()];
+      const geo = new THREE.BufferGeometry().setFromPoints(points);
+      const mat = new THREE.LineBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.5 });
+      scene.add(new THREE.Line(geo, mat));
+    }
+  }
+
+  const ctrlGeo = new THREE.OctahedronGeometry(0.6);
+  const ctrlMat = new THREE.MeshPhongMaterial({ color: 0x0066CC });
+  const ctrl = new THREE.Mesh(ctrlGeo, ctrlMat);
+  ctrl.position.set(0, 2.5, 0);
+  scene.add(ctrl);
+
+  const ctrlCanvas = document.createElement('canvas');
+  ctrlCanvas.width = 128; ctrlCanvas.height = 48;
+  const ctrlCtx = ctrlCanvas.getContext('2d');
+  ctrlCtx.fillStyle = '#0066CC';
+  ctrlCtx.font = 'bold 16px Arial';
+  ctrlCtx.textAlign = 'center';
+  ctrlCtx.fillText('KRaft Controller', 64, 32);
+  const ctrlTex = new THREE.CanvasTexture(ctrlCanvas);
+  const ctrlSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: ctrlTex }));
+  ctrlSprite.position.set(0, 3.8, 0);
+  ctrlSprite.scale.set(2.5, 0.6, 1);
+  scene.add(ctrlSprite);
+
+  scene.add(new THREE.AmbientLight(0x404040, 2));
+  const dl = new THREE.DirectionalLight(0xffffff, 1);
+  dl.position.set(5, 5, 5);
+  scene.add(dl);
+
+  camera.position.set(0, 4, 8);
+  camera.lookAt(0, 0.5, 0);
+
+  let t = 0;
+  function animate() {
+    requestAnimationFrame(animate);
+    t += 0.008;
+    brokers.forEach((b, i) => { b.rotation.y = t + i * 2; });
+    ctrl.rotation.y = -t * 2;
+    ctrl.rotation.x = Math.sin(t) * 0.3;
+    renderer.render(scene, camera);
+  }
+  animate();
+})();
+</script>
+++++
+
+== How it Works
+
+=== KRaft consensus (without Zookeeper)
+
+Starting with Kafka 3.x, cluster metadata is managed internally using the *KRaft* (Kafka Raft) protocol:
+
+. Each broker has a role: *controller* (metadata management) or *broker* (data storage and serving), or both in small clusters (combined mode).
+. Controllers form a _quorum_ using Raft. One controller is elected *active controller* — it is the only one that writes metadata.
+. When a topic is created or a partition is reassigned, the active controller writes the change to an internal log (`__cluster_metadata`), which is replicated to the other controllers.
+. Brokers obtain metadata by subscribing to the controller log — there is no polling; it is push-based.
+. If the active controller fails, the remaining controllers elect a new leader via Raft in *milliseconds*, eliminating the multi-minute delay that could occur with Zookeeper.
+
+=== Message lifecycle
+
+. A *producer* sends a batch of records to the *leader* broker of the target partition.
+. The leader writes the batch to its local log (append-only on disk, sequential I/O).
+. *Followers* (replicas) fetch the batch from the leader and write it to their own logs.
+. When `min.insync.replicas` replicas (including the leader) acknowledge the write, the leader sends an *ACK* to the producer.
+. The batch offset is assigned sequentially — it is immutable and monotonically increasing.
+. A *consumer* with an assigned _consumer group_ calls `poll()` on the leader of each assigned partition, receiving batches from its last committed offset.
+
+=== Strimzi reconciliation loop
+
+The Strimzi Cluster Operator behaves like a classic _Kubernetes controller_:
+
+. It watches changes to the `Kafka`, `KafkaConnect`, `KafkaTopic`, and `KafkaUser` CRs.
+. It computes the difference between desired state (CR) and current state (StatefulSets, ConfigMaps, Secrets).
+. It applies changes in a *rolling* fashion — it never stops all brokers at once.
+. The Topic and User Operators run as sidecars in the _Entity Operator_ pod and reconcile their respective CRs against the Kafka API directly (not Kubernetes resources).
+
+== Kafka Bridge (HTTP REST)
+
+The Kafka Bridge lets you produce and consume messages over HTTP REST — ideal for demos and testing without a native Kafka client:
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaBridge
+metadata:
+  name: cdc-bridge
+  namespace: kafka-cdc
+spec:
+  replicas: 1
+  bootstrapServers: cdc-cluster-kafka-bootstrap:9092
+  http:
+    port: 8080
+----
+
+*Example — produce a message:*
+
+[source,bash]
+----
+curl -X POST https://kafka-bridge-kafka-cdc.apps.<domain>/topics/cdc.public.customers \
+  -H "Content-Type: application/vnd.kafka.json.v2+json" \
+  -d '{"records":[{"value":{"first_name":"Test","last_name":"User","email":"test@demo.io"}}]}'
+----
+
+== Security: Authentication and encryption
+
+The Kafka cluster exposes two listeners: `plain` (9092, no TLS) and `tls` (9093, with TLS). Production clients should use the TLS listener with SCRAM-SHA-512 authentication.
+
+=== KafkaUser with SCRAM-SHA-512
+
+Strimzi manages credentials automatically when you create a `KafkaUser` resource. The operator generates a `Secret` with the password:
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: cdc-user
+  namespace: kafka-cdc
+  labels:
+    strimzi.io/cluster: cdc-cluster
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+      - resource:
+          type: topic
+          name: cdc
+          patternType: prefix
+        operations: [Read, Write, Describe]
+      - resource:
+          type: topic
+          name: dlq
+          patternType: prefix
+        operations: [Read, Write, Describe]
+      - resource:
+          type: group
+          name: cdc-connect-cluster
+          patternType: literal
+        operations: [Read]
+      - resource:
+          type: group
+          name: camel-cdc-consumer
+          patternType: literal
+        operations: [Read]
+----
+
+ACLs restrict access to topics with the `cdc` and `dlq` prefixes only, and to the pipeline's specific consumer groups.
+
+=== Client configuration — KafkaConnect
+
+KafkaConnect is configured to use the TLS listener (9093) with SCRAM-SHA-512:
+
+[source,yaml]
+----
+spec:
+  bootstrapServers: cdc-cluster-kafka-bootstrap:9093
+  authentication:
+    type: scram-sha-512
+    username: cdc-user
+    passwordSecret:
+      secretName: cdc-user
+      password: password
+  tls:
+    trustedCertificates:
+      - secretName: cdc-cluster-cluster-ca-cert
+        certificate: ca.crt
+----
+
+Strimzi automatically generates the `cdc-cluster-cluster-ca-cert` secret with the cluster CA certificate.
+
+=== Client configuration — Apache Camel
+
+Camel uses SASL/SSL properties in the `kafka` component parameters:
+
+[source,yaml]
+----
+parameters:
+  brokers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093
+  securityProtocol: SASL_SSL
+  saslMechanism: SCRAM-SHA-512
+  saslJaasConfig: "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"${env:KAFKA_USER}\" password=\"${env:KAFKA_PASSWORD}\";"
+  sslTruststoreLocation: /etc/kafka-certs/ca.crt
+  sslTruststoreType: PEM
+----
+
+Credentials are injected as environment variables from the Secret generated by Strimzi.
+
+== Streams for Apache Kafka ecosystem
+
+[cols="1,2",options="header"]
+|===
+| Component | Role in the ecosystem
+
+| *Kafka Core* | Brokers, topics, partitions, replication
+| *Kafka Connect* | Connector framework (source/sink)
+| *Kafka Bridge* | HTTP REST proxy to produce/consume
+| *Apicurio Registry* | Schema Registry (Avro, JSON Schema, Protobuf)
+| *Debezium* | CDC connectors for PostgreSQL, MySQL, MongoDB, etc.
+| *Streams Console* | Web UI to monitor clusters, topics, and consumer groups
+| *Kafka Exporter* | Exports consumer group lag metrics to Prometheus
+| *Mirror Maker 2* | Cross-cluster replication
+| *Kroxylicious* | Kafka Proxy — encryption at rest, schema validation
+|===
+
+== Official Documentation
+
+* https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka[Red Hat Streams for Apache Kafka^] — Installation, configuration, and operations guide
+* https://strimzi.io/documentation/[Strimzi Documentation^] — Upstream project, operators, and CRDs
+* https://strimzi.io/blog/[Strimzi Blog^] — News, KRaft migration, and best practices
+* https://kafka.apache.org/documentation/[Apache Kafka Documentation^] — Official Kafka project reference
+* https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka/2.9/html/using_the_streams_for_apache_kafka_bridge/index[Kafka Bridge^] — HTTP REST proxy for Kafka

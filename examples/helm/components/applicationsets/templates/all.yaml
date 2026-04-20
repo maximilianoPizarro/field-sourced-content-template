@@ -1,0 +1,250 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gitea-repo-creds
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    argocd.argoproj.io/secret-type: repo-creds
+stringData:
+  type: git
+  url: http://gitea-http.gitea.svc.cluster.local:3000
+  username: gitea_admin
+  password: openshift
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gitea-token-creator
+  namespace: openshift-gitops
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gitea-token-creator
+  namespace: openshift-gitops
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gitea-token-creator
+  namespace: openshift-gitops
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: gitea-token-creator
+subjects:
+- kind: ServiceAccount
+  name: gitea-token-creator
+  namespace: openshift-gitops
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gitea-argocd-token-setup
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: gitea-token-creator
+      containers:
+        - name: create-token
+          image: curlimages/curl:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              GITEA="http://gitea-http.gitea.svc.cluster.local:3000"
+              ADMIN_USER="gitea_admin"
+              ADMIN_PASS="openshift"
+
+              echo "Waiting for Gitea API..."
+              until curl -sf "$GITEA/api/v1/version"; do sleep 3; done
+
+              echo "Checking for existing token..."
+              EXISTING=$(curl -sS -u "${ADMIN_USER}:${ADMIN_PASS}" \
+                "$GITEA/api/v1/users/${ADMIN_USER}/tokens" 2>/dev/null \
+                | grep -o '"name":"argocd-scm"' || true)
+
+              if [ -n "$EXISTING" ]; then
+                echo "Token 'argocd-scm' already exists, deleting to recreate..."
+                curl -sS -o /dev/null -X DELETE \
+                  "$GITEA/api/v1/users/${ADMIN_USER}/tokens/argocd-scm" \
+                  -u "${ADMIN_USER}:${ADMIN_PASS}" || true
+              fi
+
+              echo "Creating Gitea API token..."
+              TOKEN_RESP=$(curl -sS -X POST \
+                "$GITEA/api/v1/users/${ADMIN_USER}/tokens" \
+                -u "${ADMIN_USER}:${ADMIN_PASS}" \
+                -H "Content-Type: application/json" \
+                -d '{"name":"argocd-scm","scopes":["read:organization","read:repository","read:issue","read:user"]}')
+              TOKEN_VAL=$(echo "$TOKEN_RESP" | sed -n 's/.*"sha1":"\([^"]*\)".*/\1/p')
+
+              if [ -z "$TOKEN_VAL" ]; then
+                echo "Failed to extract token from response: $TOKEN_RESP" >&2
+                exit 1
+              fi
+
+              echo "Creating Secret in openshift-gitops..."
+              KUBE_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+              KUBE_API="https://kubernetes.default.svc"
+              CA=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+
+              TOKEN_B64=$(echo -n "$TOKEN_VAL" | base64)
+              SECRET_JSON=$(printf '{"apiVersion":"v1","kind":"Secret","metadata":{"name":"gitea-argocd-token","namespace":"openshift-gitops"},"type":"Opaque","data":{"token":"%s"}}' "$TOKEN_B64")
+
+              CODE=$(curl -sS -o /tmp/k8s_resp -w "%{http_code}" \
+                -X POST "$KUBE_API/api/v1/namespaces/openshift-gitops/secrets" \
+                -H "Authorization: Bearer $KUBE_TOKEN" \
+                -H "Content-Type: application/json" \
+                --cacert "$CA" \
+                -d "$SECRET_JSON" || true)
+
+              if [ "$CODE" = "409" ]; then
+                echo "Secret exists, updating..."
+                PATCH_JSON=$(printf '{"data":{"token":"%s"}}' "$TOKEN_B64")
+                curl -sS -o /dev/null \
+                  -X PATCH "$KUBE_API/api/v1/namespaces/openshift-gitops/secrets/gitea-argocd-token" \
+                  -H "Authorization: Bearer $KUBE_TOKEN" \
+                  -H "Content-Type: application/strategic-merge-patch+json" \
+                  --cacert "$CA" \
+                  -d "$PATCH_JSON"
+              elif [ "$CODE" != "201" ]; then
+                echo "Secret creation failed: HTTP $CODE" >&2
+                cat /tmp/k8s_resp >&2 || true
+                exit 1
+              fi
+
+              echo "Gitea API token stored successfully."
+  backoffLimit: 3
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: gitea-webhook-sync
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  schedule: "*/2 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          serviceAccountName: gitea-token-creator
+          containers:
+            - name: webhook-sync
+              image: curlimages/curl:latest
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  GITEA="http://gitea-http.gitea.svc.cluster.local:3000"
+                  ADMIN_USER="gitea_admin"
+                  ADMIN_PASS="openshift"
+                  DOMAIN="{{ $.Values.clusterDomain }}"
+                  USER_COUNT={{ $.Values.userCount | default 200 }}
+
+                  for i in $(seq 1 $USER_COUNT); do
+                    USER="user${i}"
+                    ORG="ws-${USER}"
+                    NS="${USER}-apps"
+
+                    REPOS=$(curl -sS -u "${ADMIN_USER}:${ADMIN_PASS}" \
+                      "${GITEA}/api/v1/orgs/${ORG}/repos?limit=50" 2>/dev/null \
+                      | grep -o '"name":"[^"]*"' | sed 's/"name":"//;s/"//' || true)
+
+                    for REPO in $REPOS; do
+                      HOOKS=$(curl -sS -u "${ADMIN_USER}:${ADMIN_PASS}" \
+                        "${GITEA}/api/v1/repos/${ORG}/${REPO}/hooks" 2>/dev/null || echo "[]")
+
+                      LISTENER_URL="https://el-${REPO}-listener-${NS}.${DOMAIN}"
+
+                      if echo "$HOOKS" | grep -q "$LISTENER_URL"; then
+                        continue
+                      fi
+
+                      echo "Creating webhook for ${ORG}/${REPO} → ${LISTENER_URL}"
+                      curl -sS -o /dev/null -X POST \
+                        "${GITEA}/api/v1/repos/${ORG}/${REPO}/hooks" \
+                        -u "${ADMIN_USER}:${ADMIN_PASS}" \
+                        -H "Content-Type: application/json" \
+                        -d "{\"type\":\"gitea\",\"config\":{\"url\":\"${LISTENER_URL}\",\"content_type\":\"json\"},\"events\":[\"push\"],\"active\":true}" || true
+                    done
+                  done
+                  echo "Webhook sync complete."
+      backoffLimit: 1
+---
+{{- $userCount := .Values.userCount | default 200 | int }}
+{{- range $i := until $userCount }}
+{{- $user := printf "user%d" (add1 $i) }}
+{{- $org := printf "ws-%s" $user }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: {{ $org }}-repos
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - scmProvider:
+        gitea:
+          owner: {{ $org }}
+          api: http://gitea-http.gitea.svc.cluster.local:3000
+          allBranches: false
+          tokenRef:
+            secretName: gitea-argocd-token
+            key: token
+        filters:
+          - repositoryMatch: ".*"
+            pathsExist:
+              - manifests
+            pathsDoNotExist:
+              - argocd/application.yaml
+        requeueAfterSeconds: 60
+  template:
+    metadata:
+      name: '{{ $user }}-{{ "{{ .repository }}" }}'
+      namespace: openshift-gitops
+      labels:
+        backstage.io/kubernetes-id: '{{ $user }}-{{ "{{ .repository }}" }}'
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: default
+      source:
+        repoURL: 'http://gitea-http.gitea.svc.cluster.local:3000/{{ "{{ .organization }}" }}/{{ "{{ .repository }}" }}.git'
+        targetRevision: main
+        path: manifests
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: {{ $user }}-apps
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+{{- end }}

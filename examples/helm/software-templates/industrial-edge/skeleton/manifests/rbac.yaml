@@ -6,6 +6,9 @@ subjects:
   - kind: ServiceAccount
     name: default
     namespace: ${{values.namespace}}
+  - kind: ServiceAccount
+    name: camel-k-operator
+    namespace: ${{values.namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

@@ -7,10 +7,6 @@ metadata:
     backstage.io/kubernetes-id: ${{ values.uniqueName }}
     backstage.io/kubernetes-namespace: ${{ values.namespace }}
     backstage.io/techdocs-ref: dir:.
-    janus-idp.io/tekton: ${{ values.uniqueName }}
-    argocd/app-name: ${{ values.uniqueName }}
-    argocd/app-namespace: openshift-gitops
-    tektonci/build-namespace: ${{ values.namespace }}
     che.eclipse.org/che-server: https://devspaces.${{ values.clusterDomain }}
     devspaces.io/factory: "https://devspaces.${{ values.clusterDomain }}/#https://gitea-gitea.${{ values.clusterDomain }}/ws-${{ values.owner }}/${{ values.name }}"
   links:
@@ -28,4 +24,4 @@ spec:
   type: service
   lifecycle: experimental
   owner: user:${{ values.owner }}
-  system: ${{ values.owner }}-neuralbank
+  system: ${{ values.owner }}-apps

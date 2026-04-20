@@ -1,0 +1,635 @@
+apiVersion: backstage.io/v1alpha1
+kind: Domain
+metadata:
+  name: computer-vision
+  namespace: default
+  description: "Computer Vision — Face detection (OpenVINO), PPE safety (YOLO), Kafka streaming, Granite LLM analysis"
+  tags:
+    - computer-vision
+    - ml
+    - openvino
+    - yolo
+    - ppe
+    - facial-recognition
+spec:
+  owner: platform-engineering
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: neuroface-system
+  namespace: default
+  description: "NeuroFace — Face recognition (OpenVINO) + PPE safety detection (YOLO) with Kafka streaming, Granite LLM analysis, Camel notifications, and Jupyter dashboards"
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - neuroface
+    - openvino
+    - yolo
+    - kafka
+    - fastapi
+    - angular
+    - granite-llm
+  links:
+    - url: https://neuroface-frontend-neuroface.apps.cluster-msf9p.dynamic.redhatworkshops.io
+      title: NeuroFace Web App
+      icon: dashboard
+    - url: https://neuroface-frontend-neuroface.apps.cluster-msf9p.dynamic.redhatworkshops.io/ppe
+      title: PPE Safety Detection
+      icon: dashboard
+    - url: https://neuroface-ovms-neuroface.apps.cluster-msf9p.dynamic.redhatworkshops.io/v1/config
+      title: OpenVINO Model Server
+      icon: web
+    - url: https://yolo-ppe-serving-neuroface.apps.cluster-msf9p.dynamic.redhatworkshops.io/health
+      title: YOLO PPE Serving
+      icon: web
+    - url: https://n8n-mailpit-openshift-lightspeed.apps.cluster-msf9p.dynamic.redhatworkshops.io/
+      title: Mailpit — CV Notifications
+      icon: email
+spec:
+  owner: platform-engineering
+  domain: computer-vision
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: neuroface-app
+  namespace: default
+  description: "NeuroFace — FastAPI backend + Angular frontend for face recognition (OpenVINO) and PPE safety detection (YOLO → Kafka)"
+  annotations:
+    backstage.io/kubernetes-id: neuroface-backend
+    backstage.io/kubernetes-namespace: neuroface
+    backstage.io/kubernetes-label-selector: app.kubernetes.io/part-of=neuroface
+    argocd/app-name: field-content-helm-neuroface
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - fastapi
+    - angular
+    - python
+    - opencv
+    - facial-recognition
+    - ppe
+    - kafka-producer
+  links:
+    - url: https://neuroface-frontend-neuroface.apps.cluster-msf9p.dynamic.redhatworkshops.io
+      title: NeuroFace Frontend
+      icon: dashboard
+    - url: https://neuroface-frontend-neuroface.apps.cluster-msf9p.dynamic.redhatworkshops.io/ppe
+      title: PPE Safety Detection
+      icon: dashboard
+    - url: https://console-openshift-console.apps.cluster-msf9p.dynamic.redhatworkshops.io/k8s/ns/neuroface/deployments
+      title: OpenShift Console
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+  dependsOn:
+    - component:default/neuroface-ovms
+    - component:default/yolo-ppe-serving
+    - component:default/neuroface-llm
+  providesApis:
+    - cv-ppe-detection-events
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: neuroface-ovms
+  namespace: default
+  description: "OpenVINO Model Server — face-detection-retail-0005 model serving via REST/gRPC"
+  annotations:
+    backstage.io/kubernetes-id: neuroface-ovms
+    backstage.io/kubernetes-namespace: neuroface
+    backstage.io/kubernetes-label-selector: app=neuroface-ovms
+    argocd/app-name: field-content-helm-neuroface
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - openvino
+    - model-server
+    - inference
+    - ml
+  links:
+    - url: https://neuroface-ovms-neuroface.apps.cluster-msf9p.dynamic.redhatworkshops.io/v1/config
+      title: OVMS Config Endpoint
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: cv-ovms-poller
+  namespace: default
+  description: "OVMS Poller — Camel timer polling OpenVINO Model Server /v1/config every 30s for model status events"
+  annotations:
+    backstage.io/kubernetes-id: camel-cv-processor
+    backstage.io/kubernetes-namespace: kafka-cdc
+    backstage.io/kubernetes-label-selector: app=camel-cv-processor
+    argocd/app-name: field-content-neuroface-cv
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - camel
+    - openvino
+    - polling
+    - model-server
+  links:
+    - url: https://neuroface-ovms-neuroface.apps.cluster-msf9p.dynamic.redhatworkshops.io/v1/config
+      title: OVMS Config Endpoint
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+  dependsOn:
+    - component:default/neuroface-ovms
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: cv-labels-poller
+  namespace: default
+  description: "Labels Poller — Camel timer polling NeuroFace /api/labels every 30s for trained person events"
+  annotations:
+    backstage.io/kubernetes-id: camel-cv-processor
+    backstage.io/kubernetes-namespace: kafka-cdc
+    backstage.io/kubernetes-label-selector: app=camel-cv-processor
+    argocd/app-name: field-content-neuroface-cv
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - camel
+    - neuroface
+    - polling
+    - lbph
+  links:
+    - url: https://console-openshift-console.apps.cluster-msf9p.dynamic.redhatworkshops.io/k8s/ns/kafka-cdc/deployments/camel-cv-processor
+      title: Camel CV Processor
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+  dependsOn:
+    - component:default/neuroface-app
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: cv-kafka-streaming
+  namespace: default
+  description: "CV Kafka Topics — cv.face.detections (person_registered + ovms_model_status events) and dlq.cv-errors on cdc-cluster"
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+    backstage.io/kubernetes-id: cdc-cluster
+    backstage.io/kubernetes-namespace: kafka-cdc
+    backstage.io/kubernetes-label-selector: strimzi.io/cluster=cdc-cluster
+    argocd/app-name: field-content-neuroface-cv
+    argocd/app-namespace: openshift-gitops
+    kafka.apache.org/consumer-groups: cdc-cluster/camel-cv-consumer
+  tags:
+    - kafka
+    - event-streaming
+    - computer-vision
+  links:
+    - url: https://console-openshift-console.apps.cluster-msf9p.dynamic.redhatworkshops.io/k8s/ns/kafka-cdc/kafka.strimzi.io~v1beta2~KafkaTopic/cv.face.detections
+      title: cv.face.detections Topic
+      icon: web
+    - url: https://console-openshift-console.apps.cluster-msf9p.dynamic.redhatworkshops.io/k8s/ns/kafka-cdc/kafka.strimzi.io~v1beta2~KafkaTopic/dlq.cv-errors
+      title: dlq.cv-errors (Dead Letter Queue)
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+  dependsOn:
+    - component:default/cv-ovms-poller
+    - component:default/cv-labels-poller
+  providesApis:
+    - cv-face-detection-events
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: cv-face-notifier
+  namespace: default
+  description: "CV Face Notifier — Camel consumer routing person_registered events to Security Admin and ovms_model_status events to MLOps via Mailpit"
+  annotations:
+    backstage.io/kubernetes-id: camel-cv-processor
+    backstage.io/kubernetes-namespace: kafka-cdc
+    backstage.io/kubernetes-label-selector: app=camel-cv-processor
+    argocd/app-name: field-content-neuroface-cv
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - camel
+    - notification
+    - email
+    - cdc
+  links:
+    - url: https://n8n-mailpit-openshift-lightspeed.apps.cluster-msf9p.dynamic.redhatworkshops.io/
+      title: Mailpit Inbox
+      icon: email
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+  dependsOn:
+    - component:default/cv-kafka-streaming
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: neuroface-workbench
+  namespace: default
+  description: "CV Workbench — Jupyter notebooks for OVMS inference, PPE compliance dashboards, and Kafka event analysis"
+  annotations:
+    backstage.io/kubernetes-id: neuroface-workbench
+    backstage.io/kubernetes-namespace: neuroface
+    backstage.io/kubernetes-label-selector: statefulset=neuroface-workbench
+    argocd/app-name: field-content-neuroface-cv
+    argocd/app-namespace: openshift-gitops
+    opendatahub.io/dashboard: "true"
+  tags:
+    - jupyter
+    - notebook
+    - openvino
+    - ppe
+    - data-science
+  links:
+    - url: https://neuroface-workbench-neuroface.apps.cluster-msf9p.dynamic.redhatworkshops.io/notebook/neuroface/neuroface-workbench
+      title: Open Workbench
+      icon: dashboard
+    - url: https://data-science-gateway.apps.cluster-msf9p.dynamic.redhatworkshops.io/projects/neuroface
+      title: OpenShift AI Project
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+  dependsOn:
+    - component:default/neuroface-ovms
+    - component:default/neuroface-app
+    - component:default/cv-kafka-streaming
+    - component:default/cv-ppe-streaming
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: neuroface-llm
+  namespace: default
+  description: "Granite 3.1 2B Instruct — LLM for chat and PPE safety analysis (called on violations to generate natural language reports)"
+  annotations:
+    backstage.io/kubernetes-id: granite-llm-predictor
+    backstage.io/kubernetes-namespace: neuroface
+    backstage.io/kubernetes-label-selector: app=isvc.granite-llm-predictor
+    argocd/app-name: field-content-helm-neuroface
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - llm
+    - granite
+    - inference
+    - chat
+    - ppe-analysis
+  links:
+    - url: https://data-science-gateway.apps.cluster-msf9p.dynamic.redhatworkshops.io/projects/neuroface
+      title: OpenShift AI Project
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: neuroface-kserve
+  namespace: default
+  description: "KServe InferenceService — face-detection-retail-0005 model served via OpenVINO runtime"
+  annotations:
+    backstage.io/kubernetes-id: face-detection-retail-0005-predictor
+    backstage.io/kubernetes-namespace: neuroface
+    backstage.io/kubernetes-label-selector: serving.kserve.io/inferenceservice=face-detection-retail-0005
+    argocd/app-name: field-content-neuroface-cv
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - kserve
+    - openvino
+    - inference
+    - ml
+  links:
+    - url: https://data-science-gateway.apps.cluster-msf9p.dynamic.redhatworkshops.io/projects/neuroface?section=model-server
+      title: Model Servers
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+  dependsOn:
+    - component:default/neuroface-ovms
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: cv-face-detection-events
+  namespace: default
+  description: "Face detection events published to Kafka topic cv.face.detections"
+  tags:
+    - kafka
+    - asyncapi
+    - computer-vision
+spec:
+  type: asyncapi
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+  definition: |
+    asyncapi: 2.6.0
+    info:
+      title: NeuroFace CV Events
+      version: 2.0.0
+      description: |
+        Events from the NeuroFace Computer Vision pipeline.
+        Two sources publish to this topic:
+        (1) OVMS poller reads OpenVINO Model Server status,
+        (2) Labels poller reads trained persons from LBPH recognizer.
+    channels:
+      cv.face.detections:
+        publish:
+          summary: CV pipeline events (person_registered or ovms_model_status)
+          message:
+            oneOf:
+              - name: PersonRegistered
+                summary: A person was detected in the LBPH label registry
+                payload:
+                  type: object
+                  required:
+                    - event_type
+                    - person_name
+                    - timestamp
+                  properties:
+                    event_type:
+                      type: string
+                      enum: [person_registered]
+                    source:
+                      type: string
+                      enum: [neuroface-lbph]
+                    person_name:
+                      type: string
+                      description: Name/label of the trained person
+                    face_count:
+                      type: integer
+                      description: Number of face samples used for training
+                    confidence:
+                      type: number
+                    camera_id:
+                      type: string
+                    timestamp:
+                      type: string
+                      format: date-time
+                    detection_method:
+                      type: string
+                      enum: [lbph]
+              - name: OvmsModelStatus
+                summary: OpenVINO Model Server status from /v1/config
+                payload:
+                  type: object
+                  required:
+                    - event_type
+                    - model_name
+                    - timestamp
+                  properties:
+                    event_type:
+                      type: string
+                      enum: [ovms_model_status]
+                    source:
+                      type: string
+                      enum: [openvino-model-server]
+                    model_name:
+                      type: string
+                      description: Name of the served model (e.g. face-detection-retail-0005)
+                    model_server:
+                      type: string
+                      enum: [ovms]
+                    ovms_response:
+                      type: object
+                      description: Raw response from OVMS /v1/config endpoint
+                    camera_id:
+                      type: string
+                    timestamp:
+                      type: string
+                      format: date-time
+                    person_name:
+                      type: string
+                      description: Always "system" for health events
+                    confidence:
+                      type: number
+      dlq.cv-errors:
+        publish:
+          summary: Dead letter queue for failed CV event processing
+          message:
+            payload:
+              type: object
+              description: Original message that failed processing, with error headers
+    servers:
+      cdc-cluster:
+        url: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092
+        protocol: kafka
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: yolo-ppe-serving
+  namespace: default
+  description: "YOLO PPE Serving — YOLOv8n model server (Flask + Ultralytics) for PPE object detection. Called by NeuroFace backend /ppe/detect endpoint."
+  annotations:
+    backstage.io/kubernetes-id: yolo-ppe-serving
+    backstage.io/kubernetes-namespace: neuroface
+    backstage.io/kubernetes-label-selector: app=yolo-ppe-serving
+    argocd/app-name: field-content-neuroface-cv
+    argocd/app-namespace: openshift-gitops
+  tags:
+    - yolo
+    - object-detection
+    - ppe
+    - python
+    - ultralytics
+  links:
+    - url: https://yolo-ppe-serving-neuroface.apps.cluster-msf9p.dynamic.redhatworkshops.io/health
+      title: YOLO Health Endpoint
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: cv-ppe-streaming
+  namespace: default
+  description: "PPE Kafka Topics — cv.ppe.detections receives ppe_compliance_check events from NeuroFace backend; consumed by Jupyter workbench"
+  annotations:
+    backstage.io/kubernetes-id: cdc-cluster
+    backstage.io/kubernetes-namespace: kafka-cdc
+    backstage.io/kubernetes-label-selector: strimzi.io/cluster=cdc-cluster
+    argocd/app-name: field-content-neuroface-cv
+    argocd/app-namespace: openshift-gitops
+    kafka.apache.org/consumer-groups: cdc-cluster/jupyter-ppe-consumer
+  tags:
+    - kafka
+    - event-streaming
+    - ppe
+    - safety
+  links:
+    - url: https://console-openshift-console.apps.cluster-msf9p.dynamic.redhatworkshops.io/k8s/ns/kafka-cdc/kafka.strimzi.io~v1beta2~KafkaTopic/cv.ppe.detections
+      title: cv.ppe.detections Topic
+      icon: web
+    - url: https://console-openshift-console.apps.cluster-msf9p.dynamic.redhatworkshops.io/k8s/ns/kafka-cdc/kafka.strimzi.io~v1beta2~KafkaTopic/dlq.ppe-errors
+      title: dlq.ppe-errors (Dead Letter Queue)
+      icon: web
+    - url: https://kafka-console-kafka-cdc.apps.cluster-msf9p.dynamic.redhatworkshops.io
+      title: Kafka Console
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+  dependsOn:
+    - component:default/neuroface-app
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: cv-ppe-detection-events
+  namespace: default
+  description: "PPE compliance events published to Kafka topic cv.ppe.detections"
+  tags:
+    - kafka
+    - asyncapi
+    - ppe
+    - safety
+spec:
+  type: asyncapi
+  lifecycle: production
+  owner: platform-engineering
+  system: neuroface-system
+  definition: |
+    asyncapi: 2.6.0
+    info:
+      title: YOLO PPE Detection Events
+      version: 1.0.0
+      description: |
+        PPE (Personal Protective Equipment) compliance events from the YOLO detection pipeline.
+        The NeuroFace backend receives webcam frames, forwards them to YOLO serving,
+        classifies compliance, optionally calls Granite LLM, and publishes events to Kafka.
+    channels:
+      cv.ppe.detections:
+        publish:
+          summary: PPE compliance check events
+          message:
+            name: PpeComplianceCheck
+            summary: Result of a YOLO-based PPE compliance scan
+            payload:
+              type: object
+              required:
+                - event_type
+                - ppe_status
+                - timestamp
+              properties:
+                event_type:
+                  type: string
+                  enum: [ppe_compliance_check]
+                source:
+                  type: string
+                  enum: [neuroface-ppe-backend]
+                model:
+                  type: string
+                  description: YOLO model name used for inference
+                timestamp:
+                  type: string
+                  format: date-time
+                ppe_status:
+                  type: string
+                  enum: [compliant, violation, no_persons]
+                  description: Overall PPE compliance status
+                person_count:
+                  type: integer
+                  description: Number of persons detected in the frame
+                detections_count:
+                  type: integer
+                  description: Total number of YOLO detections
+                detections:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      class_id:
+                        type: integer
+                      class_name:
+                        type: string
+                      confidence:
+                        type: number
+                      bbox:
+                        type: object
+                        properties:
+                          x1: { type: number }
+                          y1: { type: number }
+                          x2: { type: number }
+                          y2: { type: number }
+                present_ppe:
+                  type: array
+                  items: { type: string }
+                  description: PPE items detected in the frame
+                missing_ppe:
+                  type: array
+                  items: { type: string }
+                  description: PPE items expected but NOT detected
+                expected_ppe:
+                  type: array
+                  items: { type: string }
+                  description: Full list of expected PPE classes
+                confidence:
+                  type: string
+                  description: Confidence threshold used for inference
+                image_source:
+                  type: string
+                  description: URL or identifier of the source image
+                llm_analysis:
+                  type: string
+                  description: Optional natural language safety analysis from Granite LLM
+      dlq.ppe-errors:
+        publish:
+          summary: Dead letter queue for failed PPE event processing
+          message:
+            payload:
+              type: object
+              description: Original message that failed processing, with error headers
+    servers:
+      cdc-cluster:
+        url: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092
+        protocol: kafka

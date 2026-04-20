@@ -1,0 +1,245 @@
+= DevSpaces + Continue AI (Granite)
+:navtitle: DevSpaces + Continue AI
+:toc: left
+:toclevels: 3
+
+[.lead]
+Red Hat OpenShift Dev Spaces provides cloud-native workspaces with *Continue AI* pre-configured to use IBM *Granite 3.1 2B Instruct* served by OpenShift AI (KServe + llama.cpp). Developers can generate Apache Camel YAML DSL routes using AI-assisted code generation directly inside the IDE.
+
+++++
+<div id="scene-devspaces" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-devspaces', {height:380, camY:8, camZ:18});
+  if(!ctx) return;
+  var dev = ThreeHelper.createNode(ctx.scene,'DevSpaces',0x1565C0,-8,0,0,{width:2.5});
+  var cont = ThreeHelper.createNode(ctx.scene,'Continue AI',0x7B1FA2,-2.5,0,0,{width:2.5});
+  var granite = ThreeHelper.createNode(ctx.scene,'Granite 2B',0xE65100,3,0,0,{width:2.5});
+  var kserve = ThreeHelper.createNode(ctx.scene,'KServe',0x2E7D32,8,0,0,{width:2.2});
+  var kaoto = ThreeHelper.createNode(ctx.scene,'Kaoto',0x42A5F5,-5,3,3,{width:1.8});
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,dev,cont,0x1565C0,{speed:0.01}),
+    ThreeHelper.createEdge(ctx.scene,cont,granite,0x7B1FA2,{speed:0.01}),
+    ThreeHelper.createEdge(ctx.scene,granite,kserve,0xE65100,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,dev,kaoto,0x42A5F5,{speed:0.006})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
+== Architecture
+
+[cols="1,2", options="header"]
+|===
+| Component | Role
+
+| *DevSpaces*
+| Cloud-native IDE based on Eclipse Che — runs in OpenShift with pre-installed extensions
+
+| *Continue AI*
+| Open-source AI coding assistant (VS Code extension) — chat, autocomplete, inline edit
+
+| *Granite 3.1 2B Instruct*
+| IBM's small-footprint LLM (Q4_K_M GGUF) running on llama.cpp via KServe
+
+| *OpenShift AI (KServe)*
+| Model serving platform — hosts the Granite model as an InferenceService with OpenAI-compatible API
+
+| *Kaoto*
+| Visual designer for Apache Camel routes — edit YAML DSL through drag-and-drop
+|===
+
+== Workspace Configuration
+
+=== Devfile
+
+Each workspace is defined by a `devfile.yaml` that configures the container, extensions, and startup tasks:
+
+[source,yaml]
+----
+schemaVersion: 2.2.2
+metadata:
+  name: my-camel-cdc-route
+components:
+  - name: tools
+    container:
+      image: registry.redhat.io/devspaces/udi-rhel9:latest
+      memoryLimit: 2Gi
+      cpuLimit: "1"
+commands:
+  - id: install-extensions
+    exec:
+      component: tools
+      commandLine: |
+        export LD_LIBRARY_PATH=/checode/checode-linux-libc/ubi9/ld_libs/openssl:/checode/checode-linux-libc/ubi9/ld_libs/core:/usr/lib64
+        CHE_CODE=/checode/checode-linux-libc/ubi9/bin/che-code
+        EXT_DIR=/checode/checode-linux-libc/ubi9/extensions
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-kaoto --force
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-apache-camel --force
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension Continue.continue --force
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-yaml --force
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.java --force
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-quarkus --force
+  - id: setup-project
+    exec:
+      component: tools
+      commandLine: |
+        chmod +x /projects/my-camel-cdc-route/mvnw
+        mkdir -p /home/user/.continue && cp /projects/my-camel-cdc-route/continue-config.json /home/user/.continue/config.json
+events:
+  postStart:
+    - install-extensions
+    - setup-project
+----
+
+IMPORTANT: The `LD_LIBRARY_PATH` must reference the `ubi9` subdirectories (`ld_libs/openssl` and `ld_libs/core`). The extensions directory is `/checode/checode-linux-libc/ubi9/extensions`. Using incorrect paths causes silent installation failures.
+
+=== Pre-installed Extensions
+
+[cols="1,2", options="header"]
+|===
+| Extension | Purpose
+
+| `redhat.vscode-kaoto` | Visual Camel route designer
+| `redhat.vscode-apache-camel` | Camel YAML DSL language support
+| `Continue.continue` | AI coding assistant
+| `redhat.vscode-yaml` | YAML language support
+| `redhat.java` | Java language server
+| `redhat.vscode-quarkus` | Quarkus development tools
+|===
+
+=== Continue AI Configuration
+
+The `continue-config.json` file connects Continue to the Granite model served by OpenShift AI:
+
+[source,json]
+----
+{
+  "models": [
+    {
+      "title": "Granite 3.1 2B (OpenShift AI)",
+      "model": "granite-3.1-2b-instruct-Q4_K_M.gguf",
+      "apiBase": "http://granite-llm-predictor.neuroface.svc.cluster.local:8080/v1",
+      "provider": "openai",
+      "apiKey": "no-key",
+      "contextLength": 8192,
+      "completionOptions": {
+        "maxTokens": 1024
+      }
+    }
+  ],
+  "tabAutocompleteModel": {
+    "title": "Granite 3.1 2B Autocomplete",
+    "model": "granite-3.1-2b-instruct-Q4_K_M.gguf",
+    "apiBase": "http://granite-llm-predictor.neuroface.svc.cluster.local:8080/v1",
+    "provider": "openai",
+    "apiKey": "no-key",
+    "contextLength": 8192,
+    "completionOptions": {
+      "maxTokens": 128
+    }
+  },
+  "allowAnonymousTelemetry": false
+}
+----
+
+== Model Serving — Granite on llama.cpp
+
+The Granite model runs as a KServe `InferenceService` with a custom `ServingRuntime`:
+
+[cols="1,1", options="header"]
+|===
+| Parameter | Value
+
+| Model | `granite-3.1-2b-instruct-Q4_K_M.gguf`
+| Runtime | `ghcr.io/ggml-org/llama.cpp:server`
+| Context size | 8192 tokens
+| Threads | 8
+| Parallel slots | 1
+| API | OpenAI-compatible (`/v1/chat/completions`)
+| Endpoint | `http://granite-llm-predictor.neuroface.svc.cluster.local:8080`
+|===
+
+== DevSpaces IDE with Continue AI
+
+image::ROOT:devspaces-continue-ai.png[DevSpaces workspace with Continue AI extension,width=100%]
+
+The screenshot shows a DevSpaces workspace with the Continue AI panel open on the left side. The AI assistant uses the Granite 3.1 2B model served by OpenShift AI to generate Apache Camel routes.
+
+== Creating Camel Routes with AI
+
+=== Workflow
+
+. Create a new file: `touch routes/my-new-route.camel.yaml`
+. Open the file in the editor
+. Press `Ctrl+I` to open Continue's inline edit
+. Type a short prompt describing the route
+. Continue generates the YAML DSL code directly in the file
+. Open the file with Kaoto to visualize and refine the route
+
+=== Example Prompts
+
+These prompts are optimized for the Granite 2B model context window:
+
+[cols="1,2", options="header"]
+|===
+| Prompt | Description
+
+| `Camel YAML route: Kafka "orders" to log`
+| Simple route that consumes from Kafka and logs messages
+
+| `Camel YAML route with choice: Kafka "cdc-events", if op=c log "created", otherwise log "updated"`
+| Route with content-based routing on CDC operation type
+
+| `Camel YAML route: timer every 30s, GET http://localhost:8080/q/health, log response`
+| Health check timer route
+
+| `Camel YAML route: Kafka "audit-events", unmarshal JSON, POST to http://order-service:8080/api`
+| Kafka-to-REST integration route
+|===
+
+TIP: Keep prompts concise. The Granite 2B model works best with short, direct instructions.
+
+== Developer Hub Integration
+
+The software template in Developer Hub creates new Camel CDC projects with:
+
+* Pre-configured `devfile.yaml` with all extensions
+* `continue-config.json` pointing to the Granite model
+* Maven wrapper with Quarkus 3.15
+* Sample CDC route (`cdc-to-mail.camel.yaml`)
+* Correct DevSpaces factory URL for one-click workspace creation
+
+Access Developer Hub: `https://developer-hub.{cluster_domain}`
+
+== Troubleshooting
+
+[cols="1,2", options="header"]
+|===
+| Issue | Solution
+
+| Extensions not visible after workspace start
+| Reload the browser with F5 — extensions install in `postStart` and require a page refresh
+
+| `./mvnw: Permission denied`
+| Run `chmod +x mvnw` — the devfile's `postStart` does this automatically
+
+| Continue shows "context size exceeded"
+| The model's `--ctx-size` or `--parallel` may have been reverted — check the ServingRuntime args in namespace `neuroface`
+
+| Workspace opens with "generateName: empty"
+| Use the factory URL with the raw devfile: `https://devspaces.DOMAIN/#https://gitea.DOMAIN/owner/repo/raw/branch/main/devfile.yaml`
+|===
+
+== References
+
+* xref:05-kaoto-camel.adoc[Kaoto + Apache Camel]
+* xref:18-ai-playground-kafka-mcp.adoc[AI Playground + Kafka MCP]
+* https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces[Red Hat OpenShift Dev Spaces^]
+* https://docs.continue.dev/[Continue AI Documentation^]
+* https://github.com/ibm-granite[IBM Granite Models^]
+* https://kaoto.io/docs/[Kaoto Documentation^]

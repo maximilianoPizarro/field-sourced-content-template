@@ -1,0 +1,185 @@
+= NeuroFace CV Pipeline
+
+++++
+<div id="scene-neuroface" style="width:100%;min-height:380px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../../_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-neuroface', {height:380, camX:0, camY:10, camZ:22});
+  if(!ctx) return;
+  var cam  = ThreeHelper.createNode(ctx.scene,'Webcam',0x607D8B,-12,0,0);
+  var fe   = ThreeHelper.createNode(ctx.scene,'Frontend',0x9C27B0,-6,0,0);
+  var be   = ThreeHelper.createNode(ctx.scene,'Backend',0x9C27B0,0,0,0);
+  var ovms = ThreeHelper.createNode(ctx.scene,'OpenVINO',0x0068B5,0,3,3);
+  var cvp  = ThreeHelper.createNode(ctx.scene,'CV Processor',0xFF9800,6,0,0);
+  var kf   = ThreeHelper.createNode(ctx.scene,'Kafka',0x231F20,12,0,0);
+  var cons = ThreeHelper.createNode(ctx.scene,'Consumer',0xFF9800,12,0,-4);
+  var mail = ThreeHelper.createNode(ctx.scene,'Mailpit',0x42A5F5,12,0,-8);
+  var yolo = ThreeHelper.createNode(ctx.scene,'YOLO PPE',0x43A047,0,-3,-3);
+  var ppeK = ThreeHelper.createNode(ctx.scene,'PPE Topic',0x43A047,6,-3,-3);
+  var jup  = ThreeHelper.createNode(ctx.scene,'Jupyter',0xFF9800,12,-3,-3);
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,cam,fe,0x607D8B,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,fe,be,0x9C27B0,{speed:0.009}),
+    ThreeHelper.createEdge(ctx.scene,be,ovms,0x0068B5,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,cvp,ovms,0x0068B5,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,cvp,be,0xFF9800,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,cvp,kf,0xFF9800,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,kf,cons,0x231F20,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,cons,mail,0x42A5F5,{speed:0.009}),
+    ThreeHelper.createEdge(ctx.scene,be,yolo,0x43A047,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,be,ppeK,0x43A047,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,ppeK,jup,0xFF9800,{speed:0.008})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
+== Overview
+
+The *NeuroFace CV Pipeline* integrates facial recognition with event-driven architecture. A webcam feed is processed by a FastAPI backend using *LBPH* (Local Binary Patterns Histograms) for face recognition, while *Intel OpenVINO Model Server* runs the `face-detection-retail-0005` model for detection. A Python-based *CV Processor* polls both services and publishes detection events to a Kafka topic, triggering email notifications through Mailpit.
+
+== Architecture
+
+[cols="1,2,1",options="header"]
+|===
+| Component | Role | Namespace
+
+| *NeuroFace Frontend*
+| Angular web UI for face registration and live detection via webcam
+| `neuroface`
+
+| *NeuroFace Backend*
+| FastAPI + OpenCV LBPH recognizer — trains labels, exposes `/api/labels`
+| `neuroface`
+
+| *OpenVINO Model Server (OVMS)*
+| Intel inference server serving `face-detection-retail-0005` (FP16) via REST/gRPC, deployed as KServe `InferenceService`
+| `neuroface`
+
+| *Model PVC*
+| 1 Gi PersistentVolumeClaim storing `.xml/.bin` model files from Intel Model Zoo
+| `neuroface`
+
+| *Jupyter Workbench*
+| OpenShift AI Notebook for model experimentation
+| `neuroface`
+
+| *CV Processor*
+| Python (UBI9) — polls OVMS `/v1/config` and Backend `/api/labels` every 30 s, publishes JSON events to Kafka
+| `kafka-cdc`
+
+| *Kafka Topic*
+| `cv.face.detections` on Strimzi `cdc-cluster` with SASL_SSL + SCRAM-SHA-512
+| `kafka-cdc`
+
+| *Kafka Consumer*
+| Same Python process — consumes events and routes by `event_type`
+| `kafka-cdc`
+
+| *Mailpit*
+| SMTP + HTTP API — receives formatted HTML email alerts
+| `openshift-lightspeed`
+
+| *YOLO PPE Serving*
+| Ultralytics YOLOv8n — detects PPE items (hardhat, safety-vest, goggles) from webcam frames
+| `neuroface`
+
+| *PPE Kafka Topic*
+| `cv.ppe.detections` — PPE compliance events published by the backend via `confluent-kafka`
+| `kafka-cdc`
+|===
+
+== Event Flow
+
+The CV Processor runs a continuous polling loop:
+
+. *Poll OVMS* — `GET /v1/config` every 30 seconds to check model server status
+. *Poll Backend* — `GET /api/labels` every 30 seconds to detect new registered faces
+. *Produce to Kafka* — Publishes JSON events to `cv.face.detections` topic (SASL_SSL)
+. *Consume from Kafka* — Same process reads events and routes by `event_type`
+. *Send email* — Formats HTML and `POST /api/v1/send` to Mailpit
+
+=== Event Types
+
+[cols="1,2,2",options="header"]
+|===
+| Event Type | Trigger | Email Recipient
+
+| `person_registered`
+| New label appears in `/api/labels` response
+| Security Admin — `admin@neuralbank.io`
+
+| `ovms_model_status`
+| OVMS `/v1/config` returns model configuration
+| ML Ops — `mlops@neuralbank.io`
+|===
+
+=== Sample Kafka Event
+
+[source,json]
+----
+{
+  "event_type": "person_registered",
+  "timestamp": "2025-06-15T14:32:00Z",
+  "source": "neuroface-lbph",
+  "person_name": "Max",
+  "face_count": 1,
+  "detection_method": "lbph",
+  "camera_id": "label-registry"
+}
+----
+
+== Verify the Pipeline
+
+Use the embedded terminal or the Kafka Console to verify end-to-end operation.
+
+=== Check OVMS Model Status
+
+[source,bash]
+----
+oc exec -n kafka-cdc deploy/cv-processor -- \
+  curl -s http://face-detection-retail-0005-predictor.neuroface.svc.cluster.local:8080/v1/config
+----
+
+=== Check Registered Labels
+
+[source,bash]
+----
+oc exec -n kafka-cdc deploy/cv-processor -- \
+  curl -s http://neuroface-backend.neuroface.svc.cluster.local:8000/api/labels
+----
+
+=== Read from Kafka Topic
+
+Open the link:https://kafka-console-kafka-cdc.{cluster_domain}[Kafka Console^] and navigate to **Topics -> cv.face.detections -> Messages** to see real-time events.
+
+=== Check Emails
+
+Open link:https://n8n-mailpit-openshift-lightspeed.{cluster_domain}[Mailpit^] to see the notification emails sent by the consumer.
+
+== Security
+
+* *Kafka authentication*: SASL_SSL with SCRAM-SHA-512 (`cdc-user` credentials from Kubernetes secret)
+* *Kafka Console OIDC*: Authenticated via Keycloak (RHBK) — `platformadmin` gets admin role, `userN` gets viewer role
+* *OVMS*: Cluster-internal access only (no external route)
+* *Inter-namespace traffic*: All Kafka connections use TLS
+
+== OpenShift AI Integration
+
+The NeuroFace model is served through *OpenShift AI* using KServe:
+
+* *ServingRuntime*: `ovms-face-detection` — custom runtime based on OVMS image
+* *InferenceService*: `face-detection-retail-0005` — RawDeployment mode, storage from PVC
+* *Jupyter Workbench*: `neuroface-workbench` — for model experimentation and debugging
+
+Access the OpenShift AI dashboard at link:https://data-science-gateway.{cluster_domain}/projects/neuroface[OpenShift AI -> neuroface project^].
+
+== PPE Safety Detection (YOLO)
+
+The NeuroFace platform includes an optional *PPE Safety Detection* module that uses YOLOv8n to monitor whether operators are wearing required protective equipment. The webcam feed from the frontend is analyzed in real time, and each detection event is published to the Kafka topic `cv.ppe.detections` for downstream analysis in Jupyter notebooks.
+
+For the full walkthrough — architecture, event schema, verification commands, and Granite LLM integration — see xref:20-ppe-safety.adoc[PPE Safety Detection].

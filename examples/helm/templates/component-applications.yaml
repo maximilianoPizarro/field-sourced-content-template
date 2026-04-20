@@ -1,0 +1,338 @@
+# Connectivity-link stack — local Helm charts (vendored from connectivity-link)
+# Sync-wave on Application metadata is advisory; manifests use argocd.argoproj.io/sync-wave.
+{{- range .Values.connectivityLink.apps }}
+{{- if and . .enabled }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $.Release.Name }}-{{ .id }}
+  namespace: {{ $.Values.argocd.namespace }}
+  labels:
+    demo.redhat.com/application: "field-content"
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .syncWave | quote }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $.Values.argocd.project }}
+  ignoreDifferences:
+    - group: ""
+      kind: Service
+      jsonPointers:
+        - /spec/clusterIP
+        - /spec/clusterIPs
+        - /spec/ipFamilies
+        - /spec/ipFamilyPolicy
+        - /spec/internalTrafficPolicy
+    - group: route.openshift.io
+      kind: Route
+      jsonPointers:
+        - /spec/host
+        - /spec/wildcardPolicy
+        - /status
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/metadata/annotations
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data
+    - group: ""
+      kind: Namespace
+      jsonPointers:
+        - /metadata/annotations
+        - /metadata/labels
+    - group: networking.istio.io
+      kind: "*"
+      jsonPointers:
+        - /spec
+        - /metadata/annotations
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: sailoperator.io
+      kind: "*"
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: operator.istio.io
+      kind: "*"
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: ols.openshift.io
+      kind: OLSConfig
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: keycloak.org
+      kind: "*"
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: k8s.keycloak.org
+      kind: "*"
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: kuadrant.io
+      kind: "*"
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: mcp.openshift.io
+      kind: "*"
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: kafka.strimzi.io
+      kind: "*"
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: console.streamshub.io
+      kind: "*"
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: registry.apicur.io
+      kind: "*"
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: ""
+      kind: ConfigMap
+      jsonPointers:
+        - /metadata/annotations
+    - group: datasciencecluster.opendatahub.io
+      kind: "*"
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: serving.kserve.io
+      kind: "*"
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: camel.apache.org
+      kind: "*"
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+  source:
+    repoURL: {{ $.Values.gitops.repoUrl }}
+    targetRevision: {{ $.Values.gitops.revision }}
+    path: {{ $.Values.gitops.basePath }}/components/{{ .path }}
+    {{- $domain := $.Values.deployer.domain | default "apps.cluster.example.com" }}
+    {{- if eq .path "namespaces" }}
+    helm:
+      valuesObject:
+        userCount: {{ $.Values.userCount | default 200 }}
+    {{- else if eq .path "devspaces" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+    {{- else if eq .path "operators" }}
+    helm:
+      valuesObject:
+        channel: {{ $.Values.connectivityLink.operators.channel | quote }}
+        version: {{ $.Values.connectivityLink.operators.version | quote }}
+        subscriptions: {{ $.Values.connectivityLink.operators.subscriptions | toJson }}
+    {{- else if eq .path "openshift-lightspeed" }}
+    {{- $llmKey := $.Values.lightspeed.llmApiKey | default "" }}
+    {{- $llmEndpoint := $.Values.lightspeed.llmEndpoint | default "" }}
+    {{- $llmModel := $.Values.lightspeed.model | default "granite-3-2-8b-instruct" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+        llmApiKey: {{ $llmKey | quote }}
+        llmEndpoint: {{ $llmEndpoint | quote }}
+        llmModel: {{ $llmModel | quote }}
+    {{- else if eq .path "rhbk" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+        userCount: {{ $.Values.userCount | default 200 }}
+    {{- else if eq .path "mcp-gateway" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+    {{- else if eq .path "oauth-users" }}
+    helm:
+      valuesObject:
+        userCount: {{ $.Values.userCount | default 200 }}
+    {{- else if eq .path "applicationsets" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+        userCount: {{ $.Values.userCount | default 200 }}
+    {{- else if eq .path "gitea" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+        userCount: {{ $.Values.userCount | default 200 }}
+    {{- else if eq .path "developer-hub" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+        userCount: {{ $.Values.userCount | default 200 }}
+    {{- else if eq .path "workshop-registration" }}
+    helm:
+      valuesObject:
+        deployer:
+          domain: {{ $domain }}
+        registration:
+          enabled: true
+          maxUsers: {{ $.Values.userCount | default 200 }}
+          adminToken: {{ $.Values.workshopRegistration.adminToken | default "workshop-admin-2024" | quote }}
+        keycloak:
+          url: {{ printf "https://rhbk.%s" $domain | quote }}
+          realm: backstage
+          adminUser: admin
+          adminPassword: {{ $.Values.workshopRegistration.keycloakAdminPassword | default "" | quote }}
+        showroom:
+          url: {{ printf "https://showroom-showroom.%s" $domain | quote }}
+    {{- else if eq .path "kafka" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+    {{- else if eq .path "kafka-console" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+    {{- else if eq .path "apicurio-registry" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+    {{- else if eq .path "cdc-demo" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+    {{- else if eq .path "camel-cdc" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+    {{- else if eq .path "kogito-bpm" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+    {{- else if eq .path "cleanup" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+    {{- else if eq .path "console-links" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+    {{- else if eq .path "neuroface-cv" }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+        ppe:
+          enabled: {{ $.Values.neurofaceCv.ppe.enabled }}
+    {{- else if has .path (list "opentelemetry" "kiali" "rhcl-operator" "observability") }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+    {{- else if has .path (list "industrial-edge-tst" "industrial-edge-stormshift" "industrial-edge-data-lake" "industrial-edge-data-science-project" "industrial-edge-pipelines" "industrial-edge-minio" "industrial-edge-data-science-cluster") }}
+    helm:
+      valuesObject:
+        clusterDomain: {{ $domain }}
+        global:
+          localClusterDomain: {{ $domain }}
+          hubClusterDomain: {{ $domain }}
+    {{- end }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .destinationNamespace }}
+  syncPolicy:
+    automated:
+      prune: {{ .prune }}
+      selfHeal: {{ .selfHeal }}
+    syncOptions:
+      - CreateNamespace=true
+      {{- if ne (.serverSideApply | toString) "false" }}
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+      {{- end }}
+      {{- if .skipDryRunOnMissingResource }}
+      - SkipDryRunOnMissingResource=true
+      {{- end }}
+{{- end }}
+{{- end }}
+# ============================================================
+# Helm Chart Applications — third-party charts from external repos
+# ============================================================
+{{- if .Values.connectivityLink.helmApps }}
+{{- range .Values.connectivityLink.helmApps }}
+{{- if and . .enabled }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $.Release.Name }}-helm-{{ .id }}
+  namespace: {{ $.Values.argocd.namespace }}
+  labels:
+    demo.redhat.com/application: "field-content"
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .syncWave | quote }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $.Values.argocd.project }}
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/volumeClaimTemplates
+        - /spec/template/metadata/annotations
+        - /spec/template/metadata/labels
+        - /spec/persistentVolumeClaimRetentionPolicy
+        - /spec/updateStrategy
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/metadata/annotations
+    - group: ""
+      kind: Service
+      jsonPointers:
+        - /spec/clusterIP
+        - /spec/clusterIPs
+        - /spec/ipFamilies
+        - /spec/ipFamilyPolicy
+        - /spec/internalTrafficPolicy
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data
+  source:
+    repoURL: {{ .repoURL }}
+    chart: {{ .chart }}
+    targetRevision: {{ .targetRevision }}
+    helm:
+      releaseName: {{ .chart }}
+      valuesObject:
+        {{- toYaml .values | nindent 8 }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .destinationNamespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+{{- end }}
+{{- end }}
+{{- end }}

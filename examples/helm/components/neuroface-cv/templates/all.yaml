@@ -1,0 +1,1546 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: neuroface-ovms-config
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  config.json: |
+    {
+      "model_config_list": [
+        {
+          "config": {
+            "name": "face-detection-retail-0005",
+            "base_path": "/models/face-detection-retail-0005"
+          }
+        }
+      ]
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: neuroface-ovms
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    app: neuroface-ovms
+    app.kubernetes.io/part-of: neuroface
+    app.openshift.io/runtime: openvino
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: neuroface-ovms
+  template:
+    metadata:
+      labels:
+        app: neuroface-ovms
+    spec:
+      initContainers:
+        - name: download-model
+          image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+          command:
+            - sh
+            - -c
+            - |
+              MODEL_DIR=/models/face-detection-retail-0005/1
+              mkdir -p "$MODEL_DIR"
+              BASE_URL="https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/face-detection-retail-0005/FP16"
+              echo "Downloading face-detection-retail-0005 FP16..."
+              curl -sL "$BASE_URL/face-detection-retail-0005.xml" -o "$MODEL_DIR/face-detection-retail-0005.xml"
+              curl -sL "$BASE_URL/face-detection-retail-0005.bin" -o "$MODEL_DIR/face-detection-retail-0005.bin"
+              ls -lh "$MODEL_DIR/"
+              echo "Model download complete"
+          volumeMounts:
+            - name: model-store
+              mountPath: /models
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      containers:
+        - name: ovms
+          image: openvino/model_server:2025.2.1
+          args:
+            - "--config_path=/config/config.json"
+            - "--rest_port=8000"
+            - "--port=9000"
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+              name: rest
+            - containerPort: 9000
+              protocol: TCP
+              name: grpc
+          volumeMounts:
+            - name: model-store
+              mountPath: /models
+              readOnly: true
+            - name: ovms-config
+              mountPath: /config
+              readOnly: true
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          readinessProbe:
+            httpGet:
+              path: /v1/config
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /v1/config
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+      volumes:
+        - name: model-store
+          emptyDir: {}
+        - name: ovms-config
+          configMap:
+            name: neuroface-ovms-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: neuroface-ovms
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    app: neuroface-ovms
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: 8000
+      protocol: TCP
+      name: rest
+    - port: 9000
+      targetPort: 9000
+      protocol: TCP
+      name: grpc
+  selector:
+    app: neuroface-ovms
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: neuroface-ovms
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    app: neuroface-ovms
+spec:
+  to:
+    kind: Service
+    name: neuroface-ovms
+    weight: 100
+  port:
+    targetPort: rest
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: face-detection-model-pvc
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    opendatahub.io/dashboard: "true"
+spec:
+  {{- if .Values.global.storageClass }}
+  storageClassName: {{ .Values.global.storageClass }}
+  {{- end }}
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: download-face-detection-model
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/hook: Skip
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: downloader
+          image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+          command:
+            - sh
+            - -c
+            - |
+              MODEL_DIR=/mnt/models/1
+              if [ -f "$MODEL_DIR/face-detection-retail-0005.xml" ]; then
+                echo "Model already downloaded"
+                exit 0
+              fi
+              mkdir -p "$MODEL_DIR"
+              BASE_URL="https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/face-detection-retail-0005/FP16"
+              echo "Downloading face-detection-retail-0005 FP16..."
+              curl -sL "$BASE_URL/face-detection-retail-0005.xml" -o "$MODEL_DIR/face-detection-retail-0005.xml"
+              curl -sL "$BASE_URL/face-detection-retail-0005.bin" -o "$MODEL_DIR/face-detection-retail-0005.bin"
+              ls -lh "$MODEL_DIR/"
+              echo "Done"
+          volumeMounts:
+            - name: model-store
+              mountPath: /mnt/models
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: model-store
+          persistentVolumeClaim:
+            claimName: face-detection-model-pvc
+---
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  name: ovms-face-detection
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    opendatahub.io/runtime-version: v2025.2.1
+    openshift.io/display-name: "OpenVINO Model Server — Face Detection"
+    opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
+    opendatahub.io/template-display-name: OpenVINO Model Server
+    opendatahub.io/template-name: kserve-ovms
+  labels:
+    opendatahub.io/dashboard: "true"
+spec:
+  annotations:
+    opendatahub.io/kserve-runtime: ovms
+    prometheus.io/path: /metrics
+    prometheus.io/port: "8888"
+  containers:
+    - name: kserve-container
+      image: registry.redhat.io/rhoai/odh-openvino-model-server-rhel9@sha256:225115b4a438e3af202a2507ed9a7054fab3a1018830be9935496a37cb145fb8
+      args:
+        - --model_name=face-detection-retail-0005
+        - --port=8001
+        - --rest_port=8888
+        - --model_path=/mnt/models
+        - --file_system_poll_wait_seconds=0
+        - --grpc_bind_address=0.0.0.0
+        - --rest_bind_address=0.0.0.0
+        - --target_device=AUTO
+        - --metrics_enable
+      ports:
+        - containerPort: 8888
+          protocol: TCP
+      resources:
+        requests:
+          cpu: 200m
+          memory: 512Mi
+        limits:
+          cpu: "2"
+          memory: 4Gi
+  multiModel: false
+  protocolVersions:
+    - v2
+    - grpc-v2
+  supportedModelFormats:
+    - autoSelect: true
+      name: openvino_ir
+      version: opset13
+    - name: onnx
+      version: "1"
+---
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: face-detection-retail-0005
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    serving.kserve.io/deploymentMode: RawDeployment
+    openshift.io/display-name: "Face Detection Retail 0005"
+  labels:
+    opendatahub.io/dashboard: "true"
+spec:
+  predictor:
+    model:
+      modelFormat:
+        name: openvino_ir
+      resources:
+        requests:
+          cpu: 200m
+          memory: 512Mi
+        limits:
+          cpu: "2"
+          memory: 4Gi
+      runtime: ovms-face-detection
+      storageUri: "pvc://face-detection-model-pvc/"
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: cv.face.detections
+  namespace: kafka-cdc
+  labels:
+    strimzi.io/cluster: cdc-cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: 604800000
+    cleanup.policy: delete
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: dlq.cv-errors
+  namespace: kafka-cdc
+  labels:
+    strimzi.io/cluster: cdc-cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: 2592000000
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cv-processor-script
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+data:
+  cv-processor.py: |
+    import os, json, time, threading, logging, ssl, locale
+    from datetime import datetime, timezone
+    import requests
+    from requests.adapters import HTTPAdapter
+    from urllib3.util.retry import Retry
+    from confluent_kafka import Producer, Consumer, KafkaError
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
+    log = logging.getLogger("cv-processor")
+
+    BOOTSTRAP = os.environ["KAFKA_BOOTSTRAP"]
+    USER      = os.environ["KAFKA_USER"]
+    PASSWORD  = os.environ["KAFKA_PASSWORD"]
+    CA_CERT   = os.environ["KAFKA_CA_CERT"]
+    OVMS      = os.environ["OVMS_URL"]
+    NEUROFACE = os.environ["NEUROFACE_URL"]
+    MAILPIT   = os.environ["MAILPIT_URL"]
+    TOPIC     = "cv.face.detections"
+    DLQ       = "dlq.cv-errors"
+
+    def kafka_conf(extra=None):
+        cfg = {
+            "bootstrap.servers": BOOTSTRAP,
+            "security.protocol": "SASL_SSL",
+            "sasl.mechanism":    "SCRAM-SHA-512",
+            "sasl.username":     USER,
+            "sasl.password":     PASSWORD,
+            "ssl.ca.location":   CA_CERT,
+        }
+        if extra:
+            cfg.update(extra)
+        return cfg
+
+    producer = Producer(kafka_conf())
+
+    _mail_session = requests.Session()
+    _retry = Retry(total=3, backoff_factor=1, status_forcelist=[502, 503, 504])
+    _mail_session.mount("http://", HTTPAdapter(max_retries=_retry))
+    _mail_session.mount("https://", HTTPAdapter(max_retries=_retry))
+
+    def human_ts():
+        now = datetime.now(timezone.utc)
+        return now.strftime("%d %b %Y — %H:%M:%S UTC")
+
+    def publish(event):
+        payload = json.dumps(event)
+        producer.produce(TOPIC, value=payload.encode())
+        producer.flush(timeout=5)
+        log.info("Published %s event for %s", event.get("event_type"), event.get("person_name", "system"))
+
+    def poll_ovms():
+        while True:
+            try:
+                r = requests.get(f"{OVMS}/v1/config", timeout=10)
+                r.raise_for_status()
+                publish({
+                    "event_type":    "ovms_model_status",
+                    "source":        "openvino-model-server",
+                    "model_name":    "face-detection-retail-0005",
+                    "model_server":  "ovms",
+                    "ovms_response": r.json(),
+                    "camera_id":     "ovms-monitor",
+                    "timestamp":     human_ts(),
+                    "person_name":   "system",
+                    "confidence":    1.0,
+                })
+            except Exception as e:
+                log.warning("OVMS not reachable: %s", e)
+            time.sleep(60)
+
+    def poll_labels():
+        seen = set()
+        while True:
+            try:
+                r = requests.get(f"{NEUROFACE}/api/labels", timeout=10)
+                r.raise_for_status()
+                data = r.json()
+                labels = data if isinstance(data, list) else data.get("labels", [])
+                for label in labels:
+                    name = label if isinstance(label, str) else label.get("name", str(label))
+                    face_count = label.get("face_count", 1) if isinstance(label, dict) else 1
+                    if name not in seen:
+                        seen.add(name)
+                        publish({
+                            "event_type":       "person_registered",
+                            "source":           "neuroface-lbph",
+                            "person_name":      name,
+                            "face_count":       face_count,
+                            "confidence":       1.0,
+                            "camera_id":        "label-registry",
+                            "timestamp":        human_ts(),
+                            "detection_method": "lbph",
+                        })
+                    publish({
+                        "event_type":       "person_detected",
+                        "source":           "neuroface-lbph",
+                        "person_name":      name,
+                        "face_count":       face_count,
+                        "confidence":       1.0,
+                        "camera_id":        "label-registry",
+                        "timestamp":        human_ts(),
+                        "detection_method": "lbph",
+                        "total_labels":     len(labels),
+                    })
+            except Exception as e:
+                log.warning("NeuroFace backend not ready: %s", e)
+            time.sleep(30)
+
+    def _corporate_template(title, icon, accent, rows, footer_note):
+        row_html = ""
+        for label, value in rows:
+            row_html += (
+                f'<tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;'
+                f'font-size:13px;width:160px;font-weight:600">{label}</td>'
+                f'<td style="padding:8px 12px;border-bottom:1px solid #eee;color:#1a1a1a;'
+                f'font-size:13px">{value}</td></tr>'
+            )
+        return (
+            '<!DOCTYPE html><html><head><meta charset="utf-8"></head>'
+            '<body style="margin:0;padding:0;background:#f4f5f7;font-family:Arial,Helvetica,sans-serif">'
+            '<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;padding:24px 0">'
+            '<tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" '
+            'style="background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08)">'
+            f'<tr><td style="background:{accent};padding:24px 32px">'
+            '<table width="100%"><tr>'
+            '<td style="color:#fff;font-size:20px;font-weight:700;letter-spacing:-0.5px">'
+            f'{icon} {title}</td>'
+            '<td align="right" style="color:rgba(255,255,255,0.8);font-size:11px">'
+            'NeuralBank Security</td></tr></table></td></tr>'
+            '<tr><td style="padding:28px 32px 12px">'
+            '<table width="100%" cellpadding="0" cellspacing="0" '
+            'style="border:1px solid #e8e8e8;border-radius:6px;overflow:hidden">'
+            '<tr><td style="background:#fafafa;padding:10px 12px;font-size:11px;color:#999;'
+            'text-transform:uppercase;letter-spacing:1px;font-weight:700;border-bottom:2px solid '
+            f'{accent}">Event Details</td><td style="background:#fafafa;border-bottom:2px solid '
+            f'{accent}"></td></tr>{row_html}</table></td></tr>'
+            '<tr><td style="padding:0 32px 24px"><table width="100%" style="margin-top:16px;'
+            f'background:#f8f9fa;border-radius:6px;border-left:4px solid {accent}">'
+            f'<tr><td style="padding:12px 16px;font-size:12px;color:#555">{footer_note}</td>'
+            '</tr></table></td></tr>'
+            '<tr><td style="background:#151515;padding:16px 32px">'
+            '<table width="100%"><tr>'
+            '<td style="color:#999;font-size:11px">NeuroFace CV Pipeline &middot; '
+            'Event-Driven Architecture</td>'
+            '<td align="right" style="color:#666;font-size:11px">'
+            '<span style="color:#c00">&bull;</span> Red Hat OpenShift</td>'
+            '</tr></table></td></tr>'
+            '</table></td></tr></table></body></html>'
+        )
+
+    def send_mail(event):
+        etype = event.get("event_type")
+        if etype == "person_registered":
+            name = event.get("person_name", "Unknown")
+            rows = [
+                ("Person Name", f'<span style="font-size:15px;font-weight:700;color:#c00">{name}</span>'),
+                ("Face Samples", str(event.get("face_count", 1))),
+                ("Detection Method", event.get("detection_method", "lbph").upper()),
+                ("Source", event.get("source", "neuroface-lbph")),
+                ("Camera / Registry", event.get("camera_id", "label-registry")),
+                ("Timestamp", event.get("timestamp", "")),
+                ("Kafka Topic", "cv.face.detections"),
+            ]
+            html = _corporate_template(
+                title="Person Registered",
+                icon="&#128100;",
+                accent="#c00",
+                rows=rows,
+                footer_note=(
+                    f'<strong>Action Required:</strong> A new identity "<strong>{name}</strong>" '
+                    'has been registered in the facial recognition system. Verify that this '
+                    'registration was authorized and review access logs in the Kafka Console.'
+                ),
+            )
+            mail = {
+                "from": {"name": "NeuroFace CV Pipeline", "email": "neuroface@neuralbank.io"},
+                "to":   [{"name": "Security Admin", "email": "admin@neuralbank.io"}],
+                "subject": f"\U0001f6a8 Person Registered: {name}",
+                "html": html,
+            }
+        elif etype == "person_detected":
+            name = event.get("person_name", "Unknown")
+            rows = [
+                ("Person Detected", f'<span style="font-size:15px;font-weight:700;color:#0a6640">{name}</span>'),
+                ("Detection Method", event.get("detection_method", "lbph").upper()),
+                ("Confidence", f'{event.get("confidence", 0):.0%}'),
+                ("Total Identities", str(event.get("total_labels", "N/A"))),
+                ("Source", event.get("source", "neuroface-lbph")),
+                ("Camera / Registry", event.get("camera_id", "label-registry")),
+                ("Timestamp", event.get("timestamp", "")),
+                ("Kafka Topic", "cv.face.detections"),
+            ]
+            html = _corporate_template(
+                title=f"Face Detected: {name}",
+                icon="&#128247;",
+                accent="#0a6640",
+                rows=rows,
+                footer_note=(
+                    f'<strong>Detection Alert:</strong> The identity "<strong>{name}</strong>" '
+                    'is currently registered in the LBPH facial recognition model. '
+                    'This event is published every 30s while the label is active in the system.'
+                ),
+            )
+            mail = {
+                "from": {"name": "NeuroFace CV Pipeline", "email": "neuroface@neuralbank.io"},
+                "to":   [{"name": "Security Operations", "email": "security@neuralbank.io"}],
+                "subject": f"\U0001f4f7 Face Detected: {name}",
+                "html": html,
+            }
+        elif etype == "ovms_model_status":
+            model = event.get("model_name", "face-detection-retail-0005")
+            server = event.get("model_server", "ovms")
+            resp = event.get("ovms_response", {})
+            status_str = "Available"
+            if isinstance(resp, dict):
+                for v in resp.values():
+                    if isinstance(v, dict):
+                        statuses = v.get("model_version_status", [])
+                        if statuses:
+                            status_str = statuses[0].get("state", "Available")
+            rows = [
+                ("Model Name", f'<strong>{model}</strong>'),
+                ("Server Type", server.upper()),
+                ("Status", f'<span style="color:#0a0;font-weight:700">\u2713 {status_str}</span>'),
+                ("Source", event.get("source", "openvino-model-server")),
+                ("Monitor ID", event.get("camera_id", "ovms-monitor")),
+                ("Timestamp", event.get("timestamp", "")),
+                ("Kafka Topic", "cv.face.detections"),
+            ]
+            html = _corporate_template(
+                title="Model Server Health",
+                icon="&#9881;",
+                accent="#0066cc",
+                rows=rows,
+                footer_note=(
+                    f'<strong>Informational:</strong> The inference model "<strong>{model}</strong>" '
+                    f'is reporting status <strong>{status_str}</strong>. '
+                    'This is a periodic health check from the CV Processor polling loop (every 30s).'
+                ),
+            )
+            mail = {
+                "from": {"name": "NeuroFace CV Pipeline", "email": "neuroface@neuralbank.io"},
+                "to":   [{"name": "ML Ops", "email": "mlops@neuralbank.io"}],
+                "subject": f"\u2699\ufe0f OVMS Health: {model} [{status_str}]",
+                "html": html,
+            }
+        else:
+            return
+        for attempt in range(3):
+            try:
+                _mail_session.post(f"{MAILPIT}/api/v1/send", json=mail, timeout=15)
+                log.info("Email sent: %s", mail["subject"])
+                break
+            except Exception as e:
+                log.warning("Mailpit attempt %d/3 failed: %s", attempt + 1, e)
+                if attempt < 2:
+                    time.sleep(2 ** attempt)
+
+    def consume_and_notify():
+        c = Consumer(kafka_conf({"group.id": "cv-python-consumer", "auto.offset.reset": "latest"}))
+        c.subscribe([TOPIC])
+        log.info("Kafka consumer started on %s", TOPIC)
+        while True:
+            msg = c.poll(timeout=5.0)
+            if msg is None:
+                continue
+            if msg.error():
+                if msg.error().code() != KafkaError._PARTITION_EOF:
+                    log.error("Kafka error: %s", msg.error())
+                continue
+            try:
+                event = json.loads(msg.value().decode())
+                log.info("CV event received: %s / %s", event.get("event_type"), event.get("person_name",""))
+                send_mail(event)
+            except Exception as e:
+                log.error("Processing error: %s", e)
+
+    if __name__ == "__main__":
+        log.info("Starting CV Processor — OVMS poller, Labels poller, Kafka consumer")
+        threading.Thread(target=poll_ovms, daemon=True, name="ovms-poller").start()
+        threading.Thread(target=poll_labels, daemon=True, name="labels-poller").start()
+        consume_and_notify()
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: camel-cv-processor
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  labels:
+    app: camel-cv-processor
+    app.kubernetes.io/part-of: neuroface-cv
+    app.openshift.io/runtime: camel
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: camel-cv-processor
+  template:
+    metadata:
+      labels:
+        app: camel-cv-processor
+    spec:
+      containers:
+        - name: camel
+          image: registry.access.redhat.com/ubi9/python-312:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              pip install --quiet requests confluent-kafka &&
+              python /config/cv-processor.py
+          env:
+            - name: KAFKA_BOOTSTRAP
+              value: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093
+            - name: KAFKA_USER
+              value: cdc-user
+            - name: KAFKA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cdc-user
+                  key: password
+            - name: KAFKA_CA_CERT
+              value: /etc/kafka-certs/ca.crt
+            - name: OVMS_URL
+              value: http://neuroface-ovms.neuroface.svc:8000
+            - name: NEUROFACE_URL
+              value: http://neuroface-backend.neuroface.svc:8080
+            - name: MAILPIT_URL
+              value: http://n8n-mailpit.openshift-lightspeed.svc:8025
+          volumeMounts:
+            - name: processor-script
+              mountPath: /config
+            - name: kafka-ca-cert
+              mountPath: /etc/kafka-certs
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: processor-script
+          configMap:
+            name: cv-processor-script
+        - name: kafka-ca-cert
+          secret:
+            secretName: cdc-cluster-cluster-ca-cert
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: neuroface-workbench
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  labels:
+    opendatahub.io/dashboard: "true"
+spec:
+  {{- if .Values.global.storageClass }}
+  storageClassName: {{ .Values.global.storageClass }}
+  {{- end }}
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: kubeflow.org/v1
+kind: Notebook
+metadata:
+  name: neuroface-workbench
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    notebooks.opendatahub.io/inject-oauth: "true"
+    opendatahub.io/image-display-name: "Standard Data Science"
+    openshift.io/display-name: "NeuroFace CV Pipeline"
+    openshift.io/description: "Workbench for testing OpenVINO face detection, NeuroFace labels API, and Kafka CV events"
+    notebooks.opendatahub.io/oauth-logout-url: "https://data-science-gateway.{{ .Values.clusterDomain }}/projects/neuroface?notebookLogout=neuroface-workbench"
+  labels:
+    app: neuroface-workbench
+    opendatahub.io/dashboard: "true"
+    opendatahub.io/odh-managed: "true"
+spec:
+  template:
+    spec:
+      affinity: {}
+      {{- if .Values.workbench.seedNotebooks }}
+      initContainers:
+        - name: seed-notebooks
+          image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+          command: ["sh", "-c"]
+          args:
+            - |
+              DEST=/opt/app-root/src
+              BASE_URL="{{ .Values.workbench.notebooksRepoUrl }}"
+              if [ -f "$DEST/.notebooks-seeded" ]; then
+                echo "Notebooks already seeded, skipping"
+                exit 0
+              fi
+              echo "Seeding notebooks from $BASE_URL ..."
+              curl -sL "$BASE_URL/neuroface-cv-pipeline.ipynb" -o "$DEST/neuroface-cv-pipeline.ipynb"
+              {{- if .Values.ppe.enabled }}
+              curl -sL "$BASE_URL/ppe-yolo-detection.ipynb" -o "$DEST/ppe-yolo-detection.ipynb"
+              {{- end }}
+              touch "$DEST/.notebooks-seeded"
+              ls -lh "$DEST/"
+              echo "Notebook seeding complete"
+          volumeMounts:
+            - mountPath: /opt/app-root/src
+              name: neuroface-workbench
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+      {{- end }}
+      containers:
+        - name: neuroface-workbench
+          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/jupyter-datascience-cpu-py312-ubi9:2025.1
+          env:
+            - name: NOTEBOOK_ARGS
+              value: |-
+                --ServerApp.port=8888
+                --ServerApp.token=''
+                --ServerApp.password=''
+                --ServerApp.base_url=/notebook/neuroface/neuroface-workbench
+                --ServerApp.quit_button=False
+            - name: JUPYTER_IMAGE
+              value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/jupyter-datascience-cpu-py312-ubi9:2025.1
+          ports:
+            - containerPort: 8888
+              name: notebook-port
+              protocol: TCP
+          resources:
+            requests:
+              cpu: "1"
+              memory: 4Gi
+            limits:
+              cpu: "2"
+              memory: 8Gi
+          volumeMounts:
+            - mountPath: /opt/app-root/src
+              name: neuroface-workbench
+          workingDir: /opt/app-root/src
+          livenessProbe:
+            httpGet:
+              path: /notebook/neuroface/neuroface-workbench/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 40
+            timeoutSeconds: 1
+          readinessProbe:
+            httpGet:
+              path: /notebook/neuroface/neuroface-workbench/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 40
+            timeoutSeconds: 1
+      volumes:
+        - name: neuroface-workbench
+          persistentVolumeClaim:
+            claimName: neuroface-workbench
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: granite-model-pvc
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if .Values.global.storageClass }}
+  storageClassName: {{ .Values.global.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: download-granite-model
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/hook: Skip
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: downloader
+          image: registry.access.redhat.com/ubi9/ubi:latest
+          command:
+            - bash
+            - -c
+            - |
+              MODEL_DIR=/models
+              MODEL_FILE="$MODEL_DIR/granite-3.1-2b-instruct-Q4_K_M.gguf"
+              if [ -f "$MODEL_FILE" ]; then
+                echo "Model already exists, skipping download"
+                ls -lh "$MODEL_FILE"
+                exit 0
+              fi
+              echo "Downloading Granite 3.1 2B Instruct GGUF (~1.6 GB)..."
+              curl -L --progress-bar -o "$MODEL_FILE" \
+                "https://huggingface.co/bartowski/granite-3.1-2b-instruct-GGUF/resolve/main/granite-3.1-2b-instruct-Q4_K_M.gguf"
+              ls -lh "$MODEL_FILE"
+              echo "Download complete"
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 1Gi
+          volumeMounts:
+            - name: model-storage
+              mountPath: /models
+      volumes:
+        - name: model-storage
+          persistentVolumeClaim:
+            claimName: granite-model-pvc
+---
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  name: llama-cpp-runtime
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    openshift.io/display-name: "llama.cpp (OpenAI-compatible)"
+    opendatahub.io/apiProtocol: REST
+    opendatahub.io/template-display-name: "llama.cpp Runtime"
+  labels:
+    opendatahub.io/dashboard: "true"
+spec:
+  annotations:
+    prometheus.io/port: "8080"
+    prometheus.io/path: /metrics
+  multiModel: false
+  supportedModelFormats:
+    - name: gguf
+      version: "1"
+      autoSelect: true
+  containers:
+    - name: kserve-container
+      image: ghcr.io/ggml-org/llama.cpp:server
+      ports:
+        - containerPort: 8080
+          protocol: TCP
+      args:
+        - "--model"
+        - "/mnt/models/granite-3.1-2b-instruct-Q4_K_M.gguf"
+        - "--host"
+        - "0.0.0.0"
+        - "--port"
+        - "8080"
+        - "--ctx-size"
+        - "8192"
+        - "--threads"
+        - "8"
+        - "--parallel"
+        - "1"
+      resources:
+        requests:
+          cpu: "4"
+          memory: 4Gi
+        limits:
+          cpu: "8"
+          memory: 8Gi
+      readinessProbe:
+        httpGet:
+          path: /health
+          port: 8080
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        failureThreshold: 12
+      livenessProbe:
+        httpGet:
+          path: /health
+          port: 8080
+        initialDelaySeconds: 60
+        periodSeconds: 30
+---
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: granite-llm
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    serving.kserve.io/deploymentMode: RawDeployment
+    openshift.io/display-name: "Granite 3.1 2B Instruct"
+    opendatahub.io/apiProtocol: REST
+    opendatahub.io/model-type: generative
+  labels:
+    opendatahub.io/dashboard: "true"
+    opendatahub.io/genai-asset: "true"
+spec:
+  predictor:
+    model:
+      modelFormat:
+        name: gguf
+      runtime: llama-cpp-runtime
+      storageUri: "pvc://granite-model-pvc/"
+    minReplicas: 1
+    maxReplicas: 1
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llama-stack-config
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  labels:
+    opendatahub.io/dashboard: "true"
+data:
+  config.yaml: |
+    version: "2"
+    image_name: rh
+    apis:
+    - agents
+    - datasetio
+    - files
+    - inference
+    - safety
+    - scoring
+    - tool_runtime
+    - vector_io
+    providers:
+      inference:
+      - provider_id: sentence-transformers
+        provider_type: inline::sentence-transformers
+        config: {}
+      - provider_id: vllm-inference-1
+        provider_type: remote::vllm
+        config:
+          api_token: ${env.VLLM_API_TOKEN_1:=fake}
+          base_url: http://granite-llm-predictor.neuroface.svc.cluster.local:8080/v1
+          max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
+          tls_verify: ${env.VLLM_TLS_VERIFY:=true}
+      vector_io:
+      - provider_id: milvus
+        provider_type: inline::milvus
+        config:
+          db_path: /opt/app-root/src/.llama/distributions/rh/milvus.db
+          persistence:
+            backend: kv_default
+            namespace: vector_io::milvus
+      agents:
+      - provider_id: meta-reference
+        provider_type: inline::meta-reference
+        config:
+          persistence:
+            agent_state:
+              backend: kv_default
+              namespace: agents
+            responses:
+              backend: sql_default
+              table_name: responses
+      eval: []
+      files:
+      - provider_id: meta-reference-files
+        provider_type: inline::localfs
+        config:
+          metadata_store:
+            backend: sql_default
+            table_name: files_metadata
+          storage_dir: /opt/app-root/src/.llama/distributions/rh/files
+      datasetio:
+      - provider_id: huggingface
+        provider_type: remote::huggingface
+        config:
+          kvstore:
+            backend: kv_default
+            namespace: datasetio::huggingface
+      scoring:
+      - provider_id: basic
+        provider_type: inline::basic
+        config: {}
+      - provider_id: llm-as-judge
+        provider_type: inline::llm-as-judge
+        config: {}
+      tool_runtime:
+      - provider_id: rag-runtime
+        provider_type: inline::rag-runtime
+        config: {}
+      - provider_id: model-context-protocol
+        provider_type: remote::model-context-protocol
+        config: {}
+      safety: []
+    metadata_store:
+      type: sqlite
+      db_path: /opt/app-root/src/.llama/distributions/rh/inference_store.db
+    storage:
+      backends:
+        kv_default:
+          db_path: /opt/app-root/src/.llama/distributions/rh/kvstore.db
+          type: kv_sqlite
+        sql_default:
+          db_path: /opt/app-root/src/.llama/distributions/rh/sql_store.db
+          type: sql_sqlite
+      stores:
+        conversations:
+          backend: sql_default
+          table_name: openai_conversations
+        inference:
+          backend: sql_default
+          table_name: inference_store
+        metadata:
+          backend: kv_default
+          namespace: registry
+    vector_stores:
+      default_provider_id: milvus
+      default_embedding_model:
+        provider_id: sentence-transformers
+        model_id: ibm-granite/granite-embedding-125m-english
+    registered_resources:
+      models:
+      - provider_id: sentence-transformers
+        model_id: sentence-transformers/ibm-granite/granite-embedding-125m-english
+        provider_model_id: ibm-granite/granite-embedding-125m-english
+        model_type: embedding
+        metadata:
+          embedding_dimension: 768
+      - provider_id: vllm-inference-1
+        model_id: granite-llm
+        model_type: llm
+        metadata:
+          display_name: Granite 3.1 2B Instruct
+      shields: []
+      vector_dbs: []
+      datasets: []
+      scoring_fns: []
+      benchmarks: []
+      tool_groups:
+      - toolgroup_id: builtin::rag
+        provider_id: rag-runtime
+      - toolgroup_id: mcp::kafka
+        provider_id: model-context-protocol
+        mcp_endpoint:
+          uri: http://kafka-mcp-server.kafka-cdc.svc.cluster.local:8080/mcp
+    server:
+      port: 8321
+---
+apiVersion: llamastack.io/v1alpha1
+kind: LlamaStackDistribution
+metadata:
+  name: lsd-genai-playground
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    openshift.io/display-name: lsd-genai-playground
+  labels:
+    opendatahub.io/dashboard: "true"
+spec:
+  replicas: 1
+  server:
+    containerSpec:
+      command:
+      - /bin/sh
+      - -c
+      - llama stack run /etc/llama-stack/config.yaml
+      env:
+      - name: VLLM_TLS_VERIFY
+        value: "false"
+      - name: MILVUS_DB_PATH
+        value: ~/.llama/milvus.db
+      - name: FMS_ORCHESTRATOR_URL
+        value: http://localhost
+      - name: VLLM_MAX_TOKENS
+        value: "4096"
+      - name: VLLM_API_TOKEN_1
+        value: fake
+      - name: LLAMA_STACK_CONFIG_DIR
+        value: /opt/app-root/src/.llama/distributions/rh/
+      name: llama-stack
+      port: 8321
+      resources:
+        limits:
+          cpu: "2"
+          memory: 12Gi
+        requests:
+          cpu: 250m
+          memory: 500Mi
+    distribution:
+      name: rh-dev
+    userConfig:
+      configMapName: llama-stack-config
+{{- if .Values.ppe.enabled }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kafka-secret-reader
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["cdc-cluster-cluster-ca-cert", "cdc-user"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: neuroface-read-kafka-secrets
+  namespace: kafka-cdc
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kafka-secret-reader
+subjects:
+  - kind: ServiceAccount
+    name: kafka-secret-sync
+    namespace: neuroface
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kafka-secret-sync
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kafka-secret-writer
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kafka-secret-sync-writer
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kafka-secret-writer
+subjects:
+  - kind: ServiceAccount
+    name: kafka-secret-sync
+    namespace: neuroface
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-secret-sync-{{ .Release.Revision | default "1" }}
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 4
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      serviceAccountName: kafka-secret-sync
+      restartPolicy: OnFailure
+      containers:
+        - name: sync
+          image: registry.redhat.io/openshift4/ose-cli:latest
+          command: ["bash", "-c"]
+          args:
+            - |
+              MAX_WAIT=300
+              INTERVAL=10
+              ELAPSED=0
+              echo "Waiting for Kafka secrets in kafka-cdc namespace..."
+              while [ $ELAPSED -lt $MAX_WAIT ]; do
+                if oc get secret cdc-cluster-cluster-ca-cert -n kafka-cdc >/dev/null 2>&1 && \
+                   oc get secret cdc-user -n kafka-cdc >/dev/null 2>&1; then
+                  echo "Kafka secrets found after ${ELAPSED}s"
+                  break
+                fi
+                echo "Secrets not ready yet (${ELAPSED}/${MAX_WAIT}s)... waiting"
+                sleep $INTERVAL
+                ELAPSED=$((ELAPSED + INTERVAL))
+              done
+              if [ $ELAPSED -ge $MAX_WAIT ]; then
+                echo "ERROR: Timed out waiting for Kafka secrets"
+                exit 1
+              fi
+              for SECRET_NAME in cdc-cluster-cluster-ca-cert cdc-user; do
+                if oc get secret "$SECRET_NAME" -n neuroface >/dev/null 2>&1; then
+                  echo "Secret $SECRET_NAME already exists in neuroface"
+                  continue
+                fi
+                echo "Copying $SECRET_NAME from kafka-cdc to neuroface..."
+                oc get secret "$SECRET_NAME" -n kafka-cdc -o json \
+                  | python3 -c "import sys,json; s=json.load(sys.stdin); s['metadata']={'name':s['metadata']['name'],'namespace':'neuroface','labels':{'app.kubernetes.io/managed-by':'kafka-secret-sync'}}; json.dump(s,sys.stdout)" \
+                  | oc apply -f - -n neuroface
+              done
+              echo "Secret sync complete"
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: {{ .Values.ppe.kafka.topic }}
+  namespace: kafka-cdc
+  labels:
+    strimzi.io/cluster: cdc-cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  partitions: {{ .Values.ppe.kafka.partitions }}
+  replicas: {{ .Values.ppe.kafka.replicas }}
+  config:
+    retention.ms: {{ .Values.ppe.kafka.retentionMs }}
+    cleanup.policy: delete
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: {{ .Values.ppe.kafka.dlqTopic }}
+  namespace: kafka-cdc
+  labels:
+    strimzi.io/cluster: cdc-cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  partitions: {{ .Values.ppe.kafka.partitions }}
+  replicas: {{ .Values.ppe.kafka.replicas }}
+  config:
+    retention.ms: "2592000000"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: yolo-serving-script
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+data:
+  serve.py: |
+    import os, io, json, logging
+    import numpy as np
+    import cv2
+    from http.server import HTTPServer, BaseHTTPRequestHandler
+    from ultralytics import YOLO
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [yolo-serve] %(message)s")
+    log = logging.getLogger("yolo-serve")
+
+    MODEL_PATH = os.environ.get("YOLO_MODEL_PATH", "/models/yolov8n.pt")
+    PORT = int(os.environ.get("PORT", "8000"))
+
+    log.info("Loading YOLO model from %s ...", MODEL_PATH)
+    model = YOLO(MODEL_PATH)
+    log.info("Model loaded: %s — %d classes", MODEL_PATH, len(model.names))
+
+    def _decode_image(raw_bytes):
+        arr = np.frombuffer(raw_bytes, dtype=np.uint8)
+        img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        if img is None:
+            raise ValueError("Failed to decode image bytes")
+        return img
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == "/health":
+                self._json_response(200, {"status": "healthy", "model": MODEL_PATH, "classes": len(model.names)})
+            elif self.path == "/v1/models":
+                self._json_response(200, {"model": os.path.basename(MODEL_PATH), "classes": model.names})
+            else:
+                self._json_response(404, {"error": "not found"})
+
+        def do_POST(self):
+            if self.path != "/v1/predict":
+                self._json_response(404, {"error": "not found"})
+                return
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length)
+            content_type = self.headers.get("Content-Type", "")
+            try:
+                if "application/json" in content_type:
+                    data = json.loads(body)
+                    image_url = data.get("image_url", "")
+                    conf = float(data.get("confidence", 0.5))
+                    results = model.predict(source=image_url, conf=conf, verbose=False)
+                elif "image/" in content_type or "multipart" in content_type or "octet-stream" in content_type:
+                    conf = float(self.headers.get("X-Confidence", "0.5"))
+                    img = _decode_image(body)
+                    results = model.predict(source=img, conf=conf, verbose=False)
+                else:
+                    self._json_response(400, {"error": "unsupported content type"})
+                    return
+                detections = []
+                for r in results:
+                    for box in r.boxes:
+                        cls_id = int(box.cls[0])
+                        detections.append({
+                            "class_id": cls_id,
+                            "class_name": model.names[cls_id],
+                            "confidence": round(float(box.conf[0]), 4),
+                            "bbox": {
+                                "x1": round(float(box.xyxy[0][0]), 1),
+                                "y1": round(float(box.xyxy[0][1]), 1),
+                                "x2": round(float(box.xyxy[0][2]), 1),
+                                "y2": round(float(box.xyxy[0][3]), 1),
+                            }
+                        })
+                self._json_response(200, {
+                    "model": os.path.basename(MODEL_PATH),
+                    "detections": detections,
+                    "count": len(detections)
+                })
+            except Exception as e:
+                log.error("Inference error: %s", e)
+                self._json_response(500, {"error": str(e)})
+
+        def _json_response(self, code, obj):
+            body = json.dumps(obj).encode()
+            self.send_response(code)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, fmt, *args):
+            log.info(fmt, *args)
+
+    if __name__ == "__main__":
+        log.info("YOLO serving on port %d", PORT)
+        HTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yolo-ppe-serving
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+  labels:
+    app: yolo-ppe-serving
+    app.kubernetes.io/part-of: neuroface-cv
+    app.openshift.io/runtime: python
+spec:
+  replicas: {{ .Values.ppe.yolo.replicas }}
+  selector:
+    matchLabels:
+      app: yolo-ppe-serving
+  template:
+    metadata:
+      labels:
+        app: yolo-ppe-serving
+    spec:
+      initContainers:
+        - name: download-model
+          image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+          command: ["sh", "-c"]
+          args:
+            - |
+              MODEL_DIR=/models
+              MODEL_FILE="$MODEL_DIR/{{ .Values.ppe.yolo.modelName }}.pt"
+              if [ -f "$MODEL_FILE" ]; then
+                echo "Model already downloaded"
+                ls -lh "$MODEL_FILE"
+                exit 0
+              fi
+              mkdir -p "$MODEL_DIR"
+              echo "Downloading {{ .Values.ppe.yolo.modelName }} ..."
+              curl -sL "{{ .Values.ppe.yolo.modelUrl }}" -o "$MODEL_FILE"
+              ls -lh "$MODEL_FILE"
+              echo "Download complete"
+          volumeMounts:
+            - name: model-store
+              mountPath: /models
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      containers:
+        - name: yolo
+          image: {{ .Values.ppe.yolo.image }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              pip install --quiet ultralytics &&
+              pip install --quiet --force-reinstall --no-deps opencv-python-headless &&
+              python /config/serve.py
+          env:
+            - name: YOLO_MODEL_PATH
+              value: "/models/{{ .Values.ppe.yolo.modelName }}.pt"
+            - name: PORT
+              value: "{{ .Values.ppe.yolo.port }}"
+          ports:
+            - containerPort: {{ .Values.ppe.yolo.port }}
+              protocol: TCP
+              name: http
+          volumeMounts:
+            - name: model-store
+              mountPath: /models
+            - name: serving-script
+              mountPath: /config
+          resources:
+            requests:
+              cpu: {{ .Values.ppe.yolo.resources.requests.cpu }}
+              memory: {{ .Values.ppe.yolo.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.ppe.yolo.resources.limits.cpu | quote }}
+              memory: {{ .Values.ppe.yolo.resources.limits.memory }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.ppe.yolo.port }}
+            initialDelaySeconds: 120
+            periodSeconds: 15
+            failureThreshold: 20
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.ppe.yolo.port }}
+            initialDelaySeconds: 180
+            periodSeconds: 30
+            failureThreshold: 5
+      volumes:
+        - name: model-store
+          emptyDir: {}
+        - name: serving-script
+          configMap:
+            name: yolo-serving-script
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: yolo-ppe-serving
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+  labels:
+    app: yolo-ppe-serving
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.ppe.yolo.port }}
+      targetPort: {{ .Values.ppe.yolo.port }}
+      protocol: TCP
+      name: http
+  selector:
+    app: yolo-ppe-serving
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: yolo-ppe-serving
+  namespace: neuroface
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+  labels:
+    app: yolo-ppe-serving
+spec:
+  to:
+    kind: Service
+    name: yolo-ppe-serving
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+{{- end }}

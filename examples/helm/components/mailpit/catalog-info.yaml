@@ -1,0 +1,191 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: mailpit
+  description: Mailpit is an email & SMTP testing tool with API for all platforms. Used by Developer Hub software templates to send email notifications on scaffolding events.
+  annotations:
+    backstage.io/kubernetes-id: mailpit
+    backstage.io/kubernetes-namespace: openshift-lightspeed
+    backstage.io/kubernetes-label-selector: app=n8n-mailpit
+    backstage.io/techdocs-ref: dir:.
+  links:
+    - url: https://n8n-mailpit-openshift-lightspeed.apps.CLUSTER_DOMAIN_PLACEHOLDER/
+      title: Mailpit Web UI
+      icon: email
+      type: website
+    - url: https://n8n-mailpit-openshift-lightspeed.apps.CLUSTER_DOMAIN_PLACEHOLDER/api/v1/messages
+      title: Mailpit API
+      icon: api
+      type: api
+  tags:
+    - email
+    - smtp
+    - testing
+    - notifications
+    - platform
+spec:
+  type: service
+  lifecycle: production
+  owner: group:default/platformengineer
+  system: platform-notifications
+  providesApis:
+    - mailpit-api
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: platform-notifications
+  description: Platform notification services including email delivery and testing
+  tags:
+    - notifications
+    - email
+    - platform
+spec:
+  owner: group:default/platformengineer
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: mailpit-api
+  description: Mailpit REST API for email testing — send, search, list, and manage test emails
+  tags:
+    - email
+    - rest
+    - testing
+spec:
+  type: openapi
+  lifecycle: production
+  owner: group:default/platformengineer
+  system: platform-notifications
+  definition: |
+    openapi: 3.0.0
+    info:
+      title: Mailpit API
+      version: "1.0"
+      description: REST API for Mailpit email testing tool. Provides endpoints to send test emails, list messages, search, and manage the inbox.
+    servers:
+      - url: https://n8n-mailpit-openshift-lightspeed.apps.CLUSTER_DOMAIN_PLACEHOLDER
+        description: Mailpit instance on OpenShift
+    paths:
+      /api/v1/messages:
+        get:
+          summary: List messages
+          description: Returns a paginated list of all received emails
+          parameters:
+            - name: start
+              in: query
+              schema:
+                type: integer
+              description: Start offset
+            - name: limit
+              in: query
+              schema:
+                type: integer
+              description: Maximum number of results
+          responses:
+            '200':
+              description: List of messages
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      messages:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            ID:
+                              type: string
+                            Subject:
+                              type: string
+                            From:
+                              type: object
+                            To:
+                              type: array
+                            Created:
+                              type: string
+      /api/v1/send:
+        post:
+          summary: Send a test email
+          description: Sends an email through Mailpit (for testing purposes)
+          requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  type: object
+                  required:
+                    - From
+                    - To
+                    - Subject
+                  properties:
+                    From:
+                      type: object
+                      properties:
+                        Email:
+                          type: string
+                        Name:
+                          type: string
+                    To:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          Email:
+                            type: string
+                          Name:
+                            type: string
+                    Subject:
+                      type: string
+                    Text:
+                      type: string
+                    HTML:
+                      type: string
+          responses:
+            '200':
+              description: Email sent successfully
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      ID:
+                        type: string
+      /api/v1/messages/{id}:
+        get:
+          summary: Get message by ID
+          parameters:
+            - name: id
+              in: path
+              required: true
+              schema:
+                type: string
+          responses:
+            '200':
+              description: Full message details
+        delete:
+          summary: Delete a message
+          parameters:
+            - name: id
+              in: path
+              required: true
+              schema:
+                type: string
+          responses:
+            '200':
+              description: Message deleted
+      /api/v1/search:
+        get:
+          summary: Search messages
+          parameters:
+            - name: query
+              in: query
+              required: true
+              schema:
+                type: string
+          responses:
+            '200':
+              description: Search results

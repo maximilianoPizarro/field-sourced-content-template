@@ -1,0 +1,5 @@
+apiVersion: v2
+name: openshift-lightspeed
+description: OpenShift Lightspeed OLSConfig and LLM credentials
+version: 0.1.0
+type: application

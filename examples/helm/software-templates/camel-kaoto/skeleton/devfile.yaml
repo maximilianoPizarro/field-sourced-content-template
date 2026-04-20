@@ -3,7 +3,7 @@ metadata:
   name: ${{ values.name }}
   version: 1.0.0
   displayName: Camel CDC Route
-  description: Apache Camel CDC route with Kaoto visual designer
+  description: Apache Camel CDC route with Kaoto visual designer + Continue AI (Granite via OpenShift AI)
   language: yaml
   projectType: camel
   tags:
@@ -11,6 +11,8 @@ metadata:
     - Kaoto
     - CDC
     - Kafka
+    - AI
+    - Continue
 attributes:
   .vscode/extensions.json: |
     {
@@ -22,19 +24,22 @@ attributes:
         "redhat.java",
         "redhat.vscode-quarkus",
         "jbangdev.jbang-vscode",
-        "redhat.vscode-openshift-connector"
+        "redhat.vscode-openshift-connector",
+        "Continue.continue"
       ]
     }
+projects:
+  - name: ${{ values.name }}
+    git:
+      remotes:
+        origin: https://gitea-gitea.${{ values.clusterDomain }}/ws-${{ values.owner }}/${{ values.name }}.git
 components:
   - name: tools
     container:
-      image: registry.redhat.io/devspaces/udi-rhel8:latest
+      image: registry.redhat.io/devspaces/udi-rhel9:latest
       memoryLimit: 2Gi
       cpuLimit: "1"
       mountSources: true
-      env:
-        - name: DEFAULT_EXTENSIONS
-          value: "/home/user/.vsix-cache/kaoto.vsix;/home/user/.vsix-cache/camel.vsix"
       volumeMounts:
         - name: m2
           path: /home/user/.m2
@@ -42,28 +47,36 @@ components:
     volume:
       size: 1Gi
 commands:
-  - id: install-vsix-extensions
+  - id: install-extensions
     exec:
       component: tools
       commandLine: |
-        mkdir -p /home/user/.vsix-cache
-        [ -f /home/user/.vsix-cache/kaoto.vsix ] || \
-          curl -sL "https://redhat.gallerycdn.vsassets.io/extensions/redhat/vscode-kaoto/2.10.2/1775215869920/Microsoft.VisualStudio.Services.VSIXPackage" -o /home/user/.vsix-cache/kaoto.vsix
-        [ -f /home/user/.vsix-cache/camel.vsix ] || \
-          curl -sL "https://redhat.gallerycdn.vsassets.io/extensions/redhat/vscode-apache-camel/1.14.0/1758543062217/Microsoft.VisualStudio.Services.VSIXPackage" -o /home/user/.vsix-cache/camel.vsix
-        [ -f /home/user/.vsix-cache/jbang.vsix ] || \
-          curl -sL "https://jbangdev.gallerycdn.vsassets.io/extensions/jbangdev/jbang-vscode/0.12.0/1734960116430/Microsoft.VisualStudio.Services.VSIXPackage" -o /home/user/.vsix-cache/jbang.vsix
-        which jbang >/dev/null 2>&1 || curl -Ls https://sh.jbang.dev | bash -s - app setup
+        export LD_LIBRARY_PATH=/checode/checode-linux-libc/ubi9/ld_libs/openssl:/checode/checode-linux-libc/ubi9/ld_libs/core:/usr/lib64
+        CHE_CODE=/checode/checode-linux-libc/ubi9/bin/che-code
+        EXT_DIR=/checode/checode-linux-libc/ubi9/extensions
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-kaoto --force
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-apache-camel --force
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension Continue.continue --force
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-yaml --force
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.java --force
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-quarkus --force
+  - id: setup-project
+    exec:
+      component: tools
+      commandLine: |
+        chmod +x /projects/${{ values.name }}/mvnw
+        mkdir -p /home/user/.continue && cp /projects/${{ values.name }}/continue-config.json /home/user/.continue/config.json
   - id: build
     exec:
       component: tools
-      commandLine: "mvn package -DskipTests"
+      commandLine: "./mvnw package -DskipTests"
       workingDir: ${PROJECT_SOURCE}
   - id: run
     exec:
       component: tools
-      commandLine: "mvn quarkus:dev"
+      commandLine: "./mvnw quarkus:dev"
       workingDir: ${PROJECT_SOURCE}
 events:
   postStart:
-    - install-vsix-extensions
+    - install-extensions
+    - setup-project

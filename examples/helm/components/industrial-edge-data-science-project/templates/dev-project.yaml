@@ -85,7 +85,7 @@ metadata:
     notebooks.opendatahub.io/inject-oauth: 'true'
     notebooks.opendatahub.io/last-size-selection: Small
     notebooks.opendatahub.io/oauth-logout-url: >-
-      https://rhods-dashboard-redhat-ods-applications.{{ .Values.clusterDomain }}/projects/ml-development?notebookLogout=jupyterlab
+      https://data-science-gateway.{{ .Values.clusterDomain }}/projects/ml-development?notebookLogout=jupyterlab
     opendatahub.io/username: 'user'
     openshift.io/description: ''
     openshift.io/display-name: JupyterLab
@@ -109,6 +109,34 @@ spec:
                     values:
                       - 'true'
               weight: 1
+      initContainers:
+        - name: seed-notebooks
+          image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+          command: ["sh", "-c"]
+          args:
+            - |
+              DEST=/opt/app-root/src
+              if [ -f "$DEST/.notebooks-seeded" ]; then
+                echo "Notebooks already seeded, skipping"
+                exit 0
+              fi
+              BASE_URL="https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/one/examples/helm/components/industrial-edge-data-science-project/notebooks"
+              echo "Seeding Industrial Edge notebooks..."
+              curl -sL "$BASE_URL/1_anomaly_detection_training.ipynb" -o "$DEST/1_anomaly_detection_training.ipynb"
+              curl -sL "$BASE_URL/2_realtime_inference_test.ipynb" -o "$DEST/2_realtime_inference_test.ipynb"
+              touch "$DEST/.notebooks-seeded"
+              ls -lh "$DEST/"
+              echo "Notebook seeding complete"
+          volumeMounts:
+            - mountPath: /opt/app-root/src
+              name: jupyterlab
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
       containers:
         - resources:
             limits:
@@ -151,7 +179,7 @@ spec:
                                   --ServerApp.password=''
                                   --ServerApp.base_url=/notebook/ml-development/jupyterlab
                                   --ServerApp.quit_button=False
-                                  --ServerApp.tornado_settings={"user":"user","hub_host":"https://rhods-dashboard-redhat-ods-applications.{{ .Values.clusterDomain }}","hub_prefix":"/projects/ml-development"}
+                                  --ServerApp.tornado_settings={"user":"user","hub_host":"https://data-science-gateway.{{ .Values.clusterDomain }}","hub_prefix":"/projects/ml-development"}
             - name: JUPYTER_IMAGE
               value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/jupyter-datascience-cpu-py312-ubi9:2025.1
             - name: SSL_CERT_FILE
@@ -250,7 +278,7 @@ spec:
             - >-
               --openshift-sar={"verb":"get","resource":"notebooks","resourceAPIGroup":"kubeflow.org","resourceName":"jupyterlab","namespace":"$(NAMESPACE)"}
             - >-
-              --logout-url=https://rhods-dashboard-redhat-ods-applications.{{ .Values.clusterDomain }}/projects/ml-development?notebookLogout=jupyterlab
+              --logout-url=https://data-science-gateway.{{ .Values.clusterDomain }}/projects/ml-development?notebookLogout=jupyterlab
       enableServiceLinks: false
       serviceAccountName: jupyterlab
       volumes:
@@ -323,7 +351,7 @@ metadata:
     notebooks.opendatahub.io/inject-oauth: 'true'
     notebooks.opendatahub.io/last-size-selection: Small
     notebooks.opendatahub.io/oauth-logout-url: >-
-      https://rhods-dashboard-redhat-ods-applications.{{ .Values.clusterDomain }}/projects/ml-development?notebookLogout=s3-browser
+      https://data-science-gateway.{{ .Values.clusterDomain }}/projects/ml-development?notebookLogout=s3-browser
     opendatahub.io/username: 'user'
     openshift.io/description: ''
     openshift.io/display-name: 'S3 Browser'
@@ -403,7 +431,7 @@ spec:
                                   --ServerApp.password=''
                                   --ServerApp.base_url=/notebook/ml-development/s3-browser
                                   --ServerApp.quit_button=False
-                                  --ServerApp.tornado_settings={"user":"user","hub_host":"https://rhods-dashboard-redhat-ods-applications.{{ .Values.clusterDomain }}","hub_prefix":"/projects/ml-development"}
+                                  --ServerApp.tornado_settings={"user":"user","hub_host":"https://data-science-gateway.{{ .Values.clusterDomain }}","hub_prefix":"/projects/ml-development"}
             - name: JUPYTER_IMAGE
               value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/odh-tec:v0.1
             - name: SSL_CERT_FILE
@@ -505,7 +533,7 @@ spec:
             - >-
               --openshift-sar={"verb":"get","resource":"notebooks","resourceAPIGroup":"kubeflow.org","resourceName":"s3-browser","namespace":"$(NAMESPACE)"}
             - >-
-              --logout-url=https://rhods-dashboard-redhat-ods-applications.{{ .Values.clusterDomain }}/projects/ml-development?notebookLogout=s3-browser
+              --logout-url=https://data-science-gateway.{{ .Values.clusterDomain }}/projects/ml-development?notebookLogout=s3-browser
       enableServiceLinks: false
       serviceAccountName: s3-browser
       volumes:

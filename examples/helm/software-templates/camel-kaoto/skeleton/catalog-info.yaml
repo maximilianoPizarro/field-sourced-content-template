@@ -8,14 +8,10 @@ metadata:
     backstage.io/kubernetes-namespace: ${{ values.namespace }}
     backstage.io/techdocs-ref: dir:.
     kafka.apache.org/consumer-groups: cdc-cluster/camel-k-enricher,cdc-cluster/connect-mailpit-http-sink
-    janus-idp.io/tekton: ${{ values.uniqueName }}
-    argocd/app-name: ${{ values.uniqueName }}
-    argocd/app-namespace: openshift-gitops
-    tektonci/build-namespace: ${{ values.namespace }}
     che.eclipse.org/che-server: https://devspaces.${{ values.clusterDomain }}
-    devspaces.io/factory: "https://devspaces.${{ values.clusterDomain }}/#https://gitea-gitea.${{ values.clusterDomain }}/ws-${{ values.owner }}/${{ values.name }}"
+    devspaces.io/factory: "https://devspaces.${{ values.clusterDomain }}/#https://gitea-gitea.${{ values.clusterDomain }}/ws-${{ values.owner }}/${{ values.name }}/raw/branch/main/devfile.yaml"
   links:
-    - url: "https://devspaces.${{ values.clusterDomain }}/#https://gitea-gitea.${{ values.clusterDomain }}/ws-${{ values.owner }}/${{ values.name }}"
+    - url: "https://devspaces.${{ values.clusterDomain }}/#https://gitea-gitea.${{ values.clusterDomain }}/ws-${{ values.owner }}/${{ values.name }}/raw/branch/main/devfile.yaml"
       title: Open in DevSpaces
       icon: catalog
       type: ide
@@ -28,4 +24,4 @@ spec:
   type: service
   lifecycle: experimental
   owner: user:${{ values.owner }}
-  system: ${{ values.owner }}-neuralbank
+  system: ${{ values.owner }}-apps

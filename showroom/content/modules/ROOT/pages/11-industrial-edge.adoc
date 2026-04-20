@@ -181,3 +181,13 @@ All components run on this single cluster across separate namespaces:
 |===
 
 Based on the https://validatedpatterns.io/patterns/industrial-edge/[Red Hat Validated Patterns^] Industrial Edge pattern, adapted for single-cluster deployment.
+
+== Scale to N: self-service instances
+
+The architecture above is deployed as a *fixed* set of namespaces. But what if you need 5 factories? Or 20 dev environments?
+
+The **Industrial Edge Software Template** in Developer Hub turns this validated architecture into a *self-service API*: any user can spin up a fully isolated IoT stack (sensors, MQTT, Kafka, Camel K, Dashboard) with a single form -- and tear it down just as easily.
+
+xref:21-scale-to-n.adoc[**→ Scale to N: Self-Service Edge Instances**]
+
+Each instance gets its own namespace, Kafka cluster, ArgoCD Application, and Backstage catalog registration. No manual intervention required.

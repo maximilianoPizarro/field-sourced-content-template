@@ -1,0 +1,42 @@
+schemaVersion: 2.2.2
+metadata:
+  name: ${{ values.uniqueName }}
+  displayName: "Kafka External Consumer — ${{ values.name }}"
+  description: "Quarkus Kafka consumer for CDC cluster"
+  language: Java
+  projectType: Quarkus
+components:
+  - name: tools
+    container:
+      image: registry.redhat.io/devspaces/udi-rhel8:latest
+      memoryLimit: 2Gi
+      cpuLimit: "1"
+      endpoints:
+        - name: quarkus-dev
+          targetPort: 8080
+          exposure: public
+          protocol: https
+      env:
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "${{ values.kafkaBootstrap }}"
+        - name: KAFKA_TOPIC
+          value: "${{ values.kafkaTopic }}"
+        - name: KAFKA_GROUP_ID
+          value: "${{ values.consumerGroup }}"
+commands:
+  - id: build
+    exec:
+      component: tools
+      commandLine: "mvn package -DskipTests"
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        kind: build
+        isDefault: true
+  - id: run
+    exec:
+      component: tools
+      commandLine: "mvn quarkus:dev -Dquarkus.http.host=0.0.0.0"
+      workingDir: ${PROJECT_SOURCE}
+      group:
+        kind: run
+        isDefault: true

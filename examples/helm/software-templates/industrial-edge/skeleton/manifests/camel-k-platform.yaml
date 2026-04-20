@@ -7,6 +7,8 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   build:
+    publishStrategy: S2I
+    baseImage: registry.access.redhat.com/ubi9/openjdk-17-runtime:latest
     registry:
       address: image-registry.openshift-image-registry.svc:5000
       organization: ${{values.namespace}}

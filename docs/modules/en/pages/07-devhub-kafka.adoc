@@ -1,0 +1,128 @@
+= Developer Hub — Kafka Plugin
+:navtitle: Developer Hub — Kafka Plugin
+
+== Kafka Plugin in Red Hat Developer Hub
+
+The `@backstage-community/plugin-kafka` plugin lets you view Kafka information directly on Developer Hub entity pages.
+
+=== What does it show?
+
+* *Topic offsets*: current production position per partition
+* *Consumer group offsets*: consumption position per consumer group
+* *Consumer lag*: difference between production and consumption position
+* *Dashboard URL*: direct link to Grafana/Streams Console
+
+=== Configuration
+
+The plugin is enabled as a dynamic plugin in Developer Hub:
+
+[source,yaml]
+----
+# Backend — connectivity to the Kafka cluster
+- package: ./dynamic-plugins/dist/backstage-community-plugin-kafka-backend-dynamic
+  disabled: false
+  pluginConfig:
+    kafka:
+      clientId: backstage
+      clusters:
+        - name: cdc-cluster
+          brokers:
+            - cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092
+
+# Frontend — UI on entity pages
+- package: ./dynamic-plugins/dist/backstage-community-plugin-kafka
+  disabled: false
+  pluginConfig:
+    dynamicPlugins:
+      frontend:
+        backstage-community.plugin-kafka:
+          mountPoints:
+            - mountPoint: entity.page.overview/cards
+              importName: EntityKafkaContent
+              config:
+                if:
+                  anyOf:
+                    - hasAnnotation: kafka.apache.org/consumer-groups
+----
+
+=== Annotation on catalog entities
+
+For the Kafka plugin to appear on an entity page, add the following annotation to the component's `catalog-info.yaml`:
+
+[source,yaml]
+----
+metadata:
+  annotations:
+    kafka.apache.org/consumer-groups: cdc-cluster/camel-cdc-consumer
+----
+
+This makes Developer Hub show offsets and lag for the consumer group `camel-cdc-consumer` directly in the component view.
+
+== How it Works
+
+=== Plugin backend: connection to the Kafka cluster
+
+The Kafka plugin in Developer Hub does not use third-party REST APIs — it connects *directly* to the Kafka cluster:
+
+. The plugin backend (`plugin-kafka-backend-dynamic`) establishes an `AdminClient` connection to the cluster using the configured brokers (`cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092`).
+. It uses the `AdminClient.describeConsumerGroups()` API to get consumer group state.
+. It queries `AdminClient.listConsumerGroupOffsets()` for current offsets and `AdminClient.listOffsets(OffsetSpec.latest())` for high watermarks.
+. It computes lag per partition and exposes it to the frontend via Backstage's internal API.
+
+=== Plugin frontend: entity-driven UI
+
+The frontend is mounted conditionally on entity pages:
+
+. When a user navigates to a component in Developer Hub, the router checks whether the entity has the `kafka.apache.org/consumer-groups` annotation.
+. If the annotation exists, the `EntityKafkaContent` card renders at the configured `mountPoint` (`entity.page.overview/cards`).
+. The card fetches from the plugin backend, which returns consumer group data as JSON.
+. The frontend shows a table with: topic, partition, current offset, high watermark, lag, and consumer state (active/idle).
+
+=== Software Templates: auto-annotation
+
+Developer Hub Software Templates can automatically inject the Kafka annotation into generated `catalog-info.yaml`, so every new component that consumes from Kafka has lag visibility from the first commit.
+
+== Streams for Apache Kafka Console
+
+In addition to the Developer Hub plugin, the *Streams Console* (StreamsHub) provides a dedicated UI for Kafka management:
+
+Access: `https://kafka-console-kafka-cdc.{cluster_domain}`
+
+=== Streams Console features
+
+[cols="1,2",options="header"]
+|===
+| Feature | Description
+
+| *Cluster Overview*
+| Cluster-wide view: brokers, partitions, replication factor
+
+| *Topics*
+| List topics, view messages in real time, search by offset
+
+| *Consumer Groups*
+| View consumer group state, lag per partition, reset offsets
+
+| *Kafka Nodes*
+| State of each broker, disk and network metrics
+
+| *Kafka Connect* (Tech Preview)
+| Manage connectors directly from the console
+|===
+
+== Verification
+
+To verify that the Kafka plugin works:
+
+. Open Developer Hub: `https://backstage-developer-hub-developer-hub.{cluster_domain}`
+. Navigate to a component that has the `kafka.apache.org/consumer-groups` annotation
+. On the *Overview* tab, you should see the Kafka card with offsets and lag
+. Click the consumer group to see per-partition detail
+
+== Official Documentation
+
+* https://docs.redhat.com/en/documentation/red_hat_developer_hub[Red Hat Developer Hub^] — Self-service development portal based on Backstage
+* https://docs.redhat.com/en/documentation/red_hat_developer_hub/1.4/html/configuring_plugins_in_red_hat_developer_hub/index[Configuring Plugins in Developer Hub^] — Enabling and configuring dynamic plugins
+* https://backstage.io/docs/overview/what-is-backstage[Backstage Documentation^] — Upstream Backstage project
+* https://github.com/backstage/community-plugins/tree/main/workspaces/kafka[Backstage Kafka Plugin^] — Community plugin to visualize Kafka in Backstage
+* https://github.com/streamshub/console[StreamsHub Console^] — Web console for Streams for Apache Kafka

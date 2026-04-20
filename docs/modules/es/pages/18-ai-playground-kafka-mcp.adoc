@@ -1,0 +1,186 @@
+= AI Playground + Kafka MCP
+:toc: left
+:toclevels: 3
+
+[.lead]
+OpenShift AI 3.3 incluye *Gen AI Studio* (Playground) para interactuar con LLM desplegados. Combinado con el *Kafka MCP Server* registrado a través del MCP Gateway de Kuadrant, el Playground se convierte en un agente de IA capaz de consultar datos Kafka en vivo.
+
+== Arquitectura
+
+[cols="1,2", options="header"]
+|===
+| Componente | Rol
+
+| *RHOAI Playground* | Interfaz de chat conectada al InferenceService Granite 3.1 2B (KServe)
+| *Granite 3.1 2B Instruct* | LLM de huella reducida ejecutándose con llama.cpp en KServe; realiza razonamiento en lenguaje natural
+| *MCP Gateway (Kuadrant)* | Proxy Streamable-HTTP que expone los servidores MCP registrados bajo un endpoint unificado
+| *Kafka MCP Server* | Servidor FastMCP en Python con 4 herramientas: `kafka_list_topics`, `kafka_describe_topic`, `kafka_read_messages`, `kafka_consumer_groups`
+| *Kafka Cluster* | Clúster CDC (`cdc-cluster`) en el namespace `kafka-cdc` con más de 12 topics
+|===
+
+== Endpoint del MCP Gateway
+
+[source,text]
+----
+URL:  https://mcp-gateway.apps.<CLUSTER_DOMAIN>/mcp
+----
+
+== Herramientas Kafka disponibles
+
+[cols="1,2,1", options="header"]
+|===
+| Herramienta | Descripción | Parámetros
+
+| `kafka_list_topics` | Lista todos los topics Kafka no internos con el número de particiones | _ninguno_
+| `kafka_describe_topic` | Muestra offsets de partición, recuentos de mensajes y marcas de agua de un topic | `topic_name` (cadena)
+| `kafka_read_messages` | Lee los N mensajes más recientes de un topic (máx. 20) | `topic_name` (cadena), `count` (entero, predeterminado 5)
+| `kafka_consumer_groups` | Lista todos los grupos de consumidores con sus estados | _ninguno_
+|===
+
+== Topics Kafka disponibles
+
+[cols="1,2", options="header"]
+|===
+| Topic | Contenido
+
+| `cv.face.detections` | Eventos NeuroFace CV: `person_registered`, `person_detected`, `ovms_model_status`
+| `cdc.public.customers` | Eventos de cambio CDC de la tabla `customers`
+| `cdc.public.orders` | Eventos de cambio CDC de la tabla `orders`
+| `bpm.approval.requests` | Eventos del flujo de aprobación BPM desde Kogito/SonataFlow
+| `bpm.onboarding.metrics` | Métricas de onboarding BPM y telemetría de procesos
+| `dlq.cdc-errors` | Cola de mensajes fallidos para eventos CDC erróneos
+| `dlq.cv-errors` | Cola de mensajes fallidos para eventos del pipeline CV erróneos
+| `dlq.cdc-camel-errors` | Cola de mensajes fallidos para integraciones Camel K erróneas
+|===
+
+== Prompts del Playground
+
+=== Prompt 1 — Visión general del inventario
+
+[source,text]
+----
+List all Kafka topics available in the cluster.
+For each topic, show the name and number of partitions.
+Highlight any topics related to face detection or computer vision.
+----
+
+=== Prompt 2 — Análisis del pipeline CV
+
+[source,text]
+----
+Read the last 10 messages from the topic cv.face.detections.
+Summarize:
+- How many unique people were detected?
+- What detection methods are being used?
+- What is the average confidence score?
+- Are there any OVMS model status events? If so, is the model healthy?
+----
+
+=== Prompt 3 — Inspección de eventos CDC
+
+[source,text]
+----
+Describe the topic cdc.public.orders and tell me how many total messages it has.
+Then read the last 5 messages and summarize the order data:
+- What fields are in each record?
+- Are these INSERT, UPDATE, or DELETE operations?
+- Show a brief table with customer_id, amount, and operation type.
+----
+
+=== Prompt 4 — Estado de los grupos de consumidores
+
+[source,text]
+----
+List all consumer groups in the Kafka cluster.
+For each group, show the state (Stable, Empty, Dead, etc.).
+Identify any consumer groups that might indicate a problem
+(e.g., Dead or with rebalancing state).
+----
+
+=== Prompt 5 — Análisis de colas de mensajes fallidos
+
+[source,text]
+----
+Check the following dead-letter queue topics:
+- dlq.cdc-errors
+- dlq.cv-errors
+- dlq.cdc-camel-errors
+
+For each one, tell me how many messages are in it.
+If there are messages, read the latest 3 and summarize
+what errors occurred and which components generated them.
+----
+
+=== Prompt 6 — Informe de detección facial de seguridad
+
+[source,text]
+----
+Read the last 20 messages from cv.face.detections.
+Generate a security report with:
+1. Timeline of detections (person name + timestamp)
+2. Total unique identities currently registered
+3. Detection frequency (events per minute estimate)
+4. Model server health status
+Format the report as a professional security briefing.
+----
+
+=== Prompt 7 — Eventos de flujos BPM
+
+[source,text]
+----
+Describe the topics bpm.approval.requests and bpm.onboarding.metrics.
+Read the last 5 messages from each and explain:
+- What business processes are generating events?
+- What is the approval workflow doing?
+- Are there any onboarding metrics available?
+----
+
+=== Prompt 8 — Estado de topics a nivel de clúster
+
+[source,text]
+----
+List all topics and describe each one that has more than 0 messages.
+Create a dashboard-style summary:
+- Topic name
+- Total messages
+- Number of partitions
+- Category (CDC / CV / BPM / DLQ / Internal)
+Flag any topic that looks unhealthy (e.g., too many DLQ messages
+relative to the source topic).
+----
+
+=== Prompt 9 — Pipeline NeuroFace de extremo a extremo
+
+[source,text]
+----
+I want to understand the NeuroFace CV pipeline end-to-end.
+1. Read the latest messages from cv.face.detections
+2. Check if there are any errors in dlq.cv-errors
+3. Describe the cv.face.detections topic to see throughput
+
+Based on this data, explain:
+- Is the pipeline healthy?
+- How many events are being generated per hour (estimate)?
+- Are any detections failing?
+----
+
+=== Prompt 10 — Correlación entre sistemas
+
+[source,text]
+----
+Read the last 5 messages from these topics:
+- cv.face.detections
+- cdc.public.orders
+- bpm.approval.requests
+
+Find any correlations:
+- Are detections happening around the same time as orders?
+- Is there any pattern between face detection events and BPM workflows?
+Provide a timeline visualization in text format.
+----
+
+== Referencias
+
+* xref:08-mcp-lightspeed.adoc[MCP + Lightspeed]
+* xref:17-neuroface-cv.adoc[Pipeline CV NeuroFace]
+* xref:02-kafka-setup.adoc[Streams for Apache Kafka]

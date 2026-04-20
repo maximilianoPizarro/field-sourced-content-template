@@ -60,12 +60,13 @@ subjects:
   name: {{ .Values.showroom.name }}
   namespace: {{ .Values.showroom.namespace }}
 ---
-# Showroom RoleBinding — observability namespace
+{{- if .Values.observabilityAccess | default false }}
+# Showroom RoleBinding — observability namespace (only when observability is enabled)
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: showroom-view-observability
-  namespace: observability
+  namespace: openshift-cluster-observability-operator
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -74,6 +75,7 @@ subjects:
 - kind: ServiceAccount
   name: {{ .Values.showroom.name }}
   namespace: {{ .Values.showroom.namespace }}
+{{- end }}
 ---
 # Showroom Nginx ConfigMap
 kind: ConfigMap
@@ -233,7 +235,7 @@ data:
       <h1>Event-Driven Architecture Live</h1>
       <div id="eda-user-box"></div>
     </div>
-    <iframe id="sf" src="/index.html" allow="clipboard-write clipboard-read"></iframe>
+    <iframe id="sf" src="/index.html" allow="clipboard-write clipboard-read fullscreen" allowfullscreen></iframe>
     <script>
     (function(){
       var pp = new URLSearchParams(window.location.search);
@@ -289,6 +291,15 @@ data:
         external: true
       - name: Grafana
         url: 'https://grafana-observability.{{ .Values.deployer.domain }}'
+        external: true
+      - name: NeuroFace
+        url: 'https://neuroface-frontend-neuroface.{{ .Values.deployer.domain }}'
+        external: true
+      - name: OpenShift AI
+        url: 'https://data-science-gateway.{{ .Values.deployer.domain }}'
+        external: true
+      - name: Mailpit
+        url: 'https://n8n-mailpit-openshift-lightspeed.{{ .Values.deployer.domain }}'
         external: true
 ---
 # Showroom PVC

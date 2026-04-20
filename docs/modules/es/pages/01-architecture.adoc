@@ -1,0 +1,191 @@
+= Arquitectura del CDC Pipeline
+:navtitle: Arquitectura CDC Pipeline
+
+++++
+<div id="scene-arch" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-arch', {height:380, camY:10, camZ:18});
+  if(!ctx) return;
+  var wal = ThreeHelper.createNode(ctx.scene,'WAL',0x336791,-8,0,0,{width:2,height:0.8});
+  var pg = ThreeHelper.createNode(ctx.scene,'PostgreSQL',0x336791,-8,2,0);
+  var deb = ThreeHelper.createNode(ctx.scene,'Debezium',0xE53935,-2,0,0);
+  var t1 = ThreeHelper.createNode(ctx.scene,'customers',0x231F20,4,0,-2,{width:2.2,height:0.8});
+  var t2 = ThreeHelper.createNode(ctx.scene,'orders',0x231F20,4,0,2,{width:2.2,height:0.8});
+  var kf = ThreeHelper.createNode(ctx.scene,'Kafka',0x231F20,4,2,0);
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,pg,wal,0x336791,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,wal,deb,0xE53935,{speed:0.01}),
+    ThreeHelper.createEdge(ctx.scene,deb,t1,0xFF5722,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,deb,t2,0xFF5722,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,t1,kf,0x231F20,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,t2,kf,0x231F20,{speed:0.005})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
+== Real-Time Data Streaming
+
+El streaming en tiempo real es el flujo continuo de datos a medida que se generan, permitiendo análisis y procesamiento inmediato para extraer información significativa.
+
+*Fuentes de datos comunes:*
+
+* Actividad en sitios web
+* Transacciones bancarias
+* Compras de e-commerce
+* Actividad de jugadores en gaming
+* Sensores IoT
+
+== Change Data Capture (CDC)
+
+CDC es un patrón de integración que identifica y captura cambios realizados en una base de datos (INSERT, UPDATE, DELETE) y los propaga como eventos a otros sistemas en tiempo real.
+
+=== ¿Por qué CDC?
+
+[cols="1,1",options="header"]
+|===
+| Enfoque tradicional | CDC con Debezium
+
+| Polling periódico a la DB
+| Captura basada en WAL (write-ahead log)
+
+| Alta latencia (segundos/minutos)
+| Latencia sub-segundo
+
+| Carga adicional en la DB
+| Impacto mínimo (lee el log de transacciones)
+
+| Puede perder cambios entre polls
+| Captura todos los cambios, incluyendo deletes
+|===
+
+== Arquitectura del Pipeline
+
+[mermaid]
+....
+graph LR
+    PG["fa:fa-database PostgreSQL<br/>(WAL logical)"]
+    DBZ["fa:fa-bolt Debezium<br/>(KafkaConnect)"]
+    K["fa:fa-stream Kafka<br/>(KRaft 3 brokers)"]
+    AR["fa:fa-book Apicurio<br/>(Schema Registry)"]
+    CAM["fa:fa-route Apache Camel<br/>(Quarkus)"]
+    MP["fa:fa-envelope Mailpit<br/>(Email)"]
+    GR["fa:fa-chart-bar Grafana<br/>(Dashboard)"]
+    KI["fa:fa-project-diagram Kiali<br/>(Service Mesh)"]
+
+    PG -->|WAL changes| DBZ
+    DBZ -->|CDC events| K
+    DBZ -.->|schema validation| AR
+    K -->|consume| CAM
+    CAM -->|HTTP POST| MP
+    K -.->|metrics| GR
+    DBZ -.->|metrics| GR
+    CAM -.->|metrics| GR
+    K -.->|traffic| KI
+....
+
+== Flujo de datos detallado
+
+. Un usuario inserta o actualiza un registro en PostgreSQL
+. PostgreSQL escribe el cambio en el Write-Ahead Log (WAL) con `wal_level=logical`
+. Debezium (corriendo como KafkaConnect plugin) lee el WAL via replication slot
+. Debezium serializa el evento como JSON (opcionalmente Avro via Apicurio Registry)
+. El evento se publica en el topic Kafka correspondiente (`cdc.public.customers`)
+. Apache Camel consume el evento del topic
+. Camel transforma el evento y envía una notificación por email via Mailpit
+. Todo el pipeline es monitoreado en Grafana y visible en Kiali (Service Mesh)
+
+== How it Works
+
+El pipeline CDC opera como una cadena reactiva de cinco etapas, donde cada componente actúa de forma independiente y asíncrona:
+
+. **Capture** — PostgreSQL escribe cada transacción en el Write-Ahead Log (WAL) antes de confirmarla. Debezium abre un _replication slot_ y lee el WAL usando el protocolo de replicación lógica nativa de PostgreSQL, sin queries adicionales a las tablas.
+
+. **Serialize** — Debezium transforma cada cambio en un evento JSON estructurado que incluye: el valor `before` (estado previo del registro), `after` (estado nuevo), `op` (tipo de operación: `c`reate, `u`pdate, `d`elete, `r`ead), y `source` (metadata: tabla, schema, LSN, timestamp del WAL).
+
+. **Stream** — El evento se publica en el topic Kafka correspondiente (`cdc.public.<tabla>`). Kafka lo persiste en disco, lo replica a 3 brokers (RF=3), y confirma el write solo cuando al menos 2 réplicas persisten el dato (`min.insync.replicas=2`).
+
+. **Process** — Apache Camel consume del topic usando un _consumer group_. Cada partición se asigna a un solo consumidor (partition affinity), garantizando orden por primary key. Camel deserializa el JSON, aplica content-based routing (`$.payload.op`), y transforma el payload.
+
+. **React** — El procesador Camel ejecuta la acción correspondiente: HTTP POST a Mailpit para notificaciones, producción a topics de DLQ para errores, o emisión de métricas Prometheus. Todo ocurre sin bloqueo — si un destino falla, el mensaje va a la Dead Letter Queue.
+
+[NOTE]
+====
+La latencia end-to-end típica del pipeline es *sub-segundo* desde el commit en PostgreSQL hasta la notificación. El cuello de botella no es Kafka (que persiste en microsegundos) sino el HTTP POST a servicios externos.
+====
+
+== Namespace y recursos
+
+Todos los componentes del CDC pipeline se despliegan en el namespace `kafka-cdc`:
+
+[source,yaml]
+----
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kafka-cdc
+  labels:
+    istio.io/dataplane-mode: ambient
+    istio-discovery: enabled
+----
+
+El label `istio.io/dataplane-mode: ambient` enrolla automáticamente el namespace en el Service Mesh, haciendo visible todo el tráfico en Kiali sin necesidad de sidecars.
+
+== Alta Disponibilidad
+
+El pipeline está configurado con múltiples réplicas y storage persistente para tolerancia a fallos.
+
+=== Kafka Brokers — Storage Persistente
+
+Los brokers usan `persistent-claim` en lugar de `ephemeral` para retener datos entre reinicios:
+
+[source,yaml]
+----
+spec:
+  kafka:
+    replicas: 3
+    storage:
+      type: persistent-claim
+      size: 10Gi
+      deleteClaim: false
+----
+
+* `size: 10Gi` — capacidad por broker (ajustar según volumen de datos)
+* `deleteClaim: false` — los PVCs se preservan al escalar o eliminar el cluster
+
+=== KafkaConnect — 2 réplicas
+
+KafkaConnect se despliega con 2 réplicas para balanceo de carga y failover de los connectors:
+
+[source,yaml]
+----
+spec:
+  replicas: 2
+----
+
+Kafka Connect distribuye automáticamente las tasks entre las réplicas disponibles. Si una réplica cae, la otra asume las tasks.
+
+=== Camel CDC Processor — 2 réplicas
+
+El procesador Camel se escala a 2 réplicas. Kafka balancea las particiones entre los consumidores del mismo group:
+
+[source,yaml]
+----
+spec:
+  replicas: 2
+----
+
+Con 3 particiones por topic y 2 consumidores, cada réplica procesa ~1.5 particiones en promedio.
+
+== Documentación Oficial
+
+* https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka[Red Hat Streams for Apache Kafka^] — Despliegue y configuración de clusters Kafka en OpenShift
+* https://docs.redhat.com/en/documentation/red_hat_build_of_debezium[Red Hat build of Debezium^] — Configuración de CDC connectors
+* https://docs.redhat.com/en/documentation/red_hat_build_of_apache_camel[Red Hat build of Apache Camel^] — Integración y rutas de procesamiento
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/networking/service-mesh[OpenShift Service Mesh^] — mTLS y observabilidad de tráfico
+* https://strimzi.io/documentation/[Strimzi Documentation^] — Proyecto upstream de Streams for Apache Kafka

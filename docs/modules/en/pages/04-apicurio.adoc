@@ -1,0 +1,178 @@
+= Schema Registry — Apicurio
+:navtitle: Schema Registry — Apicurio
+
+++++
+<div id="scene-apicurio" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-apicurio', {height:380, camY:10, camZ:20});
+  if(!ctx) return;
+  var reg = ThreeHelper.createNode(ctx.scene,'Apicurio Registry',0x1A73E8,0,3,0,{width:3.5});
+  var s1 = ThreeHelper.createNode(ctx.scene,'customers-value',0x4CAF50,-6,0,0,{width:3});
+  var s2 = ThreeHelper.createNode(ctx.scene,'orders-value',0x4CAF50,-2,0,-3,{width:3});
+  var s3 = ThreeHelper.createNode(ctx.scene,'approval-req',0xFF9800,2,0,-3,{width:3});
+  var s4 = ThreeHelper.createNode(ctx.scene,'onboard-metric',0xFF9800,6,0,0,{width:3});
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,reg,s1,0x4CAF50,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,reg,s2,0x4CAF50,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,reg,s3,0xFF9800,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,reg,s4,0xFF9800,{speed:0.006})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
+== What is Apicurio Registry?
+
+https://www.apicur.io/registry/[Apicurio Registry] is an open source schema registry that stores and manages data schemas and APIs. It is part of the *Streams for Apache Kafka* ecosystem.
+
+*Supported formats:*
+
+* Apache Avro
+* JSON Schema
+* Protobuf
+* OpenAPI
+* AsyncAPI
+* GraphQL
+* WSDL / XML Schema
+
+== Why use a Schema Registry?
+
+In a CDC pipeline, events produced by Debezium have a defined structure. Without a schema registry:
+
+* Consumers do not know what format to expect
+* Table structure changes can break consumers
+* There is no validation of data in transit
+
+With Apicurio Registry:
+
+* Schemas are registered and versioned centrally
+* Producers validate against the schema before sending
+* Consumers obtain the schema automatically
+* Compatible schema evolution (forward, backward, full)
+
+== Deployment on OpenShift
+
+[source,yaml]
+----
+apiVersion: registry.apicur.io/v1
+kind: ApicurioRegistry
+metadata:
+  name: apicurio-registry
+  namespace: kafka-cdc
+spec:
+  configuration:
+    persistence: kafkasql
+    kafkasql:
+      bootstrapServers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092
+  deployment:
+    replicas: 1
+----
+
+The `kafkasql` storage uses Kafka as the persistence backend — no separate database is required.
+
+== UI access
+
+The Apicurio Registry web UI is available at:
+
+`https://apicurio-registry-kafka-cdc.{cluster_domain}`
+
+From there you can:
+
+* Browse registered schemas
+* View versions and compatibility
+* Register new schemas manually
+* View the content of each schema
+
+== Integration with Debezium
+
+To use Apicurio as the Debezium serializer, configure the converter on KafkaConnect:
+
+[source,yaml]
+----
+config:
+  key.converter: io.apicurio.registry.utils.converter.AvroConverter
+  key.converter.apicurio.registry.url: http://apicurio-registry-service.kafka-cdc.svc:8080/apis/registry/v2
+  key.converter.apicurio.registry.auto-register: "true"
+  value.converter: io.apicurio.registry.utils.converter.AvroConverter
+  value.converter.apicurio.registry.url: http://apicurio-registry-service.kafka-cdc.svc:8080/apis/registry/v2
+  value.converter.apicurio.registry.auto-register: "true"
+----
+
+NOTE: In this demo we use the JSON converter for simplicity, but Avro integration via Apicurio is ready to enable.
+
+== How it Works
+
+=== Schema validation cycle
+
+The Schema Registry acts as a *living contract* between producers and consumers:
+
+. A *producer* (Debezium, Camel) serializes a message and sends the schema to the registry (if `auto-register=true`).
+. Apicurio validates the schema against the configured *global rules*:
+** **VALIDITY** — the schema must be syntactically valid (valid JSON Schema, valid Avro, etc.)
+** **COMPATIBILITY** — the schema must be compatible with the previous version according to the chosen policy
+. If validation passes, Apicurio assigns a numeric *globalId* to the schema and stores it.
+. The producer includes the `globalId` in the Kafka message header (not the full schema — this saves bandwidth).
+. A *consumer* receives the message, extracts the `globalId` from the header, and fetches the full schema from Apicurio to deserialize.
+. If the producer tries to register an incompatible schema (e.g., removing a required field), Apicurio *rejects* registration with HTTP 409, preventing the breaking change before it reaches Kafka.
+
+=== Compatibility modes
+
+[cols="1,2",options="header"]
+|===
+| Mode | Guarantee
+
+| *BACKWARD*
+| Consumers with the new schema can read data written with the old schema. Allows adding optional fields.
+
+| *FORWARD*
+| Consumers with the old schema can read data written with the new schema. Allows removing optional fields.
+
+| *FULL*
+| Combination of BACKWARD + FORWARD. Only allows adding or removing optional fields.
+
+| *NONE*
+| No compatibility validation — useful in development; risky in production.
+|===
+
+=== KafkaSQL persistence
+
+In this demo, Apicurio uses `kafkasql` as the backend: schemas are stored as messages in internal Kafka topics. This removes the need for an additional database and inherits Kafka's replication and durability (RF=3).
+
+== Registry REST API
+
+Apicurio Registry exposes a full REST API:
+
+[source,bash]
+----
+# List artifacts
+curl -s https://apicurio-registry-kafka-cdc.apps.<domain>/apis/registry/v2/groups/default/artifacts
+
+# Register a schema
+curl -X POST https://apicurio-registry-kafka-cdc.apps.<domain>/apis/registry/v2/groups/default/artifacts \
+  -H "Content-Type: application/json; artifactType=JSON" \
+  -H "X-Registry-ArtifactId: customer-schema" \
+  -d '{
+    "type": "object",
+    "properties": {
+      "id": {"type": "integer"},
+      "first_name": {"type": "string"},
+      "last_name": {"type": "string"},
+      "email": {"type": "string", "format": "email"}
+    },
+    "required": ["id", "first_name", "last_name", "email"]
+  }'
+----
+
+== Official Documentation
+
+* https://docs.redhat.com/en/documentation/red_hat_build_of_apicurio_registry[Red Hat build of Apicurio Registry^] — Installing, configuring, and operating the Schema Registry
+* https://www.apicur.io/registry/docs/[Apicurio Registry Documentation^] — Upstream project documentation
+* https://www.apicur.io/registry/docs/apicurio-registry/3.x/index.html[Apicurio Registry 3.x Guide^] — Reference guide for the latest version
+* https://docs.redhat.com/en/documentation/red_hat_build_of_apicurio_registry/2.6/html/installing_and_deploying_apicurio_registry_on_openshift/index[Deploying Apicurio on OpenShift^] — Deployment with the operator on OpenShift
+* https://json-schema.org/specification[JSON Schema Specification^] — Official JSON Schema specification
+* https://avro.apache.org/docs/current/specification/[Apache Avro Specification^] — Official Avro specification

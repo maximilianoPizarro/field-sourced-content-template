@@ -69,7 +69,7 @@ oc get oidcpolicy neuralbank-oidc -n neuralbank-stack -o yaml
 
 Puntos clave de la configuración:
 
-- **`provider.issuerURL`**: apunta al realm de Keycloak (`https://rhbk.apps.cluster-l9nhj.dynamic.redhatworkshops.io/realms/neuralbank`)
+- **`provider.issuerURL`**: apunta al realm de Keycloak (`https://rhbk.<CLUSTER_DOMAIN>/realms/neuralbank`)
 - **`provider.clientID`**: el cliente OIDC configurado en Keycloak (`backstage`)
 - **`auth.tokenSource`**: extrae el Bearer token del header `Authorization`
 - **`targetRef`**: apunta al HTTPRoute `neuralbank-api-route`
@@ -115,7 +115,7 @@ Configuración:
 1. Abre la URL de Neuralbank en el navegador:
 
 ```
-https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io
+https://neuralbank.<CLUSTER_DOMAIN>
 ```
 
 2. Serás redirigido automáticamente a la pantalla de login de Keycloak (realm `neuralbank`).
@@ -130,7 +130,7 @@ Primero verificamos que la API rechaza requests sin autenticación:
 
 ```bash
 curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" \
-  https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers
+  https://neuralbank.<CLUSTER_DOMAIN>/api/v1/customers
 ```
 
 Resultado esperado: `HTTP Status: 302` (redirect a Keycloak login).
@@ -141,7 +141,7 @@ Usa el flujo **Resource Owner Password Credentials** para obtener un JWT token:
 
 ```bash
 TOKEN=$(curl -s -X POST \
-  "https://rhbk.apps.cluster-l9nhj.dynamic.redhatworkshops.io/realms/neuralbank/protocol/openid-connect/token" \
+  "https://rhbk.<CLUSTER_DOMAIN>/realms/neuralbank/protocol/openid-connect/token" \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=password" \
   -d "client_id=neuralbank-frontend" \
@@ -156,7 +156,7 @@ echo "Token obtenido (primeros 50 chars): ${TOKEN:0:50}..."
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" \
-  "https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers" \
+  "https://neuralbank.<CLUSTER_DOMAIN>/api/v1/customers" \
   | python3 -m json.tool
 ```
 
@@ -164,7 +164,7 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" \
-  "https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers/1" \
+  "https://neuralbank.<CLUSTER_DOMAIN>/api/v1/customers/1" \
   | python3 -m json.tool
 ```
 
@@ -172,7 +172,7 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" \
-  "https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers/1/summary" \
+  "https://neuralbank.<CLUSTER_DOMAIN>/api/v1/customers/1/summary" \
   | python3 -m json.tool
 ```
 
@@ -180,7 +180,7 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" \
-  "https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers/1/credit-score" \
+  "https://neuralbank.<CLUSTER_DOMAIN>/api/v1/customers/1/credit-score" \
   | python3 -m json.tool
 ```
 
@@ -198,7 +198,7 @@ curl -s -X POST \
     "ciudad": "Buenos Aires",
     "pais": "Argentina"
   }' \
-  "https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers" \
+  "https://neuralbank.<CLUSTER_DOMAIN>/api/v1/customers" \
   | python3 -m json.tool
 ```
 
@@ -207,7 +207,7 @@ curl -s -X POST \
 ```bash
 curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" \
   -H "Authorization: Bearer token-invalido-12345" \
-  "https://neuralbank.apps.cluster-l9nhj.dynamic.redhatworkshops.io/api/v1/customers"
+  "https://neuralbank.<CLUSTER_DOMAIN>/api/v1/customers"
 ```
 
 Resultado esperado: `HTTP Status: 302` o `401` (token inválido rechazado).

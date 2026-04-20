@@ -17,6 +17,11 @@
   var sf = ThreeHelper.createNode(ctx.scene,'SonataFlow',0x0066CC,5,0,3);
   var api = ThreeHelper.createNode(ctx.scene,'Apicurio',0x1A73E8,0,3,4);
   var graf = ThreeHelper.createNode(ctx.scene,'Grafana',0xF46800,-5,3,4);
+  var nf = ThreeHelper.createNode(ctx.scene,'NeuroFace',0x9C27B0,-5,0,-5);
+  var ovms = ThreeHelper.createNode(ctx.scene,'OpenVINO',0x0068B5,0,0,-5);
+  var cvp = ThreeHelper.createNode(ctx.scene,'CV Processor',0xFF9800,5,0,-6);
+  var yolo = ThreeHelper.createNode(ctx.scene,'YOLO PPE',0x43A047,-5,-3,-8);
+  var ppeK = ThreeHelper.createNode(ctx.scene,'PPE Topic',0x43A047,0,-3,-8);
   var edges = [
     ThreeHelper.createEdge(ctx.scene,pg,deb,0x336791,{speed:0.008}),
     ThreeHelper.createEdge(ctx.scene,deb,kf,0xE53935,{speed:0.01}),
@@ -24,7 +29,14 @@
     ThreeHelper.createEdge(ctx.scene,cam,mail,0x42A5F5,{speed:0.009}),
     ThreeHelper.createEdge(ctx.scene,kf,sf,0x0066CC,{speed:0.006}),
     ThreeHelper.createEdge(ctx.scene,kf,api,0x1A73E8,{speed:0.005}),
-    ThreeHelper.createEdge(ctx.scene,kf,graf,0xF46800,{speed:0.004})
+    ThreeHelper.createEdge(ctx.scene,kf,graf,0xF46800,{speed:0.004}),
+    ThreeHelper.createEdge(ctx.scene,nf,ovms,0x9C27B0,{speed:0.009}),
+    ThreeHelper.createEdge(ctx.scene,cvp,ovms,0x0068B5,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,cvp,nf,0xFF9800,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,cvp,kf,0xFF9800,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,kf,mail,0x42A5F5,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,nf,yolo,0x43A047,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,nf,ppeK,0x43A047,{speed:0.006})
   ];
   ThreeHelper.animate(ctx, edges);
 })();
@@ -32,7 +44,7 @@
 ++++
 :page-layout: home
 
-Welcome to *Event-Driven Architecture Live* — a hands-on, real-time Change Data Capture (CDC) pipeline running on Red Hat OpenShift.
+Welcome to *Event-Driven Architecture Live* -- a hands-on, real-time Change Data Capture (CDC) pipeline running on Red Hat OpenShift.
 
 This environment wires a production-style event backbone: relational data changes are captured at the database, streamed through Apache Kafka, processed by integration and workflow services, and observed end-to-end. Use the steps below to follow the data from insert to notification and beyond.
 
@@ -77,29 +89,56 @@ This environment wires a production-style event backbone: relational data change
 | Red Hat Developer Hub
 | Self-service portal, software templates, and golden paths
 | link:https://backstage-developer-hub-developer-hub.{cluster_domain}[Developer Hub^]
+
+| NeuroFace (Computer Vision)
+| Facial recognition with LBPH + OpenVINO Model Server (face-detection-retail-0005)
+| link:https://neuroface-frontend-neuroface.{cluster_domain}[NeuroFace App^]
+
+| OpenVINO Model Server
+| Intel inference server deployed as KServe InferenceService on OpenShift AI
+| link:https://data-science-gateway.{cluster_domain}/projects/neuroface[OpenShift AI^]
+
+| CV Processor (Python)
+| Polls OVMS and NeuroFace labels, publishes events to Kafka topic `cv.face.detections`
+| Events visible in link:https://kafka-console-kafka-cdc.{cluster_domain}[Kafka Console^]
+
+| PPE Safety Detection (YOLO)
+| YOLOv8n-based PPE compliance monitoring -- webcam frames analyzed for hardhat, safety-vest, goggles; events published to `cv.ppe.detections`
+| link:https://neuroface-frontend-neuroface.{cluster_domain}[NeuroFace PPE^]
 |===
 
 == Demo steps
 
 Work through the guides in order. Each page focuses on one slice of the platform so you can see cause and effect clearly.
 
-. xref:01-architecture.adoc[Architecture & Components] — End-to-end flow, partitions, Connect, retention
-. xref:02-trigger-cdc.adoc[Trigger a CDC event] — Drive the database and watch the pipeline react
-. xref:03-kafka-events.adoc[Kafka & partitions] — Topics, ordering, and the Kafka Console
-. xref:04-schemas.adoc[Schema Registry] — Schemas and compatibility in Apicurio
-. xref:05-bpm-workflow.adoc[BPM workflow] — SonataFlow and business process automation
-. xref:06-monitoring.adoc[Observability] — Grafana and pipeline metrics
-. xref:07-security.adoc[Security & governance] — AuthN/Z and operational guardrails
-. xref:08-reliability.adoc[Reliability & DRP] — Resilience patterns and recovery
-. xref:09-operations.adoc[Operations] — Day-2 tasks for the demo stack
-. xref:10-devspaces.adoc[Self-service IDE] — Cloud IDE and developer experience
+. xref:01-architecture.adoc[Architecture & Components] -- End-to-end flow, partitions, Connect, retention
+. xref:02-trigger-cdc.adoc[Trigger a CDC event] -- Drive the database and watch the pipeline react
+. xref:03-kafka-events.adoc[Kafka & partitions] -- Topics, ordering, and the Kafka Console
+. xref:04-schemas.adoc[Schema Registry] -- Schemas and compatibility in Apicurio
+. xref:05-bpm-workflow.adoc[BPM workflow] -- SonataFlow and business process automation
+. xref:06-monitoring.adoc[Observability] -- Grafana and pipeline metrics
+. xref:07-security.adoc[Security & governance] -- AuthN/Z and operational guardrails
+. xref:08-reliability.adoc[Reliability & DRP] -- Resilience patterns and recovery
+. xref:09-operations.adoc[Operations] -- Day-2 tasks for the demo stack
+. xref:10-devspaces.adoc[Self-service IDE] -- Cloud IDE and developer experience
+
+*Computer Vision Pipeline*
+
+[start=11]
+. xref:18-neuroface-cv.adoc[NeuroFace CV Pipeline] -- Facial recognition with OpenVINO, Kafka events, and email alerts
+. xref:20-ppe-safety.adoc[PPE Safety Detection] -- YOLO-based PPE monitoring with Kafka, Granite LLM, and Jupyter dashboards
+
+*Industrial Edge — Scale to N*
+
+[start=13]
+. xref:21-scale-to-n.adoc[Scale to N: Self-Service Edge Instances] -- Deploy isolated IoT stacks on demand via Developer Hub templates
 
 == Terminal
 
 The showroom embeds a *terminal* panel so you can run `oc`, `kubectl`, and other CLI tools without leaving the guide.
 
 * Open the embedded terminal from the showroom chrome (path: `/terminal/`). It appears on the *right* side of the showroom layout.
-* Use it to inspect namespaces (for example `kafka-cdc`), follow pod logs, port-forward services, or verify routes — while keeping the documentation and UIs open beside you.
+* Use it to inspect namespaces (for example `kafka-cdc`), follow pod logs, port-forward services, or verify routes -- while keeping the documentation and UIs open beside you.
 
 == Kafka cluster (high level)
 

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: workshop-registration
+description: Self-service workshop registration portal with Keycloak integration
+version: 0.1.0
+type: application

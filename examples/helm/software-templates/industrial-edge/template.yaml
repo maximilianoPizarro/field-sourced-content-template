@@ -23,6 +23,7 @@ spec:
       required:
         - name
         - owner
+        - clusterDomain
       properties:
         name:
           title: Instance Name
@@ -62,8 +63,8 @@ spec:
         clusterDomain:
           title: Cluster Domain
           type: string
-          default: "apps.cluster-l9nhj.dynamic.redhatworkshops.io"
-          description: "OpenShift apps domain (oc get ingresses.config cluster -o jsonpath='{.spec.domain}')"
+          description: "OpenShift apps domain"
+          ui:help: "Run: oc get ingresses.config cluster -o jsonpath='{.spec.domain}'"
   steps:
     - id: fetch-skeleton
       name: Generate Skeleton
@@ -88,6 +89,40 @@ spec:
         description: ${{ parameters.description }}
         defaultBranch: main
         repoVisibility: public
+    - id: create-argocd-app
+      name: Create ArgoCD Application
+      action: http:backstage:request
+      input:
+        method: POST
+        path: "/proxy/k8s-api/apis/argoproj.io/v1alpha1/namespaces/openshift-gitops/applications"
+        headers:
+          Content-Type: application/json
+        body:
+          apiVersion: argoproj.io/v1alpha1
+          kind: Application
+          metadata:
+            name: "${{ parameters.owner }}-${{ parameters.name }}"
+            namespace: openshift-gitops
+            labels:
+              backstage.io/kubernetes-id: "${{ parameters.owner }}-${{ parameters.name }}"
+            finalizers:
+              - resources-finalizer.argocd.argoproj.io
+          spec:
+            project: default
+            source:
+              repoURL: "http://gitea-http.gitea.svc.cluster.local:3000/ws-${{ parameters.owner }}/${{ parameters.name }}.git"
+              targetRevision: main
+              path: manifests
+            destination:
+              server: https://kubernetes.default.svc
+              namespace: "${{ parameters.owner }}-${{ parameters.name }}"
+            syncPolicy:
+              automated:
+                prune: true
+                selfHeal: true
+              syncOptions:
+                - CreateNamespace=true
+                - ServerSideApply=true
     - id: register
       name: Register in Catalog
       action: catalog:register
@@ -122,6 +157,9 @@ spec:
       - title: Line Dashboard
         icon: dashboard
         url: "https://line-dashboard-${{ parameters.owner }}-${{ parameters.name }}.${{ parameters.clusterDomain }}"
+      - title: Kafka Streams Console
+        icon: dashboard
+        url: "https://kafka-console-kafka-cdc.${{ parameters.clusterDomain }}"
       - title: View in Catalog
         icon: catalog
         entityRef: ${{ steps['register'].output.entityRef }}

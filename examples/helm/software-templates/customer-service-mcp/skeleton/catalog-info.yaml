@@ -26,11 +26,11 @@ spec:
   type: service
   lifecycle: experimental
   owner: user:${{values.owner}}
-  system: ${{values.owner}}-neuralbank
+  system: ${{values.owner}}-apps
   providesApis:
     - ${{values.uniqueName}}-api
   dependsOn:
-    - component:default/${{values.owner}}-neuralbank-backend
+    - component:default/${{values.owner}}-apps-backend
 ---
 apiVersion: backstage.io/v1alpha1
 kind: API
@@ -45,7 +45,7 @@ spec:
   type: openapi
   lifecycle: experimental
   owner: user:${{values.owner}}
-  system: ${{values.owner}}-neuralbank
+  system: ${{values.owner}}-apps
   definition: |
     openapi: 3.0.0
     info:

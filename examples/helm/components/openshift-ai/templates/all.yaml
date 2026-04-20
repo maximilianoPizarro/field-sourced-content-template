@@ -1,0 +1,319 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshift-serverless
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    openshift.io/cluster-monitoring: "true"
+  name: redhat-ods-operator
+---
+apiVersion: datasciencecluster.opendatahub.io/v1
+kind: DataScienceCluster
+metadata:
+  name: default-dsc
+spec:
+  components:
+    codeflare:
+      managementState: Removed
+    dashboard:
+      managementState: Managed
+    datasciencepipelines:
+      managementState: Removed
+    kserve:
+      managementState: Managed
+      serving:
+        managementState: Removed
+        name: knative-serving
+    kueue:
+      managementState: Removed
+    llamastackoperator:
+      managementState: Managed
+    modelmeshserving:
+      managementState: Removed
+    modelregistry:
+      managementState: Managed
+    ray:
+      managementState: Removed
+    trainingoperator:
+      managementState: Removed
+    trustyai:
+      managementState: Removed
+    workbenches:
+      managementState: Managed
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: serverless-operators
+  namespace: openshift-serverless
+spec: {}
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: rhods-operator
+  namespace: redhat-ods-operator
+spec: {}
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: serverless-operator
+  namespace: openshift-serverless
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  name: serverless-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+---
+apiVersion: opendatahub.io/v1alpha1
+kind: OdhDashboardConfig
+metadata:
+  name: odh-dashboard-config
+  namespace: redhat-ods-applications
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+  labels:
+    app: rhods-dashboard
+    app.kubernetes.io/part-of: rhods-dashboard
+    app.opendatahub.io/rhods-dashboard: "true"
+    platform.opendatahub.io/part-of: dashboard
+spec:
+  dashboardConfig:
+    genAiStudio: true
+    disableModelCatalog: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gen-ai-aa-mcp-servers
+  namespace: redhat-ods-applications
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+data:
+  Kafka-MCP-Server: |
+    {
+      "url": "http://kafka-mcp-server.kafka-cdc.svc.cluster.local:8080/mcp",
+      "description": "Kafka MCP Server — provides tools to explore and query Apache Kafka clusters. Available tools: list_topics (list all topics with partition counts), describe_topic (show partition offsets and message counts), read_messages (read latest N messages from a topic), consumer_groups (list all consumer groups and their states). Connected to the CDC Kafka cluster with topics for CDC events, CV face detections, BPM workflows, and dead-letter queues."
+    }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: operator-memory-patcher
+  namespace: redhat-ods-applications
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: operator-memory-patcher
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "patch"]
+- apiGroups: ["kiali.io"]
+  resources: ["kialis"]
+  verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: operator-memory-patcher
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: operator-memory-patcher
+subjects:
+- kind: ServiceAccount
+  name: operator-memory-patcher
+  namespace: redhat-ods-applications
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: patch-operator-memory-limits
+  namespace: redhat-ods-applications
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 5
+  activeDeadlineSeconds: 600
+  template:
+    spec:
+      serviceAccountName: operator-memory-patcher
+      restartPolicy: OnFailure
+      containers:
+      - name: patcher
+        image: registry.redhat.io/openshift4/ose-cli:latest
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          echo "=== Operator Memory Patcher ==="
+          echo "Patching operators that require memory overrides to prevent OOMKilled..."
+
+          patch_deploy() {
+            local ns=$1 deploy=$2 mem_limit=$3 mem_request=$4
+            current=$(oc get deploy "$deploy" -n "$ns" -o jsonpath='{.spec.template.spec.containers[0].resources.limits.memory}' 2>/dev/null || echo "")
+            if [ "$current" = "$mem_limit" ]; then
+              echo "[OK] $ns/$deploy already at $mem_limit"
+              return 0
+            fi
+            echo "[PATCH] $ns/$deploy: $current -> limits=$mem_limit, requests=$mem_request"
+            oc patch deploy "$deploy" -n "$ns" --type json -p \
+              "[{\"op\":\"replace\",\"path\":\"/spec/template/spec/containers/0/resources/limits/memory\",\"value\":\"$mem_limit\"},{\"op\":\"replace\",\"path\":\"/spec/template/spec/containers/0/resources/requests/memory\",\"value\":\"$mem_request\"}]"
+          }
+
+          # LlamaStack Operator: 1Gi -> 2Gi (OOMKilled during reconciliation)
+          if oc get deploy llama-stack-k8s-operator-controller-manager -n redhat-ods-applications &>/dev/null; then
+            patch_deploy redhat-ods-applications llama-stack-k8s-operator-controller-manager 2Gi 512Mi
+          fi
+
+          # Kuadrant Operator: 300Mi -> 2Gi (OOMKilled during reconciliation)
+          if oc get deploy kuadrant-operator-controller-manager -n kuadrant-system &>/dev/null; then
+            patch_deploy kuadrant-system kuadrant-operator-controller-manager 2Gi 512Mi
+          fi
+
+          # Perses Operator (COO): 512Mi -> 1Gi (OOMKilled during startup)
+          if oc get deploy perses-operator -n openshift-cluster-observability-operator &>/dev/null; then
+            patch_deploy openshift-cluster-observability-operator perses-operator 1Gi 256Mi
+          fi
+
+          # Kiali Server: default -> 2Gi (OOMKilled processing mesh topology)
+          if oc get deploy kiali -n openshift-cluster-observability-operator &>/dev/null; then
+            patch_deploy openshift-cluster-observability-operator kiali 2Gi 512Mi
+          fi
+
+          echo "=== All patches applied ==="
+## rhods-operator Subscription removed — already managed by connectivityLink.operators.subscriptions in values.yaml (channel stable-2.25)
+## ---
+## vLLM CPU model commented out to free cluster resources
+## ---
+# apiVersion: v1
+# kind: Namespace
+# metadata:
+#   labels:
+#     app.openshift.io/runtime: ai
+#     modelmesh-enabled: "false"
+#     opendatahub.io/dashboard: "true"
+#   name: openshift-ai-models
+# ---
+# apiVersion: v1
+# kind: PersistentVolumeClaim
+# metadata:
+#   name: vllm-model-cache
+#   namespace: openshift-ai-models
+# spec:
+#   accessModes:
+#   - ReadWriteOnce
+#   resources:
+#     requests:
+#       storage: 20Gi
+# ---
+# apiVersion: serving.kserve.io/v1alpha1
+# kind: ServingRuntime
+# metadata:
+#   annotations:
+#     openshift.io/display-name: vLLM CPU Runtime
+#   labels:
+#     opendatahub.io/dashboard: "true"
+#   name: vllm-cpu-runtime
+#   namespace: openshift-ai-models
+# spec:
+#   annotations:
+#     prometheus.io/path: /metrics
+#     prometheus.io/port: "8080"
+#   containers:
+#   - args:
+#     - --port=8080
+#     - --model=/mnt/models
+#     - --served-model-name=qwen-2.5-7b-cpu
+#     - --dtype=bfloat16
+#     - --device=cpu
+#     - --max-model-len=4096
+#     - --enforce-eager
+#     - --enable-auto-tool-choice
+#     - --tool-call-parser=hermes
+#     command:
+#     - python
+#     - -m
+#     - vllm.entrypoints.openai.api_server
+#     env:
+#     - name: HOME
+#       value: /tmp
+#     - name: VLLM_CPU_KVCACHE_SPACE
+#       value: "4"
+#     - name: HF_HOME
+#       value: /tmp/hf
+#     image: quay.io/rh-aiservices-bu/vllm-cpu-openai-ubi9:0.3
+#     name: kserve-container
+#     ports:
+#     - containerPort: 8080
+#       protocol: TCP
+#     resources:
+#       limits:
+#         cpu: "16"
+#         memory: 32Gi
+#       requests:
+#         cpu: "8"
+#         memory: 24Gi
+#   multiModel: false
+#   supportedModelFormats:
+#   - autoSelect: true
+#     name: vLLM
+# ---
+# apiVersion: serving.kserve.io/v1beta1
+# kind: InferenceService
+# metadata:
+#   annotations:
+#     openshift.io/display-name: Qwen 2.5 7B CPU
+#     serving.kserve.io/deploymentMode: RawDeployment
+#   labels:
+#     opendatahub.io/dashboard: "true"
+#   name: qwen-2-5-7b-cpu
+#   namespace: openshift-ai-models
+# spec:
+#   predictor:
+#     maxReplicas: 1
+#     minReplicas: 1
+#     model:
+#       modelFormat:
+#         name: vLLM
+#       resources:
+#         limits:
+#           cpu: "16"
+#           memory: 32Gi
+#         requests:
+#           cpu: "8"
+#           memory: 24Gi
+#       runtime: vllm-cpu-runtime
+#       storageUri: hf://Qwen/Qwen2.5-7B-Instruct
+#     volumes:
+#     - name: model-cache
+#       persistentVolumeClaim:
+#         claimName: vllm-model-cache
+#     - emptyDir:
+#         medium: Memory
+#         sizeLimit: 4Gi
+#       name: shm

@@ -6,11 +6,10 @@ metadata:
 spec:
   targets:
     - ./customer-service-mcp/template.yaml
-    - ./neuralbank-backend/template.yaml
-    - ./neuralbank-frontend/template.yaml
     - ./remove-component/template.yaml
     - ./camel-kaoto/template.yaml
     - ./sonataflow-bpm/template.yaml
     - ./kafka-cdc-mcp/template.yaml
     - ./k8s-ops-mcp/template.yaml
     - ./industrial-edge/template.yaml
+    - ./kafka-external-consumer/template.yaml

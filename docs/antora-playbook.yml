@@ -1,19 +1,19 @@
 site:
   title: "Event-Driven Architecture & Industrial Edge"
   url: https://maximilianopizarro.github.io/field-sourced-content-template
-  start_page: ROOT::index.adoc
+  start_page: ROOT:en:index.adoc
 
 content:
   sources:
     - url: https://github.com/maximilianoPizarro/field-sourced-content-template.git
       start_path: docs
-      branches: main
+      branches: one
 
 asciidoc:
   extensions:
     - asciidoctor-kroki
   attributes:
-    cluster_domain: "apps.cluster-l9nhj.dynamic.redhatworkshops.io"
+    cluster_domain: "<CLUSTER_DOMAIN>"
 
 ui:
   bundle:
@@ -43,6 +43,10 @@ ui:
               Event-Driven Architecture &amp; Industrial Edge
             </a>
             <span id="user-info" style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0"></span>
+            <span id="lang-switcher" style="display:flex;gap:4px;flex-shrink:0;margin-left:8px">
+              <a id="lang-en" href="#" style="color:#fff;background:#c00;padding:2px 8px;border-radius:3px;font-size:11px;font-weight:600;text-decoration:none;transition:opacity .2s">EN</a>
+              <a id="lang-es" href="#" style="color:#ccc;background:#333;padding:2px 8px;border-radius:3px;font-size:11px;font-weight:600;text-decoration:none;transition:opacity .2s">ES</a>
+            </span>
           </div>
         </header>
         <script>
@@ -67,10 +71,36 @@ ui:
               if (nav) nav.classList.toggle('is-active');
             });
           }
+          var path = window.location.pathname;
+          var enBtn = document.getElementById('lang-en');
+          var esBtn = document.getElementById('lang-es');
+          var isEs = path.indexOf('/es/') !== -1;
+          if (isEs) {
+            esBtn.style.background = '#c00'; esBtn.style.color = '#fff';
+            enBtn.style.background = '#333'; enBtn.style.color = '#ccc';
+          }
+          if (enBtn) enBtn.onclick = function(e) {
+            e.preventDefault();
+            if (path.indexOf('/es/') !== -1) window.location.href = path.replace('/es/', '/en/');
+            else if (path.indexOf('/en/') === -1) window.location.href = path.replace(/\/[^\/]*$/, '/en/index.html');
+          };
+          if (esBtn) esBtn.onclick = function(e) {
+            e.preventDefault();
+            if (path.indexOf('/en/') !== -1) window.location.href = path.replace('/en/', '/es/');
+            else if (path.indexOf('/es/') === -1) window.location.href = path.replace(/\/[^\/]*$/, '/es/index.html');
+          };
+          var roots = document.querySelectorAll('.nav-menu > .nav-list > .nav-item[data-depth="0"]');
+          if (roots.length >= 2) {
+            if (isEs) { roots[0].style.display = 'none'; roots[1].style.display = ''; }
+            else { roots[0].style.display = ''; roots[1].style.display = 'none'; }
+          }
         });
         </script>
     - path: partials/toolbar.hbs
-      contents: ""
+      contents: |
+        <div class="toolbar" role="navigation">
+          <button class="nav-toggle"></button>
+        </div>
     - path: partials/footer-content.hbs
       contents: |
         <footer class="footer" style="background:#151515;border-top:3px solid #c00;padding:24px 32px">
@@ -95,6 +125,11 @@ ui:
             </div>
           </div>
         </footer>
+    - path: partials/footer-scripts.hbs
+      contents: |
+        <script id="site-script" src="{{uiRootPath}}/js/site.js" data-ui-root-path="{{uiRootPath}}"></script>
+        <script async src="{{uiRootPath}}/js/vendor/highlight.js"></script>
+        <script src="{{uiRootPath}}/js/three-helper.js"></script>
     - path: css/extra.css
       contents: |
         :root {
@@ -111,7 +146,7 @@ ui:
           margin: 0 !important;
         }
         main.article { max-width: none !important; }
-        .body.has-toc .nav-container {
+        .body .nav-container {
           width: 230px;
           min-width: 230px;
           flex-shrink: 0;
@@ -138,6 +173,7 @@ ui:
           background: rgba(204,0,0,0.08);
         }
         .nav-panel-explore { display: none !important; }
+        .nav-menu > .nav-list > .nav-item[data-depth="0"] ~ .nav-item[data-depth="0"] { display: none; }
         .body .content {
           flex: 1;
           max-width: none !important;
@@ -151,7 +187,7 @@ ui:
         }
         .article { max-width: none !important; }
         .toolbar { max-width: none !important; display: none; }
-        .body.has-toc .toc-sidebar {
+        .toc-sidebar {
           width: 220px;
           min-width: 220px;
           flex-shrink: 0;
@@ -220,19 +256,27 @@ ui:
         }
         .fullscreen-btn {
           position: absolute;
-          top: 8px;
-          right: 8px;
+          top: 10px;
+          right: 10px;
           z-index: 100;
-          background: rgba(0,0,0,0.7);
+          background: rgba(0,0,0,0.75);
           color: #fff;
-          border: 1px solid #555;
-          border-radius: 4px;
-          padding: 4px 10px;
+          border: 1px solid rgba(255,255,255,0.25);
+          border-radius: 6px;
+          padding: 6px 14px;
           cursor: pointer;
-          font-size: 13px;
-          transition: background 0.2s;
+          font-size: 14px;
+          transition: background 0.2s, border-color 0.2s, transform 0.15s;
+          backdrop-filter: blur(4px);
+          display: flex;
+          align-items: center;
+          gap: 6px;
         }
-        .fullscreen-btn:hover { background: rgba(80,80,80,0.9); }
+        .fullscreen-btn:hover {
+          background: rgba(0,102,204,0.8);
+          border-color: rgba(255,255,255,0.5);
+          transform: scale(1.05);
+        }
         .doc .imageblock img { cursor: pointer; transition: transform 0.2s; border-radius: 6px; }
         .doc .imageblock img:hover { transform: scale(1.02); }
         .img-overlay {
@@ -256,10 +300,23 @@ ui:
           background: #0a0a1a;
           width: 100vw !important;
           height: 100vh !important;
-          border-radius: 0;
+          border: none !important;
+          border-radius: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        :fullscreen .fullscreen-btn {
+          top: 16px;
+          right: 16px;
+          padding: 8px 18px;
+          font-size: 15px;
+        }
+        :fullscreen canvas {
+          width: 100vw !important;
+          height: 100vh !important;
         }
         @media (max-width: 768px) {
-          .body.has-toc .nav-container {
+          .body .nav-container {
             position: fixed;
             top: 0; left: -260px;
             width: 260px;
@@ -269,10 +326,10 @@ ui:
             box-shadow: 4px 0 20px rgba(0,0,0,0.5);
             background: var(--color-brand-dark);
           }
-          .body.has-toc .nav-container.is-active {
+          .body .nav-container.is-active {
             left: 0;
           }
-          .body.has-toc .toc-sidebar { display: none; }
+          .toc-sidebar { display: none; }
           .navbar { padding: 0 8px; }
           .navbar .navbar-burger {
             display: flex !important;
@@ -348,20 +405,38 @@ ui:
 
             var fsBtn = document.createElement('button');
             fsBtn.className = 'fullscreen-btn';
-            fsBtn.textContent = '\u26F6 Fullscreen';
-            fsBtn.onclick = function() {
-              if (container.requestFullscreen) container.requestFullscreen();
-              else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
-            };
-            container.appendChild(fsBtn);
+            fsBtn.innerHTML = '\u26F6 Fullscreen';
+            var isFullscreen = false;
 
-            window.addEventListener('resize', function() {
-              var nw = container.clientWidth;
-              var nh = document.fullscreenElement === container ? window.innerHeight : h;
+            function resizeRenderer() {
+              var fs = document.fullscreenElement === container || document.webkitFullscreenElement === container;
+              var nw = fs ? window.innerWidth : container.clientWidth;
+              var nh = fs ? window.innerHeight : h;
               camera.aspect = nw / nh;
               camera.updateProjectionMatrix();
               renderer.setSize(nw, nh);
-            });
+            }
+
+            fsBtn.onclick = function() {
+              if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                if (container.requestFullscreen) container.requestFullscreen();
+                else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
+              } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+              }
+            };
+            container.appendChild(fsBtn);
+
+            function onFullscreenChange() {
+              var fs = document.fullscreenElement === container || document.webkitFullscreenElement === container;
+              isFullscreen = fs;
+              fsBtn.innerHTML = fs ? '\u2715 Exit' : '\u26F6 Fullscreen';
+              setTimeout(resizeRenderer, 50);
+            }
+            document.addEventListener('fullscreenchange', onFullscreenChange);
+            document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+            window.addEventListener('resize', resizeRenderer);
 
             return { scene: scene, camera: camera, renderer: renderer, controls: controls };
           },
@@ -478,17 +553,34 @@ ui:
           }
 
           document.querySelectorAll('.three-container, [id^="scene-"]').forEach(function(el) {
-            if (!el.querySelector('.fullscreen-btn')) {
-              var btn = document.createElement('button');
-              btn.className = 'fullscreen-btn';
-              btn.textContent = '\u26F6 Fullscreen';
-              btn.onclick = function() {
+            if (el.querySelector('.fullscreen-btn')) return;
+            el.style.position = el.style.position || 'relative';
+            var btn = document.createElement('button');
+            btn.className = 'fullscreen-btn';
+            btn.innerHTML = '\u26F6 Fullscreen';
+            btn.onclick = function() {
+              if (!document.fullscreenElement && !document.webkitFullscreenElement) {
                 if (el.requestFullscreen) el.requestFullscreen();
                 else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-              };
-              el.style.position = 'relative';
-              el.appendChild(btn);
+              } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+              }
+            };
+            el.appendChild(btn);
+            function onFsChange() {
+              var fs = document.fullscreenElement === el || document.webkitFullscreenElement === el;
+              btn.innerHTML = fs ? '\u2715 Exit' : '\u26F6 Fullscreen';
+              var canvas = el.querySelector('canvas');
+              if (canvas) {
+                var nw = fs ? window.innerWidth : el.clientWidth;
+                var nh = fs ? window.innerHeight : (parseInt(el.style.height) || 400);
+                canvas.style.width = nw + 'px';
+                canvas.style.height = nh + 'px';
+              }
             }
+            document.addEventListener('fullscreenchange', onFsChange);
+            document.addEventListener('webkitfullscreenchange', onFsChange);
           });
         });
 

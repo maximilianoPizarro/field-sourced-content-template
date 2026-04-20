@@ -2,7 +2,7 @@ name: Deploy Antora site to Pages
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "one"]
     paths: ["docs/**"]
   workflow_dispatch:
 

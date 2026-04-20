@@ -60,10 +60,12 @@ commands:
         $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-yaml --force
         $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.java --force
         $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-quarkus --force
-  - id: setup-continue
+  - id: setup-project
     exec:
       component: tools
-      commandLine: "mkdir -p /home/user/.continue && cp /projects/${{ values.name }}/continue-config.json /home/user/.continue/config.json"
+      commandLine: |
+        chmod +x /projects/${{ values.name }}/mvnw
+        mkdir -p /home/user/.continue && cp /projects/${{ values.name }}/continue-config.json /home/user/.continue/config.json
   - id: build
     exec:
       component: tools
@@ -77,4 +79,4 @@ commands:
 events:
   postStart:
     - install-extensions
-    - setup-continue
+    - setup-project

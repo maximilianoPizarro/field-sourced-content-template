@@ -7,7 +7,7 @@
 gitops:
   # Repository containing the component charts (your fork or this template)
   repoUrl: "https://github.com/maximilianoPizarro/field-sourced-content-template.git"
-  revision: "one"
+  revision: "main"
   basePath: "examples/helm"
 
 # ArgoCD settings

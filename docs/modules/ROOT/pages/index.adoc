@@ -1,7 +1,7 @@
 = Redirecting...
 
 ++++
-<meta http-equiv="refresh" content="0; url=../en/index.html">
-<script>window.location.href = '../en/index.html';</script>
-<p>Redirecting to <a href="../en/index.html">English version</a>...</p>
+<meta http-equiv="refresh" content="0; url=en/index.html">
+<script>window.location.href = 'en/index.html';</script>
+<p>Redirecting to <a href="en/index.html">English version</a>...</p>
 ++++

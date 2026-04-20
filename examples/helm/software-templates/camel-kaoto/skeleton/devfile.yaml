@@ -47,17 +47,24 @@ components:
     volume:
       size: 1Gi
 commands:
-  - id: install-vsix-extensions
+  - id: install-extensions
     exec:
       component: tools
       commandLine: |
+        export LD_LIBRARY_PATH=/checode/checode-linux-libc/ubi8/ld_libs:/usr/lib64
+        CHE_CODE=/checode/checode-linux-libc/ubi8/bin/che-code
+        EXT_DIR=/checode/checode-linux-libc/extensions
         mkdir -p /home/user/.vsix-cache
         [ -f /home/user/.vsix-cache/kaoto.vsix ] || \
           curl -sL "https://redhat.gallerycdn.vsassets.io/extensions/redhat/vscode-kaoto/2.10.2/1775215869920/Microsoft.VisualStudio.Services.VSIXPackage" -o /home/user/.vsix-cache/kaoto.vsix
         [ -f /home/user/.vsix-cache/camel.vsix ] || \
           curl -sL "https://redhat.gallerycdn.vsassets.io/extensions/redhat/vscode-apache-camel/1.14.0/1758543062217/Microsoft.VisualStudio.Services.VSIXPackage" -o /home/user/.vsix-cache/camel.vsix
-        [ -f /home/user/.vsix-cache/jbang.vsix ] || \
-          curl -sL "https://jbangdev.gallerycdn.vsassets.io/extensions/jbangdev/jbang-vscode/0.12.0/1734960116430/Microsoft.VisualStudio.Services.VSIXPackage" -o /home/user/.vsix-cache/jbang.vsix
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension /home/user/.vsix-cache/kaoto.vsix --force
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension /home/user/.vsix-cache/camel.vsix --force
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension Continue.continue --force
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-yaml --force
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.java --force
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-quarkus --force
         which jbang >/dev/null 2>&1 || curl -Ls https://sh.jbang.dev | bash -s - app setup
   - id: setup-continue
     exec:
@@ -75,5 +82,5 @@ commands:
       workingDir: ${PROJECT_SOURCE}
 events:
   postStart:
-    - install-vsix-extensions
+    - install-extensions
     - setup-continue

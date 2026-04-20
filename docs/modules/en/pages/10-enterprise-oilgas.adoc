@@ -1,0 +1,269 @@
+= Enterprise Case: Oil and Gas
+:navtitle: Enterprise Case: Oil and Gas
+
+== Enterprise Architecture — IoT/SCADA in Oil and Gas
+
+The same CDC pattern implemented in this workshop applies directly to mission-critical scenarios in the oil and gas industry, where IoT sensors and SCADA systems generate continuous data that must be processed in real time.
+
+== Scenario: Well and Pipeline Monitoring
+
+[mermaid]
+....
+graph LR
+    S1["fa:fa-thermometer-half Sensores<br/>(Presion/Temp)"]
+    SCADA["fa:fa-industry SCADA<br/>(Historian DB)"]
+    DBZ2["fa:fa-bolt Debezium<br/>(CDC)"]
+    KF["fa:fa-stream Kafka<br/>(KRaft)"]
+    PROC["fa:fa-cogs Camel<br/>(Procesamiento)"]
+    ALERT["fa:fa-bell Alertas<br/>(Critical)"]
+    DL["fa:fa-database Data Lake<br/>(S3/ODF)"]
+    ML["fa:fa-brain ML Model<br/>(Prediccion)"]
+
+    S1 -->|Modbus/OPC-UA| SCADA
+    SCADA -->|WAL changes| DBZ2
+    DBZ2 -->|CDC events| KF
+    KF -->|raw events| PROC
+    PROC -->|anomalias| ALERT
+    PROC -->|historico| DL
+    DL -->|training data| ML
+    ML -->|predictions| KF
+....
+
+== Components and Adaptation
+
+[cols="1,1,2",options="header"]
+|===
+| Workshop Component | Oil and Gas Adaptation | Configuration
+
+| PostgreSQL (cdcdb)
+| Historian DB (OSIsoft PI / Aveva)
+| Sensor tables with high-precision timestamps
+
+| Debezium (PostgresConnector)
+| Debezium (PostgresConnector or custom)
+| CDC over sensor reading tables
+
+| Kafka (3 brokers)
+| Kafka (5+ brokers)
+| More partitions for high sensor throughput
+
+| Camel (notifications)
+| Camel (anomaly processing)
+| Content-based routing by sensor type and threshold
+
+| Mailpit (email)
+| PagerDuty / OpsGenie (critical alerts)
+| Integration with on-call systems
+|===
+
+== Topics for Oil and Gas
+
+Workshop topic adaptation for a monitoring scenario:
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: oilgas.sensors.pressure
+  namespace: kafka-oilgas
+  labels:
+    strimzi.io/cluster: oilgas-cluster
+spec:
+  partitions: 12
+  replicas: 3
+  config:
+    retention.ms: 2592000000
+    cleanup.policy: delete
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: oilgas.sensors.temperature
+  namespace: kafka-oilgas
+  labels:
+    strimzi.io/cluster: oilgas-cluster
+spec:
+  partitions: 12
+  replicas: 3
+  config:
+    retention.ms: 2592000000
+    cleanup.policy: delete
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: oilgas.alerts.critical
+  namespace: kafka-oilgas
+  labels:
+    strimzi.io/cluster: oilgas-cluster
+spec:
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: 7776000000
+    cleanup.policy: delete
+----
+
+Key differences:
+
+* *12 partitions* for sensors — higher throughput for thousands of concurrent sensors
+* *30-day retention* for sensor data — regulatory compliance
+* *90-day retention* for critical alerts — auditing and incident investigation
+
+== Schema Registry for Sensors
+
+Apicurio Registry validates sensor event schemas, ensuring consistency:
+
+[source,json]
+----
+{
+  "type": "object",
+  "properties": {
+    "sensor_id": {"type": "string"},
+    "well_id": {"type": "string"},
+    "reading_type": {"type": "string", "enum": ["pressure", "temperature", "flow_rate"]},
+    "value": {"type": "number"},
+    "unit": {"type": "string"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "quality": {"type": "integer", "minimum": 0, "maximum": 100}
+  },
+  "required": ["sensor_id", "well_id", "reading_type", "value", "timestamp"]
+}
+----
+
+== Camel Route for Anomaly Detection
+
+Workshop Camel route adaptation for processing sensor data:
+
+[source,yaml]
+----
+- route:
+    id: sensor-anomaly-detection
+    from:
+      uri: kafka:oilgas.sensors.pressure
+      parameters:
+        brokers: oilgas-cluster-kafka-bootstrap.kafka-oilgas.svc:9093
+        groupId: anomaly-detector
+        securityProtocol: SASL_SSL
+        saslMechanism: SCRAM-SHA-512
+    steps:
+      - unmarshal:
+          json:
+            library: jackson
+      - choice:
+          when:
+            - simple: "${body[value]} > 3500"
+              steps:
+                - setBody:
+                    simple: |
+                      {"sensor":"${body[sensor_id]}",
+                       "well":"${body[well_id]}",
+                       "value":${body[value]},
+                       "severity":"CRITICAL",
+                       "message":"Presion excede umbral critico"}
+                - marshal:
+                    json:
+                      library: jackson
+                - to:
+                    uri: kafka:oilgas.alerts.critical
+          otherwise:
+            steps:
+              - log:
+                  message: "Sensor ${body[sensor_id]} reading normal: ${body[value]}"
+----
+
+== How it Works
+
+=== From sensor to alert: real-time pipeline
+
+The data flow from a field sensor to an operational alert follows this chain:
+
+. A *pressure/temperature sensor* connected via Modbus/OPC-UA sends readings to the SCADA system (e.g. OSIsoft PI) every 1–5 seconds.
+. The SCADA persists readings in its *Historian DB* (PostgreSQL or proprietary database). Each INSERT is a new datapoint with `sensor_id`, `value`, `timestamp`, and `quality`.
+. *Debezium* captures the INSERT via the WAL and publishes to the corresponding topic (`oilgas.sensors.pressure`). With 12 partitions, the system supports thousands of concurrent sensors partitioned by `sensor_id`.
+. *Apache Camel* consumes the event, deserializes the JSON, and applies *content-based routing*: if `value > threshold`, it generates an alert event to the `oilgas.alerts.critical` topic. Otherwise it logs the normal reading.
+. Alert events trigger notifications via PagerDuty/OpsGenie for the on-call team.
+. In parallel, all events (normal and anomalous) are persisted in a *Data Lake* (S3/ODF) for historical analysis and ML model training.
+
+=== Key differences vs. the workshop
+
+[cols="1,1,1",options="header"]
+|===
+| Aspect | Workshop (CDC) | Enterprise (Oil & Gas)
+
+| Throughput
+| ~10 events/min (manual INSERTs)
+| ~10,000 events/sec (automatic sensors)
+
+| Partitions
+| 3 (sufficient for demo)
+| 12+ (parallelism for high throughput)
+
+| Retention
+| 7 days (demo)
+| 30–90 days (regulatory compliance)
+
+| Action
+| Email via Mailpit
+| PagerDuty + Data Lake + ML pipeline
+
+| Security
+| SCRAM + TLS (demo)
+| SCRAM + TLS + per-plant ACLs + encryption at rest
+|===
+
+== Enterprise Considerations
+
+[cols="1,2",options="header"]
+|===
+| Requirement | Implementation
+
+| *Latency < 1s*
+| Kafka + Debezium provides sub-second end-to-end latency
+
+| *Compliance*
+| Configurable retention per topic, versioned schemas in Apicurio
+
+| *Geo-distribution*
+| MirrorMaker 2 for replication across plants/regions
+
+| *Security*
+| SCRAM-SHA-512 + TLS + ACLs per sensor/plant
+
+| *Scalability*
+| Add partitions and brokers without downtime
+
+| *Observability*
+| Grafana dashboards + PrometheusRule alerts + Kiali traffic
+|===
+
+== Oil and Gas Specific Alerts
+
+Extension of the workshop `PrometheusRule` for sensors:
+
+[source,yaml]
+----
+- alert: SensorDataLagHigh
+  expr: kafka_consumergroup_lag{topic=~"oilgas.sensors.*"} > 5000
+  for: 2m
+  labels:
+    severity: critical
+  annotations:
+    summary: "Lag critico en datos de sensores"
+- alert: NoSensorData
+  expr: rate(kafka_server_brokertopicmetrics_messagesin_total{topic=~"oilgas.sensors.*"}[5m]) == 0
+  for: 5m
+  labels:
+    severity: critical
+  annotations:
+    summary: "Sin datos de sensores — posible desconexion SCADA"
+----
+
+== Official Documentation
+
+* https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka[Red Hat Streams for Apache Kafka^] — Real-time sensor data streaming
+* https://docs.redhat.com/en/documentation/red_hat_build_of_debezium[Red Hat build of Debezium^] — CDC for change capture in SCADA systems
+* https://docs.redhat.com/en/documentation/red_hat_build_of_apache_camel[Red Hat build of Apache Camel^] — Integration with legacy and IoT systems
+* https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation[Red Hat OpenShift Data Foundation^] — Persistent storage for data lakes
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20[Red Hat OpenShift Container Platform^] — Edge and cloud deployment platform

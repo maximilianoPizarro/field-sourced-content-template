@@ -1,11 +1,11 @@
-= BPM con Kogito / SonataFlow
-:navtitle: BPM con Kogito
+= BPM with Kogito / SonataFlow
+:navtitle: BPM with Kogito
 
 ++++
 <div id="scene-sonataflow" style="width:100%;min-height:400px;"></div>
 <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
 <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script src="_/js/three-helper.js"></script>
+<script src="../_/js/three-helper.js"></script>
 <script>
 (function(){
   var ctx = ThreeHelper.initScene('scene-sonataflow', {height:400, camY:12, camZ:24});
@@ -31,35 +31,35 @@
 </script>
 ++++
 
-== Introducción
+== Introduction
 
-https://kogito.kie.org/[Kogito] es la tecnología de automatización de procesos de negocio (BPM) cloud-native de Red Hat, basada en los proyectos Drools y jBPM. En OpenShift, la evolución moderna de Kogito es **SonataFlow** — un motor de workflows serverless que ejecuta procesos definidos en el estándar https://serverlessworkflow.io/[Serverless Workflow Specification].
+https://kogito.kie.org/[Kogito] is Red Hat's cloud-native business process automation (BPM) technology, based on the Drools and jBPM projects. On OpenShift, the modern evolution of Kogito is **SonataFlow** — a serverless workflow engine that runs processes defined with the https://serverlessworkflow.io/[Serverless Workflow Specification].
 
-El operador **OpenShift Serverless Logic** (`logic-operator-rhel8`) gestiona el ciclo de vida completo de los workflows SonataFlow en OpenShift.
+The **OpenShift Serverless Logic** operator (`logic-operator-rhel8`) manages the full lifecycle of SonataFlow workflows on OpenShift.
 
-=== ¿Por qué BPM en el Pipeline CDC?
+=== Why BPM in the CDC Pipeline?
 
 [cols="1,1",options="header"]
 |===
-| Sin BPM | Con BPM (SonataFlow)
+| Without BPM | With BPM (SonataFlow)
 
-| Los eventos CDC se procesan linealmente
-| Los eventos CDC disparan procesos de negocio con lógica condicional
+| CDC events are processed linearly
+| CDC events trigger business processes with conditional logic
 
-| No hay aprobaciones ni SLAs
-| Aprobaciones con timeout (24h SLA para clientes premium)
+| No approvals or SLAs
+| Approvals with timeout (24h SLA for premium customers)
 
-| Notificaciones simples (fire-and-forget)
-| Orquestación paralela: provisionar + notificar simultáneamente
+| Simple notifications (fire-and-forget)
+| Parallel orchestration: provision + notify at the same time
 
-| Sin clasificación de clientes
-| Clasificación automática: basic / standard / premium
+| No customer classification
+| Automatic classification: basic / standard / premium
 
-| Sin métricas de proceso
-| Métricas de onboarding emitidas a Kafka
+| No process metrics
+| Onboarding metrics emitted to Kafka
 |===
 
-== Arquitectura
+== Architecture
 
 [mermaid]
 ....
@@ -83,11 +83,11 @@ graph LR
     KB -->|produce| MET
 ....
 
-== Operador: OpenShift Serverless Logic
+== Operator: OpenShift Serverless Logic
 
-El operador se instala desde Red Hat Operators:
+Install the operator from Red Hat Operators:
 
-.Subscription del operador
+.Operator subscription
 [source,yaml]
 ----
 apiVersion: operators.coreos.com/v1alpha1
@@ -103,16 +103,16 @@ spec:
   sourceNamespace: openshift-marketplace
 ----
 
-El operador proporciona los siguientes CRDs:
+The operator provides the following CRDs:
 
-* `SonataFlow` — Define un workflow serverless
-* `SonataFlowPlatform` — Configura la plataforma (build, runtime)
-* `SonataFlowBuild` — Gestiona builds de workflows
-* `SonataFlowClusterPlatform` — Configuración a nivel cluster
+* `SonataFlow` — Defines a serverless workflow
+* `SonataFlowPlatform` — Configures the platform (build, runtime)
+* `SonataFlowBuild` — Manages workflow builds
+* `SonataFlowClusterPlatform` — Cluster-level configuration
 
 == SonataFlow Platform
 
-La plataforma se configura en el namespace `kogito-bpm`:
+Configure the platform in the `kogito-bpm` namespace:
 
 [source,yaml]
 ----
@@ -132,9 +132,9 @@ spec:
 
 == Workflow: Customer Onboarding
 
-El proceso de onboarding de clientes se define como un `SonataFlow` CR usando la especificación Serverless Workflow:
+The customer onboarding process is defined as a `SonataFlow` CR using the Serverless Workflow specification:
 
-=== Diagrama del Proceso
+=== Process Diagram
 
 [source]
 ----
@@ -177,48 +177,48 @@ El proceso de onboarding de clientes se define como un `SonataFlow` CR usando la
 └──────────────────┘
 ----
 
-=== Estados del Workflow
+=== Workflow States
 
 [cols="2,1,3",options="header"]
 |===
-|Estado |Tipo |Descripción
+|State |Type |Description
 
 |`ReceiveCDCEvent`
 |Event
-|Escucha eventos CDC del topic `cdc.public.customers` via CloudEvents
+|Listens for CDC events from topic `cdc.public.customers` via CloudEvents
 
 |`ValidateCustomerData`
 |Switch
-|Valida que el evento contenga `email` y `first_name`
+|Validates that the event contains `email` and `first_name`
 
 |`ClassifyCustomer`
 |Operation
-|Clasifica el tier del cliente: basic (<10k), standard (10k-50k), premium (>50k)
+|Classifies customer tier: basic (<10k), standard (10k-50k), premium (>50k)
 
 |`CheckApprovalRequired`
 |Switch
-|Evalúa si el tier requiere aprobación manual
+|Evaluates whether the tier requires manual approval
 
 |`RequestManagerApproval`
 |Callback
-|Envía solicitud de aprobación al topic `bpm.approval.requests` via Kafka Bridge. Espera evento de respuesta con timeout de 24 horas
+|Sends approval request to topic `bpm.approval.requests` via Kafka Bridge. Waits for response event with 24-hour timeout
 
 |`EvaluateApproval`
 |Switch
-|Evalúa la respuesta de aprobación
+|Evaluates the approval response
 
 |`ProvisionAccount`
 |Parallel
-|Ejecuta en paralelo: crear cuenta + enviar email de bienvenida via Mailpit
+|Runs in parallel: create account + send welcome email via Mailpit
 
 |`EmitOnboardingMetric`
 |Operation
-|Publica métrica de onboarding al topic `bpm.onboarding.metrics`
+|Publishes onboarding metric to topic `bpm.onboarding.metrics`
 |===
 
-=== Definición del SonataFlow CR
+=== SonataFlow CR Definition
 
-.Eventos (Kafka CDC como CloudEvents)
+.Events (Kafka CDC as CloudEvents)
 [source,yaml]
 ----
 spec:
@@ -233,7 +233,7 @@ spec:
         source: internal
 ----
 
-.Funciones (clasificación, REST, logs)
+.Functions (classification, REST, logs)
 [source,yaml]
 ----
     functions:
@@ -254,7 +254,7 @@ spec:
         operation: "http://cdc-bridge-bridge-service.kafka-cdc.svc:8080/topics/bpm.onboarding.metrics#POST"
 ----
 
-.Estado de aprobación con callback y timeout
+.Approval state with callback and timeout
 [source,yaml]
 ----
       - name: RequestManagerApproval
@@ -282,7 +282,7 @@ spec:
         transition: EvaluateApproval
 ----
 
-.Ejecución paralela: provisionar + notificar
+.Parallel execution: provision + notify
 [source,yaml]
 ----
       - name: ProvisionAccount
@@ -309,9 +309,9 @@ spec:
         completionType: allOf
 ----
 
-== Topics Kafka para BPM
+== Kafka Topics for BPM
 
-El módulo BPM agrega dos topics adicionales al cluster Kafka:
+The BPM module adds two additional topics to the Kafka cluster:
 
 [source,yaml]
 ----
@@ -342,162 +342,162 @@ spec:
     retention.ms: 2592000000
 ----
 
-== Integración con el Pipeline CDC
+== Integration with the CDC Pipeline
 
-El workflow SonataFlow se integra con los componentes existentes del pipeline CDC:
+The SonataFlow workflow integrates with the existing CDC pipeline components:
 
 [cols="2,2,2",options="header"]
 |===
-|Componente |Integración |Protocolo
+|Component |Integration |Protocol
 
 |**Debezium → Kafka**
-|Produce eventos CDC que disparan el workflow
-|CloudEvents sobre Kafka
+|Produces CDC events that trigger the workflow
+|CloudEvents over Kafka
 
 |**Kafka Bridge**
-|El workflow publica aprobaciones y métricas via REST
+|The workflow publishes approvals and metrics via REST
 |HTTP → Kafka
 
 |**Mailpit**
-|El workflow envía emails de bienvenida y rechazo
+|The workflow sends welcome and rejection emails
 |HTTP REST
 
 |**Apicurio Registry**
-|Gobierno de esquemas de los topics BPM
+|Schema governance for BPM topics
 |REST
 
 |**Grafana**
-|Visualización de métricas de onboarding
+|Onboarding metrics visualization
 |Prometheus scraping
 |===
 
 == How it Works
 
-=== Motor de ejecución SonataFlow
+=== SonataFlow execution engine
 
-SonataFlow ejecuta workflows definidos en la https://serverlessworkflow.io/[Serverless Workflow Specification] como microservicios Quarkus:
+SonataFlow runs workflows defined with the https://serverlessworkflow.io/[Serverless Workflow Specification] as Quarkus microservices:
 
-. El operador recibe el CR `SonataFlow` y genera un *Quarkus application* con el runtime del workflow embebido.
-. Al recibir un evento CDC (CloudEvent via Kafka o HTTP), el motor crea una *instancia del workflow* con un ID único.
-. Cada instancia mantiene su propio *estado* (state data) — un JSON document que se transforma en cada transición.
-. El motor ejecuta las transiciones definidas en el workflow de forma *event-driven*: cada estado se evalúa y ejecuta en orden, usando el resultado del anterior como input.
+. The operator receives the `SonataFlow` CR and generates a *Quarkus application* with the workflow runtime embedded.
+. When a CDC event arrives (CloudEvent via Kafka or HTTP), the engine creates a *workflow instance* with a unique ID.
+. Each instance maintains its own *state* (state data) — a JSON document that transforms on each transition.
+. The engine runs the transitions defined in the workflow in an *event-driven* way: each state is evaluated and executed in order, using the previous result as input.
 
-=== Callback pattern: aprobaciones asíncronas
+=== Callback pattern: asynchronous approvals
 
-El estado `RequestManagerApproval` usa el *callback pattern* de la especificación:
+The `RequestManagerApproval` state uses the specification's *callback pattern*:
 
-. El workflow ejecuta la *action* (enviar solicitud de aprobación al topic `bpm.approval.requests` via Kafka Bridge).
-. El motor *suspende* la instancia del workflow — no consume CPU ni memoria mientras espera.
-. La instancia queda persistida en el Data Index con estado `WAITING`.
-. Cuando llega el evento `approvalCompleted` (un mensaje en el topic con el `workflowInstanceId` correcto), el motor *resume* la instancia desde el punto exacto donde se suspendió.
-. Si el evento no llega en `PT24H` (24 horas), el timeout dispara y el workflow transiciona al siguiente estado con un flag de timeout.
+. The workflow runs the *action* (send approval request to topic `bpm.approval.requests` via Kafka Bridge).
+. The engine *suspends* the workflow instance — it does not consume CPU or memory while waiting.
+. The instance is persisted in the Data Index with status `WAITING`.
+. When the `approvalCompleted` event arrives (a message on the topic with the correct `workflowInstanceId`), the engine *resumes* the instance from the exact point where it suspended.
+. If the event does not arrive within `PT24H` (24 hours), the timeout fires and the workflow transitions to the next state with a timeout flag.
 
-=== Ejecución paralela: branches
+=== Parallel execution: branches
 
-El estado `ProvisionAccount` ejecuta *branches* en paralelo:
+The `ProvisionAccount` state runs *branches* in parallel:
 
-. El motor lanza ambas ramas (`CreateAccount` y `SendWelcome`) simultáneamente como coroutines.
-. `completionType: allOf` indica que el workflow espera a que *ambas* ramas terminen antes de transicionar.
-. Si una rama falla, el workflow puede reintentar o manejar el error según la política definida.
-. Los resultados de ambas ramas se fusionan en el state data de la instancia.
+. The engine launches both branches (`CreateAccount` and `SendWelcome`) at the same time as coroutines.
+. `completionType: allOf` means the workflow waits until *both* branches finish before transitioning.
+. If a branch fails, the workflow can retry or handle the error according to the defined policy.
+. The results of both branches are merged into the instance state data.
 
-=== Data Index: consultas de estado
+=== Data Index: state queries
 
-El *Data Index Service* escucha eventos de estado del motor via CloudEvents e indexa toda la información de instancias en PostgreSQL. Expone un endpoint *GraphQL* que permite consultar:
+The *Data Index Service* listens for engine state events via CloudEvents and indexes all instance information in PostgreSQL. It exposes a *GraphQL* endpoint that allows querying:
 
-* Instancias activas, completadas y con error
-* El state data actual de cada instancia
-* Historial de transiciones (qué estados se ejecutaron y cuándo)
-* Variables del proceso (customer data, tier, approval status)
+* Active, completed, and failed instances
+* Current state data for each instance
+* Transition history (which states ran and when)
+* Process variables (customer data, tier, approval status)
 
-La *Management Console* consume este GraphQL para mostrar dashboards operacionales.
+The *Management Console* consumes this GraphQL to show operational dashboards.
 
-== Caso de Uso: Onboarding en Banca
+== Use Case: Banking Onboarding
 
-El flujo completo para un banco (NeuralBank):
+The end-to-end flow for a bank (NeuralBank):
 
-. Un operador bancario crea un nuevo cliente en la aplicación (INSERT en PostgreSQL)
-. Debezium captura el cambio y publica al topic `cdc.public.customers`
-. SonataFlow recibe el evento CDC como CloudEvent
-. El workflow valida los datos del cliente
-. Clasifica al cliente según monto: basic / standard / premium
-. Para clientes premium: solicita aprobación al gerente con SLA de 24h
-. Al aprobar: provisiona la cuenta y envía email de bienvenida en paralelo
-. Publica métricas de onboarding para dashboards operacionales
+. A bank operator creates a new customer in the application (INSERT in PostgreSQL)
+. Debezium captures the change and publishes to topic `cdc.public.customers`
+. SonataFlow receives the CDC event as a CloudEvent
+. The workflow validates customer data
+. Classifies the customer by amount: basic / standard / premium
+. For premium customers: requests manager approval with a 24h SLA
+. On approval: provisions the account and sends welcome email in parallel
+. Publishes onboarding metrics for operational dashboards
 
-=== Prueba End-to-End
+=== End-to-End Test
 
 [source,sql]
 ----
--- Crear cliente basic (auto-approved)
+-- Create basic customer (auto-approved)
 INSERT INTO customers (first_name, last_name, email)
 VALUES ('Juan', 'Basic', 'juan.basic@neuralbank.io');
 
--- Crear cliente premium (requires approval)
+-- Create premium customer (requires approval)
 INSERT INTO customers (first_name, last_name, email)
 VALUES ('Maria', 'Premium', 'maria.premium@neuralbank.io');
 ----
 
-== Desarrollo Visual con Kaoto
+== Visual Development with Kaoto
 
-Los workflows SonataFlow se pueden diseñar visualmente usando la extensión **Kaoto** en **Red Hat OpenShift DevSpaces**:
+SonataFlow workflows can be designed visually using the **Kaoto** extension in **Red Hat OpenShift Dev Spaces**:
 
-1. Abrir DevSpaces con el workspace que contiene el proyecto
-2. Instalar la extensión Kaoto desde el marketplace de VS Code
-3. Abrir el archivo `.sw.yaml` del workflow
-4. El editor visual muestra el diagrama BPMN interactivo
-5. Arrastrar y soltar estados, eventos y funciones
-6. El YAML se genera automáticamente
+1. Open Dev Spaces with the workspace that contains the project
+2. Install the Kaoto extension from the VS Code marketplace
+3. Open the workflow `.sw.yaml` file
+4. The visual editor shows the interactive BPMN diagram
+5. Drag and drop states, events, and functions
+6. YAML is generated automatically
 
-Esta integración permite que analistas de negocio y desarrolladores colaboren en la definición de procesos usando la misma herramienta.
+This integration lets business analysts and developers collaborate on process definitions using the same tool.
 
-== Documentación Oficial
+== Official Documentation
 
-* https://docs.redhat.com/en/documentation/red_hat_openshift_serverless[Red Hat OpenShift Serverless^] — Plataforma serverless que incluye Serverless Logic
-* https://sonataflow.org/serverlessworkflow/latest/index.html[SonataFlow Documentation^] — Motor de workflows cloud-native
-* https://serverlessworkflow.io/[Serverless Workflow Specification^] — Estándar abierto para definición de workflows
-* https://kogito.kie.org/[Kogito^] — Plataforma de automatización de procesos cloud-native
-* https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces[Red Hat OpenShift Dev Spaces^] — IDE cloud-native para desarrollo de workflows con Kaoto
-* https://kaoto.io/docs/[Kaoto Documentation^] — Diseñador visual para workflows y rutas Camel
+* https://docs.redhat.com/en/documentation/red_hat_openshift_serverless[Red Hat OpenShift Serverless^] — Serverless platform that includes Serverless Logic
+* https://sonataflow.org/serverlessworkflow/latest/index.html[SonataFlow Documentation^] — Cloud-native workflow engine
+* https://serverlessworkflow.io/[Serverless Workflow Specification^] — Open standard for workflow definitions
+* https://kogito.kie.org/[Kogito^] — Cloud-native process automation platform
+* https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces[Red Hat OpenShift Dev Spaces^] — Cloud-native IDE for workflow development with Kaoto
+* https://kaoto.io/docs/[Kaoto Documentation^] — Visual designer for workflows and Camel routes
 
-== Comparación: Kogito vs RHPAM vs SonataFlow
+== Comparison: Kogito vs RHPAM vs SonataFlow
 
 [cols="1,1,1,1",options="header"]
 |===
-|Característica |RHPAM 7.x (legacy) |Kogito |SonataFlow
+|Feature |RHPAM 7.x (legacy) |Kogito |SonataFlow
 
 |Runtime
 |Wildfly/EAP
 |Quarkus/Spring Boot
 |Quarkus (serverless)
 
-|Definición de procesos
+|Process definition
 |BPMN 2.0
 |BPMN 2.0 / DMN
 |Serverless Workflow Spec
 
-|Despliegue
+|Deployment
 |Business Central + KIE Server
 |Kubernetes Operator
 |SonataFlow Operator
 
-|Escalabilidad
-|Horizontal manual
+|Scalability
+|Manual horizontal
 |Cloud-native auto-scaling
 |Knative serverless (scale-to-zero)
 
 |Kafka integration
 |Via JMS/AMQP bridge
-|Nativo (Quarkus Kafka)
-|CloudEvents nativo
+|Native (Quarkus Kafka)
+|Native CloudEvents
 
 |Visual designer
 |Business Central
 |VS Code Extension
 |Kaoto + VS Code
 
-|Estado
-|Deprecated (migrar a SonataFlow)
-|Maduro → migrar a SonataFlow
-|Recomendado para nuevos proyectos
+|Status
+|Deprecated (migrate to SonataFlow)
+|Mature → migrate to SonataFlow
+|Recommended for new projects
 |===

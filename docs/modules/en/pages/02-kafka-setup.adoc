@@ -5,7 +5,7 @@
 <div id="scene-kafka" style="width:100%;min-height:400px;"></div>
 <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
 <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script src="_/js/three-helper.js"></script>
+<script src="../_/js/three-helper.js"></script>
 <script>
 (function(){
   var ctx = ThreeHelper.initScene('scene-kafka', {height:380, camY:12, camZ:22});
@@ -29,36 +29,36 @@
 </script>
 ++++
 
-== ¿Qué es Streams for Apache Kafka?
+== What is Streams for Apache Kafka?
 
-Distribución self-managed de Apache Kafka diseñada para crear una experiencia superior de instalación, configuración y gestión en *Red Hat OpenShift*.
+Self-managed distribution of Apache Kafka designed to deliver a superior install, configuration, and management experience on *Red Hat OpenShift*.
 
-Basada en el proyecto open source https://strimzi.io/[Strimzi] (CNCF Incubation project), proporciona:
+Based on the open source https://strimzi.io/[Strimzi] project (CNCF Incubation project), it provides:
 
-* Container images para Apache Kafka
-* Operators para gestionar clusters, topics y usuarios
-* HTTP Bridge para Apache Kafka
-* Consola UI (StreamsHub)
+* Container images for Apache Kafka
+* Operators to manage clusters, topics, and users
+* HTTP Bridge for Apache Kafka
+* Console UI (StreamsHub)
 
-== Apache Kafka — Fundamentos
+== Apache Kafka — Fundamentals
 
-Apache Kafka es un sistema distribuido de streaming de datos basado en mecanismo publish-subscribe.
+Apache Kafka is a distributed data streaming system built on a publish-subscribe model.
 
-*Características principales:*
+*Key characteristics:*
 
-* Escalabilidad horizontal
-* Tolerancia a fallos
-* Datos inmutables (append-only log)
+* Horizontal scalability
+* Fault tolerance
+* Immutable data (append-only log)
 * Open source (Apache License 2.0)
 
-*Casos de uso:*
+*Use cases:*
 
-* Recomendaciones en tiempo real
-* Aplicaciones IoT
-* Data gathering para IA
+* Real-time recommendations
+* IoT applications
+* Data gathering for AI
 * *Change Data Capture (CDC)*
 
-== Operadores Strimzi
+== Strimzi Operators
 
 [mermaid]
 ....
@@ -83,11 +83,11 @@ graph TB
     KC --> CTRL
 ....
 
-El Cluster Operator observa el CR `Kafka` y reconcilia el estado deseado. Los Topic y User Operators corren como contenedores dentro del Entity Operator.
+The Cluster Operator watches the `Kafka` CR and reconciles desired state. The Topic and User Operators run as containers inside the Entity Operator.
 
-== Despliegue KRaft (sin Zookeeper)
+== KRaft deployment (without Zookeeper)
 
-A partir de Streams for Apache Kafka 3.x, el metadata se almacena *dentro de Kafka* usando KRaft, eliminando la dependencia de Zookeeper.
+Starting with Streams for Apache Kafka 3.x, metadata is stored *inside Kafka* using KRaft, removing the Zookeeper dependency.
 
 [source,yaml]
 ----
@@ -133,7 +133,7 @@ spec:
     groupRegex: ".*"
 ----
 
-=== Cluster KRaft: 3 nodos
+=== KRaft cluster: 3 nodes
 
 ++++
 <div id="kraft-cluster-3d" class="three-container" style="height:400px;"></div>
@@ -239,37 +239,37 @@ spec:
 
 == How it Works
 
-=== KRaft Consensus (sin Zookeeper)
+=== KRaft consensus (without Zookeeper)
 
-A partir de Kafka 3.x, el metadata del cluster se gestiona internamente usando el protocolo *KRaft* (Kafka Raft):
+Starting with Kafka 3.x, cluster metadata is managed internally using the *KRaft* (Kafka Raft) protocol:
 
-. Cada broker tiene un rol: *controller* (gestión de metadata) o *broker* (almacenamiento y serving de datos), o ambos en clusters pequeños (combined mode).
-. Los controllers forman un _quorum_ usando Raft. Un controller es elegido como *active controller* — es el único que escribe metadata.
-. Cuando un topic se crea o una partición se reasigna, el active controller escribe el cambio en un log interno (`__cluster_metadata`), que se replica a los otros controllers.
-. Los brokers obtienen el metadata suscribiéndose al log del controller — no hay polling, es push-based.
-. Si el active controller cae, los controllers restantes eligen un nuevo líder via Raft en *milisegundos*, eliminando el delay de minutos que ocurría con Zookeeper.
+. Each broker has a role: *controller* (metadata management) or *broker* (data storage and serving), or both in small clusters (combined mode).
+. Controllers form a _quorum_ using Raft. One controller is elected *active controller* — it is the only one that writes metadata.
+. When a topic is created or a partition is reassigned, the active controller writes the change to an internal log (`__cluster_metadata`), which is replicated to the other controllers.
+. Brokers obtain metadata by subscribing to the controller log — there is no polling; it is push-based.
+. If the active controller fails, the remaining controllers elect a new leader via Raft in *milliseconds*, eliminating the multi-minute delay that could occur with Zookeeper.
 
-=== Ciclo de vida de un mensaje
+=== Message lifecycle
 
-. Un *producer* envía un batch de registros al broker *leader* de la partición destino.
-. El leader escribe el batch en su log local (append-only en disco, sequential I/O).
-. Los *followers* (réplicas) fetch el batch del leader y lo escriben en sus propios logs.
-. Cuando `min.insync.replicas` réplicas (incluyendo el leader) confirman el write, el leader envía un *ACK* al producer.
-. El offset del batch se asigna secuencialmente — es inmutable y monotónicamente creciente.
-. Un *consumer* con un _consumer group_ asignado hace `poll()` al leader de cada partición asignada, recibiendo batches desde su último offset committed.
+. A *producer* sends a batch of records to the *leader* broker of the target partition.
+. The leader writes the batch to its local log (append-only on disk, sequential I/O).
+. *Followers* (replicas) fetch the batch from the leader and write it to their own logs.
+. When `min.insync.replicas` replicas (including the leader) acknowledge the write, the leader sends an *ACK* to the producer.
+. The batch offset is assigned sequentially — it is immutable and monotonically increasing.
+. A *consumer* with an assigned _consumer group_ calls `poll()` on the leader of each assigned partition, receiving batches from its last committed offset.
 
-=== Strimzi Reconciliation Loop
+=== Strimzi reconciliation loop
 
-El Cluster Operator de Strimzi opera como un _Kubernetes controller_ clásico:
+The Strimzi Cluster Operator behaves like a classic _Kubernetes controller_:
 
-. Observa los cambios en los CRs `Kafka`, `KafkaConnect`, `KafkaTopic` y `KafkaUser`.
-. Calcula la diferencia entre el estado deseado (CR) y el estado actual (StatefulSets, ConfigMaps, Secrets).
-. Aplica los cambios de forma *rolling* — nunca detiene todos los brokers simultáneamente.
-. Los Topic y User Operators corren como sidecars en el _Entity Operator_ pod y reconcilian sus respectivos CRs contra el API de Kafka directamente (no Kubernetes resources).
+. It watches changes to the `Kafka`, `KafkaConnect`, `KafkaTopic`, and `KafkaUser` CRs.
+. It computes the difference between desired state (CR) and current state (StatefulSets, ConfigMaps, Secrets).
+. It applies changes in a *rolling* fashion — it never stops all brokers at once.
+. The Topic and User Operators run as sidecars in the _Entity Operator_ pod and reconcile their respective CRs against the Kafka API directly (not Kubernetes resources).
 
 == Kafka Bridge (HTTP REST)
 
-El Kafka Bridge permite producir y consumir mensajes via HTTP REST — ideal para demos y testing sin cliente Kafka nativo:
+The Kafka Bridge lets you produce and consume messages over HTTP REST — ideal for demos and testing without a native Kafka client:
 
 [source,yaml]
 ----
@@ -285,7 +285,7 @@ spec:
     port: 8080
 ----
 
-*Ejemplo — producir un mensaje:*
+*Example — produce a message:*
 
 [source,bash]
 ----
@@ -294,13 +294,13 @@ curl -X POST https://kafka-bridge-kafka-cdc.apps.<domain>/topics/cdc.public.cust
   -d '{"records":[{"value":{"first_name":"Test","last_name":"User","email":"test@demo.io"}}]}'
 ----
 
-== Seguridad: Autenticación y Encriptación
+== Security: Authentication and encryption
 
-El cluster Kafka expone dos listeners: `plain` (9092, sin TLS) y `tls` (9093, con TLS). Los clientes de producción deben usar el listener TLS con autenticación SCRAM-SHA-512.
+The Kafka cluster exposes two listeners: `plain` (9092, no TLS) and `tls` (9093, with TLS). Production clients should use the TLS listener with SCRAM-SHA-512 authentication.
 
-=== KafkaUser con SCRAM-SHA-512
+=== KafkaUser with SCRAM-SHA-512
 
-Strimzi gestiona las credenciales automáticamente al crear un recurso `KafkaUser`. El operador genera un `Secret` con la contraseña:
+Strimzi manages credentials automatically when you create a `KafkaUser` resource. The operator generates a `Secret` with the password:
 
 [source,yaml]
 ----
@@ -339,11 +339,11 @@ spec:
         operations: [Read]
 ----
 
-Las ACLs restringen el acceso: solo los topics con prefijo `cdc` y `dlq`, y los consumer groups específicos del pipeline.
+ACLs restrict access to topics with the `cdc` and `dlq` prefixes only, and to the pipeline's specific consumer groups.
 
-=== Configuración de cliente — KafkaConnect
+=== Client configuration — KafkaConnect
 
-KafkaConnect se configura para usar el listener TLS (9093) con SCRAM-SHA-512:
+KafkaConnect is configured to use the TLS listener (9093) with SCRAM-SHA-512:
 
 [source,yaml]
 ----
@@ -361,11 +361,11 @@ spec:
         certificate: ca.crt
 ----
 
-Strimzi genera automáticamente el secret `cdc-cluster-cluster-ca-cert` con el certificado CA del cluster.
+Strimzi automatically generates the `cdc-cluster-cluster-ca-cert` secret with the cluster CA certificate.
 
-=== Configuración de cliente — Apache Camel
+=== Client configuration — Apache Camel
 
-Camel usa propiedades SASL/SSL en los parámetros del componente `kafka`:
+Camel uses SASL/SSL properties in the `kafka` component parameters:
 
 [source,yaml]
 ----
@@ -378,29 +378,29 @@ parameters:
   sslTruststoreType: PEM
 ----
 
-Las credenciales se inyectan como variables de entorno desde el Secret generado por Strimzi.
+Credentials are injected as environment variables from the Secret generated by Strimzi.
 
-== Ecosistema Streams for Apache Kafka
+== Streams for Apache Kafka ecosystem
 
 [cols="1,2",options="header"]
 |===
-| Componente | Rol en el ecosistema
+| Component | Role in the ecosystem
 
-| *Kafka Core* | Brokers, topics, particiones, replicación
-| *Kafka Connect* | Framework de connectors (source/sink)
-| *Kafka Bridge* | REST proxy HTTP para producir/consumir
+| *Kafka Core* | Brokers, topics, partitions, replication
+| *Kafka Connect* | Connector framework (source/sink)
+| *Kafka Bridge* | HTTP REST proxy to produce/consume
 | *Apicurio Registry* | Schema Registry (Avro, JSON Schema, Protobuf)
-| *Debezium* | CDC connectors para PostgreSQL, MySQL, MongoDB, etc.
-| *Streams Console* | UI web para monitorear clusters, topics y consumer groups
-| *Kafka Exporter* | Exporta métricas de lag de consumer groups a Prometheus
-| *Mirror Maker 2* | Replicación cross-cluster
+| *Debezium* | CDC connectors for PostgreSQL, MySQL, MongoDB, etc.
+| *Streams Console* | Web UI to monitor clusters, topics, and consumer groups
+| *Kafka Exporter* | Exports consumer group lag metrics to Prometheus
+| *Mirror Maker 2* | Cross-cluster replication
 | *Kroxylicious* | Kafka Proxy — encryption at rest, schema validation
 |===
 
-== Documentación Oficial
+== Official Documentation
 
-* https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka[Red Hat Streams for Apache Kafka^] — Guía de instalación, configuración y operación
-* https://strimzi.io/documentation/[Strimzi Documentation^] — Proyecto upstream, operadores y CRDs
-* https://strimzi.io/blog/[Strimzi Blog^] — Novedades, KRaft migration y mejores prácticas
-* https://kafka.apache.org/documentation/[Apache Kafka Documentation^] — Referencia oficial del proyecto Kafka
-* https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka/2.9/html/using_the_streams_for_apache_kafka_bridge/index[Kafka Bridge^] — HTTP REST proxy para Kafka
+* https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka[Red Hat Streams for Apache Kafka^] — Installation, configuration, and operations guide
+* https://strimzi.io/documentation/[Strimzi Documentation^] — Upstream project, operators, and CRDs
+* https://strimzi.io/blog/[Strimzi Blog^] — News, KRaft migration, and best practices
+* https://kafka.apache.org/documentation/[Apache Kafka Documentation^] — Official Kafka project reference
+* https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka/2.9/html/using_the_streams_for_apache_kafka_bridge/index[Kafka Bridge^] — HTTP REST proxy for Kafka

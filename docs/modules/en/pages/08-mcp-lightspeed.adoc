@@ -1,0 +1,171 @@
+= MCP + Lightspeed
+:navtitle: MCP + Lightspeed
+
+== OpenShift Lightspeed with MCP
+
+OpenShift Lightspeed is an AI assistant integrated into the OpenShift console that has access to *MCP tools* (Model Context Protocol) to diagnose and resolve issues in the cluster.
+
+In this cluster, Lightspeed has access to *55+ MCP tools* covering Kubernetes, OpenShift, Argo CD, Developer Hub, and now the Kafka/CDC pipeline as well.
+
+== CDC Pipeline troubleshooting prompts
+
+=== Kafka Cluster
+
+[cols="1,2",options="header"]
+|===
+| Situation | Prompt for Lightspeed
+
+| Kafka cluster not ready
+| _"Get the Kafka resource in namespace kafka-cdc and show its status"_
+
+| Brokers not starting
+| _"Get pods in namespace kafka-cdc with label strimzi.io/kind=Kafka and show their status"_
+
+| Topics not being created
+| _"List KafkaTopics in namespace kafka-cdc"_
+|===
+
+=== Debezium / KafkaConnect
+
+[cols="1,2",options="header"]
+|===
+| Situation | Prompt for Lightspeed
+
+| KafkaConnect build failing
+| _"Get the logs from the KafkaConnect pod in namespace kafka-cdc"_
+
+| Debezium not capturing changes
+| _"Get the KafkaConnectors in namespace kafka-cdc and show their status"_
+
+| Connector in FAILED state
+| _"Get events in namespace kafka-cdc related to KafkaConnect"_
+
+| Replication slot not created
+| _"Get the logs from deployment cdc-postgresql in namespace kafka-cdc"_
+|===
+
+=== Kafka Bridge
+
+[cols="1,2",options="header"]
+|===
+| Situation | Prompt for Lightspeed
+
+| Bridge not responding
+| _"Get pods in namespace kafka-cdc with label strimzi.io/kind=KafkaBridge"_
+
+| Error producing via REST
+| _"Get the logs from the KafkaBridge pod in namespace kafka-cdc"_
+|===
+
+=== Apicurio Registry
+
+[cols="1,2",options="header"]
+|===
+| Situation | Prompt for Lightspeed
+
+| Registry unavailable
+| _"Get pods in namespace kafka-cdc with label app=apicurio-registry"_
+
+| Kafka connection error
+| _"Get the logs from the ApicurioRegistry pod in namespace kafka-cdc"_
+|===
+
+=== Camel CDC Processor
+
+[cols="1,2",options="header"]
+|===
+| Situation | Prompt for Lightspeed
+
+| Processor not starting
+| _"Get pods in namespace kafka-cdc with label app=camel-cdc-processor"_
+
+| Errors in the Camel route
+| _"Get the logs from deployment camel-cdc-processor in namespace kafka-cdc"_
+
+| Emails not reaching Mailpit
+| _"Check connectivity from namespace kafka-cdc to n8n-mailpit.openshift-lightspeed.svc"_
+|===
+
+=== Streams Console
+
+[cols="1,2",options="header"]
+|===
+| Situation | Prompt for Lightspeed
+
+| Console not loading
+| _"Get the Console resource in namespace kafka-cdc and show its status"_
+
+| Authentication error
+| _"Get events in namespace kafka-cdc related to Console"_
+|===
+
+== How it Works
+
+=== Model Context Protocol (MCP)
+
+MCP is an open protocol that connects AI models to external tools:
+
+. Lightspeed receives the user's prompt in the OpenShift console.
+. The model analyzes intent and selects the relevant *MCP tools* from the 55+ available.
+. For each selected tool, MCP runs a *function call* against the OpenShift API server (or Argo CD, etc.) with parameters inferred from the prompt.
+. The results (resource YAML, logs, events) are injected back into the model context.
+. The model synthesizes a response that combines the retrieved information with its platform knowledge.
+
+=== Troubleshooting prompt flow
+
+When a user asks _"Get the KafkaConnectors in namespace kafka-cdc and show their status"_:
+
+. Lightspeed identifies the need for the `k8s_listResources` tool with `kind: KafkaConnector`, `namespace: kafka-cdc`.
+. MCP runs the equivalent of `oc get kafkaconnectors -n kafka-cdc -o json`.
+. The JSON response contains the CRs with their `.status.conditions` (type, status, message).
+. The model interprets the conditions and produces a readable answer: "The connector `debezium-postgresql-source` is in RUNNING state with 1 active task. The connector `mailpit-http-sink` is RUNNING with 1 task."
+. If it detects an abnormal state (FAILED, PAUSED), it suggests corrective actions based on the error messages.
+
+=== Security and permissions
+
+MCP tools run with the permissions of the ServiceAccount configured in the `mcp-system` namespace. OpenShift RBAC controls which resources can be read or modified — Lightspeed does not have unrestricted cluster access.
+
+== Quick diagnostic workflow
+
+To validate the entire CDC pipeline after a deployment, run these prompts in sequence:
+
+[source,text]
+----
+1. "Get the Kafka resource in namespace kafka-cdc and check if it's ready"
+2. "Get KafkaConnectors in namespace kafka-cdc and show their status"
+3. "Get pods in namespace kafka-cdc and check their status"
+4. "Check if consumer group camel-cdc-consumer has lag in namespace kafka-cdc"
+5. "Get the Console resource in namespace kafka-cdc"
+6. "Get the ApicurioRegistry resource in namespace kafka-cdc"
+----
+
+== MCP tools available for Kafka
+
+MCP tools registered in `mcp-system` that are relevant to the CDC pipeline:
+
+[cols="1,2",options="header"]
+|===
+| Tool | Usage
+
+| `k8s_listPods`
+| List pods in the kafka-cdc namespace
+
+| `k8s_getPodLogs`
+| View logs for any pipeline component
+
+| `k8s_listEvents`
+| View namespace events for troubleshooting
+
+| `ocp_getRoute`
+| Verify access to Kafka Console, Bridge, Apicurio
+
+| `argo_listApplications`
+| View status of Kafka/CDC Argo CD Applications
+|===
+
+== Official Documentation
+
+* https://docs.redhat.com/en/documentation/red_hat_openshift_lightspeed[Red Hat OpenShift Lightspeed^] — AI assistant for OpenShift
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cli_tools/oc-cli-getting-started[OpenShift CLI (oc)^] — Command-line tool for OpenShift
+* https://spec.modelcontextprotocol.io/[Model Context Protocol (MCP) Specification^] — Open standard for connecting AI models to tools
+* https://docs.redhat.com/en/documentation/red_hat_openshift_gitops[Red Hat OpenShift GitOps^] — Argo CD for OpenShift

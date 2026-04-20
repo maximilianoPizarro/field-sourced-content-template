@@ -1,0 +1,350 @@
+= Internal Architecture
+:navtitle: Internal Architecture
+
+++++
+<div id="scene-internals" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-internals', {height:380, camY:14, camZ:24});
+  if(!ctx) return;
+  var b0 = ThreeHelper.createNode(ctx.scene,'Broker 0',0xD32F2F,-6,0,-4);
+  var b1 = ThreeHelper.createNode(ctx.scene,'Broker 1',0xD32F2F,0,0,-4);
+  var b2 = ThreeHelper.createNode(ctx.scene,'Broker 2',0xD32F2F,6,0,-4);
+  var p0 = ThreeHelper.createNode(ctx.scene,'P0 (leader)',0x4CAF50,-6,0,2,{width:2.2,height:0.7});
+  var p1 = ThreeHelper.createNode(ctx.scene,'P1 (leader)',0x4CAF50,0,0,2,{width:2.2,height:0.7});
+  var p2 = ThreeHelper.createNode(ctx.scene,'P2 (leader)',0x4CAF50,6,0,2,{width:2.2,height:0.7});
+  var cg = ThreeHelper.createNode(ctx.scene,'Consumer Group',0xFF9800,0,4,4,{width:3.5,height:0.8});
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,b0,p0,0x4CAF50,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,b1,p1,0x4CAF50,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,b2,p2,0x4CAF50,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,p0,b1,0x888888,{speed:0.003}),
+    ThreeHelper.createEdge(ctx.scene,p1,b2,0x888888,{speed:0.003}),
+    ThreeHelper.createEdge(ctx.scene,p2,b0,0x888888,{speed:0.003}),
+    ThreeHelper.createEdge(ctx.scene,p0,cg,0xFF9800,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,p1,cg,0xFF9800,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,p2,cg,0xFF9800,{speed:0.008})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
+== Partition Design
+
+Each CDC pipeline topic is configured with *3 partitions* and *3 replicas*:
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: cdc.public.customers
+  namespace: kafka-cdc
+  labels:
+    strimzi.io/cluster: cdc-cluster
+spec:
+  partitions: 3
+  replicas: 3
+  config:
+    retention.ms: 604800000
+    cleanup.policy: compact
+----
+
+=== Why 3 partitions?
+
+[cols="1,2",options="header"]
+|===
+| Factor | Decision
+
+| *Parallelism*
+| 3 partitions allow up to 3 concurrent consumers in a consumer group
+
+| *Replication*
+| With RF=3 and `min.insync.replicas=2`, the loss of 1 broker is tolerated without data loss
+
+| *Ordering*
+| Debezium uses the primary key as the partition key, preserving per-record ordering
+
+| *Scalability*
+| Partitions can be increased without downtime (only added, never removed)
+|===
+
+=== Partition Key in CDC
+
+Debezium uses the record’s primary key as the partition key. This ensures all changes for the same record go to the same partition, preserving ordering:
+
+----
+Record with id=1  → Partition 0
+Record with id=2  → Partition 1
+Record with id=3  → Partition 2
+Record with id=4  → Partition 0 (hash wraps)
+----
+
+== Consumer Groups and Scalability
+
+The pipeline has two main consumer groups:
+
+[cols="1,2,1",options="header"]
+|===
+| Consumer Group | Component | Replicas
+
+| `cdc-connect-cluster`
+| KafkaConnect (Debezium + HTTP Sink)
+| 2
+
+| `camel-cdc-consumer`
+| Apache Camel CDC Processor
+| 2
+|===
+
+=== Partition balancing
+
+With 3 partitions and 2 consumers:
+
+----
+Consumer 0: Partition 0, Partition 1
+Consumer 1: Partition 2
+----
+
+If a consumer fails, Kafka rebalances automatically:
+
+----
+Consumer 1: Partition 0, Partition 1, Partition 2
+----
+
+When scaling to 3 replicas, each consumer processes exactly 1 partition (optimal distribution).
+
+== Offset and Checkpoint Handling
+
+=== Kafka offsets
+
+Each consumer group maintains its position (offset) per partition on the internal topic `__consumer_offsets`:
+
+[source,bash]
+----
+oc exec -it cdc-cluster-kafka-0 -n kafka-cdc -- bin/kafka-consumer-groups.sh \
+  --bootstrap-server localhost:9092 \
+  --describe --group camel-cdc-consumer
+----
+
+=== Debezium checkpoints
+
+Debezium maintains its own checkpoint via the PostgreSQL *replication slot* and KafkaConnect *offset topics*:
+
+[source,yaml]
+----
+config:
+  offset.storage.topic: cdc-connect-offsets
+  config.storage.topic: cdc-connect-configs
+  status.storage.topic: cdc-connect-status
+  offset.storage.replication.factor: 3
+  config.storage.replication.factor: 3
+  status.storage.replication.factor: 3
+----
+
+* `cdc-connect-offsets` — current position in the PostgreSQL WAL
+* `cdc-connect-configs` — connector configuration
+* `cdc-connect-status` — task status
+
+All three topics use `replication.factor: 3` to survive the loss of one broker.
+
+=== PostgreSQL replication slot
+
+Debezium creates a replication slot so changes are not lost if the connector restarts:
+
+[source,yaml]
+----
+config:
+  slot.name: debezium_cdc
+  publication.name: cdc_publication
+  snapshot.mode: initial
+----
+
+* `slot.name` — name of the logical slot in PostgreSQL
+* `snapshot.mode: initial` — on first startup, Debezium captures a full snapshot of the tables
+
+To verify the slot:
+
+[source,bash]
+----
+oc exec -it deploy/cdc-postgresql -n kafka-cdc -- psql -U cdcuser -d cdcdb -c \
+  "SELECT slot_name, plugin, slot_type, active FROM pg_replication_slots;"
+----
+
+== Retention and Reprocessing
+
+=== Retention policies
+
+[cols="1,1,1",options="header"]
+|===
+| Topic | Retention | Cleanup Policy
+
+| `cdc.public.customers`
+| 7 days (604800000 ms)
+| `compact`
+
+| `cdc.public.orders`
+| 7 days (604800000 ms)
+| `compact`
+
+| `dlq.cdc-errors`
+| 30 days (2592000000 ms)
+| `delete`
+
+| `dlq.cdc-camel-errors`
+| 30 days (2592000000 ms)
+| `delete`
+|===
+
+=== What is cleanup.policy: compact?
+
+With `compact`, Kafka retains only the latest value for each key, removing older versions. For CDC:
+
+* The current state of each record is preserved
+* Intermediate updates are removed after compaction
+* You can reconstruct the full table state by consuming the topic from the beginning
+
+=== Reprocessing
+
+To reprocess events, you can reset the consumer group offset:
+
+[source,bash]
+----
+oc exec -it cdc-cluster-kafka-0 -n kafka-cdc -- bin/kafka-consumer-groups.sh \
+  --bootstrap-server localhost:9092 \
+  --group camel-cdc-consumer \
+  --topic cdc.public.customers \
+  --reset-offsets --to-earliest \
+  --execute
+----
+
+WARNING: This causes all messages on the topic to be reprocessed. Use with caution in production.
+
+== Replication Configuration
+
+The Kafka cluster uses the following replication parameters to ensure durability:
+
+[source,yaml]
+----
+config:
+  offsets.topic.replication.factor: 3
+  transaction.state.log.replication.factor: 3
+  transaction.state.log.min.isr: 2
+  default.replication.factor: 3
+  min.insync.replicas: 2
+----
+
+* `min.insync.replicas: 2` — a write is acknowledged only if 2 of the 3 replicas persist it
+* `default.replication.factor: 3` — all new topics are created with RF=3
+
+This means the cluster can tolerate the loss of *1 broker* without losing data or availability.
+
+== How it Works
+
+=== Writing to Kafka: from producer to disk
+
+When Debezium (or any producer) sends a message to Kafka, the following happens internally:
+
+. The producer serializes the key and value, computes `hash(key) % numPartitions` to choose the target partition.
+. The producer batches messages per partition (configurable via `batch.size` and `linger.ms`) to optimize I/O.
+. The batch is sent to the partition *leader* broker over TCP.
+. The leader writes the batch to a *segment file* on disk — an append-only log. Segments rotate when they reach 1GB (configurable).
+. Each message gets a sequential *offset*: a 64-bit integer, monotonically increasing, unique within the partition.
+. *Followers* fetch the batch from the leader, write it to their own segments, and send an ACK to the leader.
+. With `acks=all` (Strimzi default) and `min.insync.replicas=2`, the leader acknowledges the producer only when at least 2 replicas have persisted the data.
+
+=== Reading in Kafka: consumer groups
+
+. Each consumer in the group connects to the *group coordinator* (a broker chosen to manage the group).
+. The coordinator runs a *partition assignment protocol* (range or round-robin), distributing partitions across consumers.
+. Each consumer periodically `poll()`s the leader of its assigned partitions, receiving message batches from its last offset.
+. The consumer processes messages and then *commits* the offset to the internal topic `__consumer_offsets`.
+. If a consumer disconnects (no heartbeat within `session.timeout.ms`), the coordinator triggers a *rebalance*: orphaned partitions are reassigned to the remaining consumers.
+
+=== Compaction: cleanup.policy=compact
+
+For CDC topics with `cleanup.policy: compact`:
+
+. Kafka periodically runs a *log cleaner* that scans closed segments.
+. For each key, it retains only the message with the *highest offset* (the most recent).
+. Messages with duplicate keys and lower offsets are physically removed from disk.
+. A message with a `null` value (tombstone) marks the key for full removal after the `delete.retention.ms` period.
+. Result: the topic contains exactly *one message per key* — the current state of each database record.
+
+== Network Policies
+
+The `kafka-cdc` namespace is protected with `NetworkPolicy` rules that restrict ingress traffic:
+
+[source,yaml]
+----
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kafka-cdc-allow-internal
+  namespace: kafka-cdc
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kafka-cdc
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshift-cluster-observability-operator
+      ports:
+        - protocol: TCP
+          port: 9404
+----
+
+* Only pods inside `kafka-cdc` can communicate with each other
+* The observability namespace can access the metrics port (9404) for Prometheus scraping
+
+== Pod Disruption Budgets
+
+PDBs ensure maintenance operations (drains, upgrades) do not leave the pipeline without capacity:
+
+[source,yaml]
+----
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: kafka-brokers-pdb
+  namespace: kafka-cdc
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      strimzi.io/cluster: cdc-cluster
+      strimzi.io/kind: Kafka
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: kafka-connect-pdb
+  namespace: kafka-cdc
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      strimzi.io/cluster: cdc-connect
+      strimzi.io/kind: KafkaConnect
+----
+
+* `kafka-brokers-pdb` — at least 2 of the 3 brokers are always available
+* `kafka-connect-pdb` — at least 1 of the 2 Connect workers is always available
+
+== Official Documentation
+
+* https://kafka.apache.org/documentation/#design[Apache Kafka Design^] — Kafka internal architecture (partitions, replication, storage)
+* https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka/2.9/html/deploying_and_managing_amq_streams_on_openshift/config-topics-str[Configuring Kafka Topics^] — Topic management with Strimzi
+* https://strimzi.io/docs/operators/latest/configuring.html[Strimzi Configuration Guide^] — Advanced operator and CR configuration
+* https://kafka.apache.org/documentation/#consumerconfigs[Kafka Consumer Configurations^] — Consumer group and offset parameters
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/nodes/controlling-pod-placement-onto-nodes-scheduling[Pod Scheduling and Disruption Budgets^] — PDBs and scheduling on OpenShift

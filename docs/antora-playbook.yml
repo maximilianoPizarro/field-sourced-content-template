@@ -1,7 +1,7 @@
 site:
   title: "Event-Driven Architecture & Industrial Edge"
   url: https://maximilianopizarro.github.io/field-sourced-content-template
-  start_page: ROOT::index.adoc
+  start_page: ROOT:en:index.adoc
 
 content:
   sources:
@@ -43,6 +43,10 @@ ui:
               Event-Driven Architecture &amp; Industrial Edge
             </a>
             <span id="user-info" style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0"></span>
+            <span id="lang-switcher" style="display:flex;gap:4px;flex-shrink:0;margin-left:8px">
+              <a id="lang-en" href="#" style="color:#fff;background:#c00;padding:2px 8px;border-radius:3px;font-size:11px;font-weight:600;text-decoration:none;transition:opacity .2s">EN</a>
+              <a id="lang-es" href="#" style="color:#ccc;background:#333;padding:2px 8px;border-radius:3px;font-size:11px;font-weight:600;text-decoration:none;transition:opacity .2s">ES</a>
+            </span>
           </div>
         </header>
         <script>
@@ -67,6 +71,24 @@ ui:
               if (nav) nav.classList.toggle('is-active');
             });
           }
+          var path = window.location.pathname;
+          var enBtn = document.getElementById('lang-en');
+          var esBtn = document.getElementById('lang-es');
+          var isEs = path.indexOf('/es/') !== -1;
+          if (isEs) {
+            esBtn.style.background = '#c00'; esBtn.style.color = '#fff';
+            enBtn.style.background = '#333'; enBtn.style.color = '#ccc';
+          }
+          if (enBtn) enBtn.onclick = function(e) {
+            e.preventDefault();
+            if (path.indexOf('/es/') !== -1) window.location.href = path.replace('/es/', '/en/');
+            else if (path.indexOf('/en/') === -1) window.location.href = path.replace(/\/[^\/]*$/, '/en/index.html');
+          };
+          if (esBtn) esBtn.onclick = function(e) {
+            e.preventDefault();
+            if (path.indexOf('/en/') !== -1) window.location.href = path.replace('/en/', '/es/');
+            else if (path.indexOf('/es/') === -1) window.location.href = path.replace(/\/[^\/]*$/, '/es/index.html');
+          };
         });
         </script>
     - path: partials/toolbar.hbs
@@ -98,6 +120,11 @@ ui:
             </div>
           </div>
         </footer>
+    - path: partials/footer-scripts.hbs
+      contents: |
+        <script id="site-script" src="{{uiRootPath}}/js/site.js" data-ui-root-path="{{uiRootPath}}"></script>
+        <script async src="{{uiRootPath}}/js/vendor/highlight.js"></script>
+        <script src="{{uiRootPath}}/js/three-helper.js"></script>
     - path: css/extra.css
       contents: |
         :root {

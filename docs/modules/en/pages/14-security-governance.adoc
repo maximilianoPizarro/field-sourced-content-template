@@ -1,0 +1,180 @@
+= Security and Governance
+:experimental:
+
+++++
+<div id="scene-security" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-security', {height:380, camX:0, camY:10, camZ:22, bgColor:0x0a0a1a});
+  if(!ctx) return;
+  var keycloak = ThreeHelper.createNode(ctx.scene,'Keycloak',0xCC0000,-8,0,0);
+  var oauth = ThreeHelper.createNode(ctx.scene,'OAuth/OIDC',0xFF6600,-3,0,0);
+  var kafka = ThreeHelper.createNode(ctx.scene,'Kafka SCRAM',0x231F20,3,0,0);
+  var tls = ThreeHelper.createNode(ctx.scene,'TLS/mTLS',0x00AA44,8,0,0);
+  var apicurio = ThreeHelper.createNode(ctx.scene,'Schema Gov',0x1A73E8,0,3,4);
+  var routes = ThreeHelper.createNode(ctx.scene,'OCP Routes',0x0066CC,0,-2,-3);
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,keycloak,oauth,0xCC0000,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,oauth,kafka,0xFF6600,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,kafka,tls,0x231F20,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,kafka,apicurio,0x1A73E8,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,oauth,routes,0x0066CC,{speed:0.009})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
+== Authentication
+
+All pipeline components are protected with platform-level authentication (OpenShift OAuth via Keycloak) and workload-level authentication (SCRAM-SHA-512 for Kafka clients).
+
+=== KafkaUser with ACLs
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: cdc-consumer
+  labels:
+    strimzi.io/cluster: cdc-cluster
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+      - resource:
+          type: topic
+          name: cdc.public.*
+          patternType: prefix
+        operations: [Read, Describe]
+        host: "*"
+      - resource:
+          type: group
+          name: cdc-consumer-group
+        operations: [Read]
+----
+
+* `scram-sha-512` — credential-based authentication managed by Strimzi
+* ACLs restrict which topics and consumer groups each client can access
+* Strimzi automatically provisions Kubernetes Secrets with the credentials
+
+== Encryption
+
+=== TLS on Kafka listeners
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: cdc-cluster
+spec:
+  kafka:
+    listeners:
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+        authentication:
+          type: tls
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+----
+
+=== mTLS between brokers
+
+Inter-broker communication uses mutual TLS automatically when TLS listeners are configured. Strimzi manages CA certificates and keystores.
+
+== Private Endpoints
+
+All services are internal to the OpenShift cluster. External access is provided only through OpenShift Routes with edge TLS termination:
+
+[source,yaml]
+----
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: kafka-console
+spec:
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  to:
+    kind: Service
+    name: kafka-console-console-service
+----
+
+No Kafka broker port is exposed outside the cluster.
+
+== How it Works
+
+=== SCRAM-SHA-512 authentication in Kafka
+
+SCRAM (Salted Challenge Response Authentication Mechanism) works as a four-step handshake between the client and the broker:
+
+. The client sends its *username* to the broker.
+. The broker responds with a random *salt* and the *iteration count* stored for that user.
+. The client generates a *salted password* using PBKDF2 with SHA-512, computes a cryptographic *client proof*, and sends it to the broker.
+. The broker verifies the proof against stored credentials and sends a *server signature* that the client validates.
+
+The password never travels in plain text. Strimzi automates the full lifecycle: when a `KafkaUser` CR is created, the User Operator generates SCRAM credentials, stores them in Kafka, and creates a Kubernetes `Secret` with the password so clients can mount it as an environment variable.
+
+=== TLS: encryption in transit
+
+* **Client → Broker**: the TLS listener (port 9093) terminates TLS on the broker. Strimzi generates certificates automatically using an internal CA (`cdc-cluster-cluster-ca-cert`).
+* **Broker → Broker**: inter-broker communication uses mutual TLS (mTLS). Each broker has its own certificate signed by the cluster CA.
+* **Service Mesh (ambient mTLS)**: Istio ambient mode adds a *second layer* of mTLS at L4 (ztunnel), encrypting all TCP traffic between pods in the `kafka-cdc` namespace — even traffic to the `plain` listener (9092) is encrypted at the network layer.
+
+=== ACLs: granular authorization
+
+Kafka ACLs work as *allow lists* — everything is denied by default:
+
+. Each ACL defines a *principal* (SCRAM user), a *resource* (topic, group, cluster), a *pattern* (literal or prefix), and the allowed *operations*.
+. The broker authorizer evaluates ACLs on every client request.
+. The `prefix` pattern enables flexible rules: `name: cdc, patternType: prefix` authorizes access to all topics starting with `cdc` (including `cdc.public.customers`, `cdc.public.orders`).
+. If no ACL matches, the request is *denied* with an authorization error.
+
+== Governance and Compliance
+
+=== Schema Registry — validation rules
+
+Apicurio Registry enforces schema contracts. Global rules prevent breaking changes:
+
+[source,json]
+----
+{
+  "rules": {
+    "VALIDITY": "FULL",
+    "COMPATIBILITY": "BACKWARD"
+  }
+}
+----
+
+* **VALIDITY: FULL** — schemas must be syntactically valid
+* **COMPATIBILITY: BACKWARD** — new schemas must be readable by consumers on the previous version
+
+=== Audit trail
+
+* Kafka retains all events for the configured retention period (7 days by default)
+* Debezium captures full before/after state for each database change
+* OpenShift audit logs track API access to the cluster
+* Schema Registry keeps version history for each schema
+
+Browse registered schemas at link:https://apicurio-registry-kafka-cdc.{cluster_domain}[Apicurio Registry^].
+
+== Official Documentation
+
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/authentication_and_authorization/index[OpenShift Authentication and Authorization^] — OAuth, OIDC, and RBAC on OpenShift
+* https://docs.redhat.com/en/documentation/red_hat_build_of_keycloak[Red Hat build of Keycloak^] — Identity and Access Management
+* https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka/2.9/html/deploying_and_managing_amq_streams_on_openshift/assembly-security-str[Kafka Security with Strimzi^] — TLS, SCRAM-SHA-512, and ACLs on Kafka
+* https://docs.redhat.com/en/documentation/red_hat_build_of_apicurio_registry[Apicurio Registry — Schema Governance^] — Compatibility and schema validation rules
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/networking/network-policy[OpenShift Network Policies^] — Namespace-level network security
+* https://docs.redhat.com/en/documentation/openshift_service_mesh[OpenShift Service Mesh — mTLS^] — Automatic encryption between services

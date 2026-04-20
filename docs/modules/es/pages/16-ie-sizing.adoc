@@ -1,0 +1,314 @@
+= Planificación de capacidad e infraestructura
+:toc: left
+:toclevels: 3
+
+[.lead]
+Estimaciones de dimensionamiento para escalar la plataforma Industrial Edge desde una demo/PoC hasta un despliegue en producción que admita *20.000 dispositivos IoT*.
+
+== Clúster demo actual — dimensionamiento medido
+
+Consumo de recursos medido en un clúster en ejecución (3 workers x 64 vCPU x 128 Gi) con todos los componentes desplegados.
+
+=== Infraestructura del clúster
+
+[cols="1,1,1,1", options="header"]
+|===
+| Tipo de nodo | Cantidad | vCPU | Memoria
+
+| Plano de control | 3 | 16 vCPU | 64 Gi
+| Worker | 3 | 64 vCPU | 128 Gi
+| *Capacidad total* | *6* | *240 vCPU* | *576 Gi*
+|===
+
+=== Asignación de recursos por componente (real)
+
+[cols="2,1,1,1,1,1", options="header"]
+|===
+| Componente | Pods | CPU Req | CPU Lim | Mem Req | Mem Lim
+
+| CDC y streaming Kafka | 17 | 1.1 vCPU | 3.2 vCPU | 1.6 Gi | 3.5 Gi
+| Industrial Edge IoT (Dev) | 14 | 1.8 vCPU | 9.1 vCPU | 5.1 Gi | 10.7 Gi
+| Industrial Edge IoT (Factory) | 12 | 0.1 vCPU | 0.5 vCPU | 0.1 Gi | 0.5 Gi
+| Industrial Edge Data Lake | 6 | 0.1 vCPU | 0.5 vCPU | 0.1 Gi | 0.5 Gi
+| Industrial Edge ML/AI | 11 | 5.7 vCPU | 21.5 vCPU | 21.7 Gi | 33.7 Gi
+| NeuroFace CV Pipeline | 6 | 5.7 vCPU | 14.8 vCPU | 9.4 Gi | 24.8 Gi
+| OpenShift AI (RHOAI 3.3) | 13 | 8.2 vCPU | 11.5 vCPU | 12.8 Gi | 39.0 Gi
+| Observabilidad (Grafana/Istio/Kiali) | 13 | 2.3 vCPU | — | 5.6 Gi | —
+| Keycloak (RHBK) | 6 | 0.9 vCPU | 2.4 vCPU | 4.7 Gi | 5.9 Gi
+| Developer Hub (RHDH) | 3 | 0.5 vCPU | 1.8 vCPU | 0.6 Gi | 4.5 Gi
+| MCP Gateway (Kuadrant) | 3 | 0.2 vCPU | 2.2 vCPU | 0.2 Gi | 1.3 Gi
+| Kuadrant (Connectivity Link) | 8 | 0.9 vCPU | 2.1 vCPU | 0.8 Gi | 2.9 Gi
+| Mailpit | 1 | 0.1 vCPU | 0.5 vCPU | 0.3 Gi | 0.5 Gi
+| Showroom | 2 | 0.6 vCPU | 0.7 vCPU | 0.6 Gi | 1.3 Gi
+| GitOps y DevTools (Gitea, DevSpaces, Kogito) | 10 | 1.1 vCPU | 1.2 vCPU | 1.6 Gi | 8.6 Gi
+| Cert Manager | 4 | — | — | — | —
+| *TOTAL CARGA DE TRABAJO* | *129* | *29.0 vCPU* | *71.9 vCPU* | *65.2 Gi* | *137.5 Gi*
+|===
+
+NOTE: Los namespaces de plataforma (openshift-*, kube-*) añaden ~28 vCPU en solicitudes / ~86 Gi en solicitudes de memoria. Total global: ~57 vCPU en solicitudes / ~152 Gi en solicitudes de memoria.
+
+=== Correcciones OOM aplicadas (lecciones aprendidas)
+
+Varios operadores y cargas de trabajo sufrieron OOMKilled con sus límites de memoria por defecto. Se requieren los siguientes valores para un despliegue estable:
+
+[cols="2,1,1,2", options="header"]
+|===
+| Componente | Original | Corregido a | Motivo
+
+| Mailpit | 128 Mi | 512 Mi | OOMKilled tras 24 reinicios al procesar correos de notificación CV
+| Perses Operator (Cluster Observability Operator) | 512 Mi | 1 Gi | OOMKilled durante el arranque del operador
+| Kuadrant Operator (Red Hat Connectivity Link) | 300 Mi | 2 Gi | OOMKilled durante el bucle de reconciliación
+| Kiali | predeterminado | 2 Gi | OOMKilled al procesar la topología del service mesh
+| Granite LLM (llama.cpp vía KServe) | N/A | 4 Gi req / 8 Gi lim | Migrado de Deployment a KServe InferenceService para RHOAI Playground
+|===
+
+IMPORTANT: Estos ajustes de memoria deben aplicarse mediante parches CSV (`oc patch csv`) o actualizando las suscripciones del operador. Los ajustes **no** persisten tras actualizaciones del operador: vuelve a aplicarlos tras cada actualización.
+
+=== Requisitos mínimos del clúster (demo)
+
+[cols="1,1,1,1", options="header"]
+|===
+| Recurso | Mínimo | Recomendado | Notas
+
+| Nodos worker | 3 | 3 | Toda la carga en workers; plano de control dedicado
+| vCPU worker | 32 por nodo (96 total) | 64 por nodo (192 total) | Utilización actual: ~29 % solicitudes
+| Memoria worker | 64 Gi por nodo (192 Gi total) | 128 Gi por nodo (384 Gi total) | Utilización actual: ~39 % solicitudes; 128 Gi necesarios para operadores seguros frente a OOM
+| Almacenamiento worker | 200 Gi por nodo | 500 Gi por nodo | PVC para Kafka, MinIO, modelos, notebooks
+| Plano de control | 3 x 16 vCPU / 64 Gi | 3 x 16 vCPU / 64 Gi | Plano de control OCP estándar
+| OCS / ODF | Ceph externo (recomendado) | Ceph externo | RBD para RWO, CephFS para RWX
+|===
+
+== Línea base de rendimiento (20K dispositivos)
+
+[cols="1,1", options="header"]
+|===
+| Parámetro | Valor
+
+| Dispositivos | 20.000 sensores IoT (vibración + temperatura)
+| Intervalo de publicación | 5 segundos por dispositivo
+| Tasa de mensajes | 8.000 msg/s
+| Tasa de datos (en bruto) | 1.6 MB/s
+| Volumen diario | ~138 GB/día (~4,1 TB/mes)
+| Con RF=3 | ~4.8 MB/s escritura, ~414 GB/día en el clúster
+|===
+
+== Resumen de dimensionamiento de la plataforma
+
+=== HA producción (pequeño) — demo actual
+
+[cols="1,1,1,1,1", options="header"]
+|===
+| Componente | Pods | vCPU (req) | Memoria (req) | Almacenamiento
+
+| CDC y Kafka | 17 | 1,1 | 1,6 Gi | 30 Gi
+| Industrial Edge (Dev + Factory + Data Lake) | 32 | 2.0 | 5.4 Gi | 60 Gi
+| ML/AI + NeuroFace + RHOAI | 30 | 19.5 | 43.9 Gi | 30 Gi
+| Plataforma (observabilidad, Keycloak, DevHub, MCP, Kuadrant, Mailpit, Showroom, GitOps) | 50 | 6.5 | 14.3 Gi | 20 Gi
+| *TOTAL* | *129* | *29.0 vCPU* | *65.2 Gi* | *~140 Gi*
+|===
+
+=== Producción (20K dispositivos)
+
+[cols="1,1,1,1,1", options="header"]
+|===
+| Componente | Pods | vCPU (req) | Memoria (req) | Almacenamiento
+
+| CDC (con 5 grupos de consumidores) | 20 | 19.5 | 34 Gi | 1000 Gi
+| Industrial Edge IoT | 70 | 114.6 | 212 Gi | 17618 Gi
+| Mirror (con 7 grupos de consumidores externos) | 28 | 23.0 | 34.3 Gi | 2500 Gi
+| *TOTAL* | *118* | *157.1 vCPU* | *280.3 Gi* | *~20.6 TiB*
+|===
+
+== Dimensionamiento por componente (20K)
+
+=== Industrial Edge IoT — Borde de fábrica
+
+[cols="1,1,1,1,1", options="header"]
+|===
+| Componente | Pods | CPU (req/lim) | Memoria (req/lim) | Almacenamiento
+
+| AMQ Broker (mesh) | 4 | 8000m / 16000m | 16 Gi / 32 Gi | 80 Gi
+| Kafka (5 nodos KRaft) | 5 | 20000m / 40000m | 40 Gi / 80 Gi | 2500 Gi
+| Camel K (MQTT→Kafka) | 4 | 4000m / 8000m | 4 Gi / 8 Gi | —
+| Sensores (gateways de borde) | 10 | 5000m / 10000m | 5 Gi / 10 Gi | —
+| Dashboard (HPA) | 2 | 2000m / 4000m | 2 Gi / 4 Gi | —
+| *Subtotal borde* | *25* | *39 vCPU* | *67 Gi* | *2580 Gi*
+|===
+
+=== Industrial Edge IoT — Central
+
+[cols="1,1,1,1,1", options="header"]
+|===
+| Componente | Pods | CPU (req/lim) | Memoria (req/lim) | Almacenamiento
+
+| Kafka data-lake (5 KRaft) | 5 | 20000m / 40000m | 40 Gi / 80 Gi | 2500 Gi
+| Camel K → S3 | 4 | 4000m / 8000m | 4 Gi / 8 Gi | —
+| MinIO (8 distribuidos) | 8 | 16000m / 32000m | 32 Gi / 64 Gi | 12288 Gi
+| KServe InferenceService | 5 | 10000m / 20000m | 20 Gi / 40 Gi | —
+| DSPA + pipelines | 3 | 4500m / 9000m | 9 Gi / 18 Gi | —
+| JupyterLab | 1 | 4000m / 8000m | 8 Gi / 16 Gi | 20 Gi
+| Operadores y monitorización | 3 | 9000m / 18000m | 18 Gi / 36 Gi | —
+| *Subtotal central* | *29* | *67.5 vCPU* | *131 Gi* | *14808 Gi*
+|===
+
+=== CDC — Productor + consumidor (20K)
+
+[cols="1,1,1,1,1", options="header"]
+|===
+| Componente | Pods | CPU (req) | Memoria (req) | Propósito
+
+| Kafka CDC (5 KRaft) | 5 | 10 vCPU | 20 Gi | Streaming de eventos CDC
+| Debezium KafkaConnect | 3 | 3 vCPU | 6 Gi | Replicación WAL
+| Camel K (vistas) | 3 | 1.5 vCPU | 1.5 Gi | Materializa vistas
+| Servicio de notificaciones | 2 | 0,5 vCPU | 512 Mi | Alertas ante cambios
+| Indexador de búsqueda | 3 | 3 vCPU | 3 Gi | Búsqueda de texto completo
+| Pipeline de analítica | 2 | 1 vCPU | 2 Gi | Agregación para informes
+| Registro de auditoría | 2 | 0,5 vCPU | 1 Gi | Pista de auditoría inmutable
+| *Total CDC* | *20* | *19.5 vCPU* | *34 Gi* | —
+|===
+
+=== Mirror — Replicación + consumidores externos (20K)
+
+[cols="1,1,1,1,1", options="header"]
+|===
+| Componente | Pods | CPU (req) | Memoria (req) | Propósito
+
+| Kafka Mirror (5 KRaft) | 5 | 10 vCPU | 20 Gi | Clúster mirror
+| MirrorMaker2 | 5 | 5 vCPU | 10 Gi | Replicación entre clústeres
+| Kafka REST Proxy | 3 | 1.5 vCPU | 1 Gi | Interfaz HTTP
+| Grafana / dashboards | 2 | 0.5 vCPU | 256 Mi | Dashboards operativos
+| Conector BI (Superset) | 3 | 1.5 vCPU | 1 Gi | Analítica / BI
+| Consumidor de data science | 2 | 1 vCPU | 512 Mi | Feeds de entrenamiento ML
+| Integración con partners | 3 | 1.5 vCPU | 512 Mi | Fuentes de datos externas
+| Auditoría / cumplimiento | 2 | 0.5 vCPU | 512 Mi | Exportación regulatoria
+| Replicación DR | 3 | 1.5 vCPU | 512 Mi | Sincronización con clúster en espera
+| *Total Mirror* | *28* | *23 vCPU* | *34.3 Gi* | —
+|===
+
+== Opciones de topología de clúster
+
+=== Opción A — Clúster único (PoC)
+
+[cols="1,1,1,1", options="header"]
+|===
+| Clúster | Workers | vCPU | RAM
+
+| Todo en uno | 3 | 64 por nodo (192 total) | 128 Gi por nodo (384 Gi total)
+|===
+
+Adecuado para demo, desarrollo/pruebas y despliegues de un solo sitio.
+
+=== Opción B — Hub + borde (producción 20K)
+
+[cols="1,1,1,1,1", options="header"]
+|===
+| Clúster | Workers | vCPU | RAM | Almacenamiento
+
+| Hub (CDC + Data Lake + ML + Mirror) | 12 + 1 GPU | 200 | 832 Gi | ~18.5 TiB
+| Borde (Factory IoT) | 5 | 80 | 320 Gi | ~2.8 TiB
+| *Total* | *19* | *280* | *1152 Gi* | *~21.3 TiB*
+|===
+
+Disponible en: *AWS (ROSA)*, *Azure (ARO)*, *On-premise* (bare metal / VMware).
+
+=== Opción C — Hub + borde + datos + DR (empresa 20K)
+
+[cols="1,1,1,1", options="header"]
+|===
+| Clúster | Workers | vCPU | RAM
+
+| Hub (RHACM + ArgoCD + Developer Hub + CDC) | 6 | 96 | 384 Gi
+| Borde (Factory IoT) | 5 | 80 | 320 Gi
+| Central Data (Data Lake + MinIO + Mirror) | 8 | 128 | 512 Gi
+| DR en espera (mirror pasivo) | 4 | 64 | 256 Gi
+| GPU (en Hub o Central) | 1 | — | —
+| *Total* | *25* | *376* | *1472 Gi*
+|===
+
+Disponible en: *AWS (ROSA)*, *Azure (ARO)*, *On-premise* (bare metal / VMware).
+
+== Decisiones clave de arquitectura
+
+[cols="1,2", options="header"]
+|===
+| Decisión | Fundamento
+
+| Modo KRaft (sin ZooKeeper) | Reduce el número de pods, simplifica operaciones y elimina ZK como punto único de fallo
+| 5 nodos combinados broker+controlador | Suficiente para 8K msg/s con RF=3 y 24 particiones
+| MinIO de 8 nodos con codificación de borrado | EC:2 tolera 2 nodos caídos, 1.5 Ti por nodo para el data lake
+| Topología Hub + borde | Segmentación de red, aislamiento del borde, escalado independiente
+| MirrorMaker2 con 8 tareas/origen | Gestiona 13K msg/s de replicación entre clústeres
+| TLS + SCRAM-SHA-512 para Mirror | Acceso externo seguro con ACL de solo lectura
+| KServe InferenceService para LLM | Se integra con RHOAI Playground; sustituye Deployments independientes
+| Ajustes de memoria del operador (parche CSV) | COO, Kuadrant y Kiali requieren 1–2 Gi frente a valores por defecto de OLM
+|===
+
+== Ejemplo de configuración KRaft
+
+Los clústeres Kafka a escala 20K usan modo KRaft con `KafkaNodePool` (roles combinados broker+controlador):
+
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: factory-cluster
+  annotations:
+    strimzi.io/kraft: enabled
+    strimzi.io/node-pools: enabled
+spec:
+  kafka:
+    version: 4.0.0
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+    config:
+      default.replication.factor: 3
+      min.insync.replicas: 2
+      num.partitions: 24
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: combined
+  labels:
+    strimzi.io/cluster: factory-cluster
+spec:
+  replicas: 5
+  roles:
+    - controller
+    - broker
+  storage:
+    type: jbod
+    volumes:
+      - id: 0
+        type: persistent-claim
+        size: 500Gi
+        class: gp3-csi
+        deleteClaim: false
+  resources:
+    requests:
+      cpu: "4"
+      memory: 8Gi
+    limits:
+      cpu: "8"
+      memory: 16Gi
+  jvmOptions:
+    -Xms: 6144m
+    -Xmx: 6144m
+----
+
+== Referencias
+
+* xref:15-industrial-edge.adoc[Patrón Industrial Edge — Descripción general]
+* https://validatedpatterns.io/patterns/industrial-edge/[Red Hat Validated Patterns — Industrial Edge^]
+* https://strimzi.io/docs/operators/latest/configuring.html#proc-deploy-kraft-str[Strimzi KRaft Documentation^]

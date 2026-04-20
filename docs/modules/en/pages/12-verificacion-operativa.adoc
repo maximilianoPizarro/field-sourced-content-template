@@ -1,62 +1,62 @@
-= Verificación Operativa del Cluster
+= Operational Cluster Verification
 :page-layout: default
 
-Esta página documenta el estado operativo del pipeline CDC completo desplegado en el cluster OpenShift, incluyendo capturas de pantalla de cada componente y los bloques YAML que definen la configuración.
+This page documents the operational state of the full CDC pipeline deployed on the OpenShift cluster, including screenshots of each component and the YAML blocks that define the configuration.
 
-== Estado General del Namespace `kafka-cdc`
+== General Status of the `kafka-cdc` Namespace
 
-Todos los componentes del pipeline CDC están operativos en el namespace `kafka-cdc`:
+All CDC pipeline components are operational in the `kafka-cdc` namespace:
 
 [cols="3,1,1,2",options="header"]
 |===
-|Componente |Pods |Estado |Función
+|Component |Pods |Status |Function
 
 |**Kafka Cluster** (cdc-cluster)
 |3 brokers
 |Ready (KRaft)
-|Cluster Kafka en modo KRaft con 3 brokers/controllers
+|Kafka cluster in KRaft mode with 3 broker/controller nodes
 
 |**KafkaConnect** (cdc-connect)
 |2 replicas
 |Ready
-|Framework de conectores con Debezium y HTTP Sink
+|Connector framework with Debezium and HTTP Sink
 
 |**PostgreSQL** (cdc-postgresql)
 |1
 |Running
-|Base de datos fuente con WAL level logical
+|Source database with logical WAL level
 
 |**Kafka Bridge** (cdc-bridge)
 |1
 |Ready
-|API REST HTTP para producir/consumir mensajes
+|REST HTTP API to produce/consume messages
 
 |**Apicurio Registry**
 |1
 |Running
-|Schema Registry para gobierno de esquemas
+|Schema Registry for schema governance
 
 |**Kafka Console**
 |2 (UI + API)
 |Running
-|Consola web para monitoreo de topics y mensajes
+|Web console for topic and message monitoring
 
 |**Kafka Exporter**
 |1
 |Running
-|Exporta métricas Kafka a Prometheus
+|Exports Kafka metrics to Prometheus
 
 |**Entity Operator**
 |2 containers
 |Running
-|Gestiona topics y usuarios vía CRDs
+|Manages topics and users via CRDs
 |===
 
 == Kafka Cluster — KRaft Mode
 
-El cluster Kafka opera en modo KRaft (sin ZooKeeper) con 3 nodos que cumplen roles de broker y controller simultáneamente.
+The Kafka cluster runs in KRaft mode (without ZooKeeper) with 3 nodes that act as both brokers and controllers.
 
-.Definición del KafkaNodePool
+.KafkaNodePool definition
 [source,yaml]
 ----
 apiVersion: kafka.strimzi.io/v1beta2
@@ -77,7 +77,7 @@ spec:
     deleteClaim: false
 ----
 
-.Definición del Kafka CR con KRaft habilitado
+.Kafka CR definition with KRaft enabled
 [source,yaml]
 ----
 apiVersion: kafka.strimzi.io/v1beta2
@@ -112,17 +112,17 @@ spec:
 
 == Streams for Apache Kafka Console
 
-La consola de Streams permite visualizar el cluster, topics, consumer groups y mensajes individuales con su payload CDC.
+The Streams console lets you view the cluster, topics, consumer groups, and individual messages with their CDC payload.
 
-image::kafka-console-cluster-overview.png[Kafka Console - Cluster Overview,width=100%]
+image::ROOT:kafka-console-cluster-overview.png[Kafka Console - Cluster Overview,width=100%]
 
-El overview del cluster muestra: **3/3 brokers online**, **Kafka 4.0.0**, **8 topics**, **44 particiones**, y **2 consumer groups** activos.
+The cluster overview shows: **3/3 brokers online**, **Kafka 4.0.0**, **8 topics**, **44 partitions**, and **2 active consumer groups**.
 
-image::kafka-console-topic-messages.png[Kafka Console - CDC Messages,width=100%]
+image::ROOT:kafka-console-topic-messages.png[Kafka Console - CDC Messages,width=100%]
 
-Los mensajes en el topic `cdc.public.customers` muestran payloads de Debezium con schema completo y datos `after` de cada registro.
+Messages on the `cdc.public.customers` topic show Debezium payloads with full schema and `after` data for each record.
 
-.Definición del Console CR
+.Console CR definition
 [source,yaml]
 ----
 apiVersion: console.streamshub.github.com/v1alpha1
@@ -138,11 +138,11 @@ spec:
       listener: plain
 ----
 
-== KafkaConnect con Debezium y HTTP Sink
+== KafkaConnect with Debezium and HTTP Sink
 
-KafkaConnect ejecuta 2 replicas con plugins de Debezium PostgreSQL 3.0.2 y Aiven HTTP Sink 0.9.0, ambos compilados como imagen custom via OpenShift Build.
+KafkaConnect runs 2 replicas with Debezium PostgreSQL 3.0.2 and Aiven HTTP Sink 0.9.0 plugins, both built into a custom image via OpenShift Build.
 
-.Definición del KafkaConnect con build de plugins
+.KafkaConnect definition with plugin build
 [source,yaml]
 ----
 apiVersion: kafka.strimzi.io/v1beta2
@@ -183,9 +183,9 @@ spec:
 
 == Debezium PostgreSQL Source Connector
 
-Captura cambios en las tablas `customers` y `orders` usando logical replication con `pgoutput`.
+Captures changes on the `customers` and `orders` tables using logical replication with `pgoutput`.
 
-.Definición del KafkaConnector Debezium
+.Debezium KafkaConnector definition
 [source,yaml]
 ----
 apiVersion: kafka.strimzi.io/v1beta2
@@ -217,11 +217,11 @@ spec:
 
 == HTTP Sink Connector — Mailpit Notifications
 
-Reenvía los eventos CDC a Mailpit para notificaciones por email.
+Forwards CDC events to Mailpit for email notifications.
 
-image::mailpit-inbox.png[Mailpit - CDC Notifications,width=100%]
+image::ROOT:mailpit-inbox.png[Mailpit - CDC Notifications,width=100%]
 
-.Definición del KafkaConnector HTTP Sink
+.HTTP Sink KafkaConnector definition
 [source,yaml]
 ----
 apiVersion: kafka.strimzi.io/v1beta2
@@ -248,13 +248,13 @@ spec:
 
 == Apicurio Registry
 
-image::apicurio-registry.png[Apicurio Registry,width=100%]
+image::ROOT:apicurio-registry.png[Apicurio Registry,width=100%]
 
-Red Hat build of Apicurio Registry desplegado para gobierno de esquemas (Avro, Protobuf, JSON Schema).
+Red Hat build of Apicurio Registry deployed for schema governance (Avro, Protobuf, JSON Schema).
 
-== KafkaUser — Autenticación SCRAM-SHA-512
+== KafkaUser — SCRAM-SHA-512 Authentication
 
-.Definición del KafkaUser
+.KafkaUser definition
 [source,yaml]
 ----
 apiVersion: kafka.strimzi.io/v1beta2
@@ -269,34 +269,34 @@ spec:
     type: scram-sha-512
 ----
 
-== Topics Kafka
+== Kafka Topics
 
 [cols="2,1,1,2",options="header"]
 |===
-|Topic |Particiones |Factor de Réplica |Propósito
+|Topic |Partitions |Replication Factor |Purpose
 
 |`cdc.public.customers`
 |3
 |3
-|Eventos CDC de la tabla customers
+|CDC events from the customers table
 
 |`cdc.public.orders`
 |3
 |3
-|Eventos CDC de la tabla orders
+|CDC events from the orders table
 
 |`dlq.cdc-errors`
 |3
 |3
-|Dead Letter Queue para errores de conectores
+|Dead Letter Queue for connector errors
 
 |`dlq.cdc-camel-errors`
 |3
 |3
-|Dead Letter Queue para errores de Camel
+|Dead Letter Queue for Camel errors
 |===
 
-.Definición de un KafkaTopic
+.KafkaTopic definition
 [source,yaml]
 ----
 apiVersion: kafka.strimzi.io/v1beta2
@@ -314,11 +314,11 @@ spec:
     cleanup.policy: compact
 ----
 
-== PostgreSQL con WAL Level Logical
+== PostgreSQL with Logical WAL Level
 
-La base de datos fuente utiliza PostgreSQL 16 con WAL level logical configurado via ConfigMap:
+The source database uses PostgreSQL 16 with logical WAL level configured via ConfigMap:
 
-.ConfigMap de configuración PostgreSQL
+.PostgreSQL configuration ConfigMap
 [source,yaml]
 ----
 apiVersion: v1
@@ -333,13 +333,13 @@ data:
     max_wal_senders = 4
 ----
 
-El volumen se monta en `/opt/app-root/src/postgresql-cfg` para que la imagen Red Hat PostgreSQL 16 lo aplique automáticamente.
+The volume is mounted at `/opt/app-root/src/postgresql-cfg` so the Red Hat PostgreSQL 16 image applies it automatically.
 
 == NetworkPolicy
 
-La NetworkPolicy restringe el tráfico de ingreso al namespace, permitiendo solo comunicación interna y probes de health check:
+The NetworkPolicy restricts ingress to the namespace, allowing only internal communication and health check probes:
 
-.NetworkPolicy del namespace kafka-cdc
+.`kafka-cdc` namespace NetworkPolicy
 [source,yaml]
 ----
 apiVersion: networking.k8s.io/v1
@@ -380,11 +380,11 @@ spec:
           port: 5432
 ----
 
-== URLs de Acceso
+== Access URLs
 
 [cols="2,3",options="header"]
 |===
-|Servicio |URL
+|Service |URL
 
 |Kafka Console
 |https://kafka-console-kafka-cdc.<CLUSTER_DOMAIN>/
@@ -399,9 +399,9 @@ spec:
 |https://n8n-mailpit-openshift-lightspeed.<CLUSTER_DOMAIN>/
 |===
 
-== Verificación End-to-End
+== End-to-End Verification
 
-Para validar el pipeline completo, insertar un registro en PostgreSQL:
+To validate the full pipeline, insert a row in PostgreSQL:
 
 [source,sql]
 ----
@@ -409,18 +409,18 @@ INSERT INTO customers (first_name, last_name, email)
 VALUES ('Test', 'User', 'test@neuralbank.io');
 ----
 
-El flujo completo es:
+The full flow is:
 
-1. PostgreSQL → Debezium captura el WAL change
-2. Debezium → Publica al topic `cdc.public.customers`
-3. Kafka → Almacena con 3 replicas y compaction
-4. HTTP Sink → Envía el evento a Mailpit
-5. Mailpit → Muestra la notificación en el inbox
+1. PostgreSQL → Debezium captures the WAL change
+2. Debezium → Publishes to the `cdc.public.customers` topic
+3. Kafka → Stores with 3 replicas and compaction
+4. HTTP Sink → Sends the event to Mailpit
+5. Mailpit → Shows the notification in the inbox
 
-== Documentación Oficial
+== Official Documentation
 
-* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cli_tools/oc-cli-getting-started[OpenShift CLI (oc)^] — Comandos para verificación operativa
-* https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka[Red Hat Streams for Apache Kafka^] — Operación y monitoreo de clusters Kafka
-* https://docs.redhat.com/en/documentation/red_hat_build_of_debezium[Red Hat build of Debezium^] — Troubleshooting de connectors CDC
-* https://docs.redhat.com/en/documentation/red_hat_build_of_apicurio_registry[Apicurio Registry^] — Verificación del Schema Registry
-* https://strimzi.io/docs/operators/latest/deploying.html[Strimzi Deploying Guide^] — Verificación de operadores y recursos Strimzi
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cli_tools/oc-cli-getting-started[OpenShift CLI (oc)^] — Commands for operational verification
+* https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka[Red Hat Streams for Apache Kafka^] — Kafka cluster operation and monitoring
+* https://docs.redhat.com/en/documentation/red_hat_build_of_debezium[Red Hat build of Debezium^] — CDC connector troubleshooting
+* https://docs.redhat.com/en/documentation/red_hat_build_of_apicurio_registry[Apicurio Registry^] — Schema Registry verification
+* https://strimzi.io/docs/operators/latest/deploying.html[Strimzi Deploying Guide^] — Operator and Strimzi resource verification

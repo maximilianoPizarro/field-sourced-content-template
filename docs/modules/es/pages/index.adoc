@@ -1,0 +1,186 @@
+= Event-Driven Architecture Live
+
+++++
+<div id="scene-index" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-index', {height:420, camX:0, camY:12, camZ:25});
+  if(!ctx) return;
+  var pg = ThreeHelper.createNode(ctx.scene,'PostgreSQL',0x336791,-10,0,0);
+  var deb = ThreeHelper.createNode(ctx.scene,'Debezium',0xE53935,-5,0,0);
+  var kf = ThreeHelper.createNode(ctx.scene,'Kafka',0x231F20,0,0,0);
+  var cam = ThreeHelper.createNode(ctx.scene,'Camel',0xF57C00,5,0,-3);
+  var mail = ThreeHelper.createNode(ctx.scene,'Mailpit',0x42A5F5,10,0,-3);
+  var sf = ThreeHelper.createNode(ctx.scene,'SonataFlow',0x0066CC,5,0,3);
+  var api = ThreeHelper.createNode(ctx.scene,'Apicurio',0x1A73E8,0,3,4);
+  var graf = ThreeHelper.createNode(ctx.scene,'Grafana',0xF46800,-5,3,4);
+  var nf = ThreeHelper.createNode(ctx.scene,'NeuroFace',0x9C27B0,-5,0,-5);
+  var ovms = ThreeHelper.createNode(ctx.scene,'OpenVINO',0x0068B5,0,0,-5);
+  var cvp = ThreeHelper.createNode(ctx.scene,'CV Processor',0xFF9800,5,0,-6);
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,pg,deb,0x336791,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,deb,kf,0xE53935,{speed:0.01}),
+    ThreeHelper.createEdge(ctx.scene,kf,cam,0xF57C00,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,cam,mail,0x42A5F5,{speed:0.009}),
+    ThreeHelper.createEdge(ctx.scene,kf,sf,0x0066CC,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,kf,api,0x1A73E8,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,kf,graf,0xF46800,{speed:0.004}),
+    ThreeHelper.createEdge(ctx.scene,nf,ovms,0x9C27B0,{speed:0.009}),
+    ThreeHelper.createEdge(ctx.scene,cvp,ovms,0x0068B5,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,cvp,nf,0xFF9800,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,cvp,kf,0xFF9800,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,kf,mail,0x42A5F5,{speed:0.005})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
+== Welcome
+
+Explore a complete *Change Data Capture (CDC)* pipeline running on Red Hat OpenShift with *Streams for Apache Kafka*, Debezium, Apache Camel, SonataFlow, and Apicurio Registry.
+
+=== What You'll Learn
+
+* Desplegar un cluster *Kafka en modo KRaft* (sin Zookeeper) usando AMQ Streams
+* Configurar *Debezium* para capturar cambios en PostgreSQL en tiempo real
+* Usar *Apicurio Registry* como Schema Registry para validación de eventos
+* Diseñar rutas de integración visualmente con *Kaoto* dentro de *DevSpaces*
+* Monitorear el pipeline con *Grafana dashboards* y *Service Mesh (Kiali)*
+* Gestionar Kafka desde *Developer Hub* con el plugin de Kafka
+* Usar *Lightspeed (MCP)* para troubleshooting del pipeline
+
+=== Componentes del Pipeline
+
+[cols="1,2,2",options="header"]
+|===
+| Componente | Qué es | Para qué sirve en este demo
+
+| *Streams for Apache Kafka*
+| Distribución enterprise de Apache Kafka (basada en Strimzi) para streaming distribuido de eventos
+| Cluster KRaft de 3 brokers que almacena y distribuye los eventos CDC con replicación, topics, bridge HTTP y exporter de métricas
+
+| *Debezium*
+| Plataforma open source de Change Data Capture (CDC) que captura cambios de bases de datos
+| Conector PostgreSQL que lee el WAL y publica cada INSERT/UPDATE/DELETE como evento en topics Kafka en tiempo real
+
+| *Apicurio Registry*
+| Schema Registry open source que gestiona y valida esquemas de datos (Avro, JSON Schema, Protobuf)
+| Registra y versiona los esquemas de los eventos CDC, garantizando compatibilidad entre productores y consumidores
+
+| *Apache Camel + Kaoto*
+| Framework de integración que implementa Enterprise Integration Patterns, con diseñador visual low-code
+| Consume eventos CDC de Kafka, aplica content-based routing, y envía notificaciones email via Mailpit
+
+| *SonataFlow*
+| Motor de workflows serverless (evolución de Kogito/jBPM) que ejecuta procesos de negocio cloud-native
+| Orquesta el onboarding de clientes: validación, clasificación, aprobaciones con SLA y provisión en paralelo
+
+| *Red Hat Developer Hub*
+| Portal de desarrollo self-service basado en Backstage, con catálogo de componentes y plugins
+| Plugin de Kafka para visualizar offsets y lag de consumer groups directamente en las entity pages
+
+| *Grafana + Service Mesh*
+| Stack de observabilidad: dashboards de métricas (Grafana), mTLS automático y traffic visualization (Kiali)
+| Dashboard "Kafka CDC Pipeline" con throughput, lag y latencia; Istio ambient mode para mTLS sin sidecars
+
+| *OpenShift DevSpaces*
+| IDE cloud-native basado en Eclipse Che, con workspaces efímeros y extensiones pre-configuradas
+| Workspace con Kaoto pre-instalado para diseñar visualmente rutas Apache Camel y workflows SonataFlow
+
+| *OpenShift Lightspeed*
+| Asistente IA integrado en la consola de OpenShift con herramientas MCP para diagnóstico
+| 55+ herramientas MCP para troubleshooting del pipeline: consultar estado de Kafka, Debezium, connectors y pods
+
+| *Keycloak*
+| Identity and Access Management (IAM) enterprise basado en estándares OAuth 2.0 / OIDC
+| Autenticación SSO para todos los servicios del demo (Console, Developer Hub, Grafana, etc.)
+
+| *NeuroFace (Computer Vision)*
+| Aplicación de reconocimiento facial con LBPH + OpenVINO Model Server (face-detection-retail-0005)
+| Registra rostros via webcam, detecta personas y publica eventos en el topic Kafka `cv.face.detections`
+
+| *OpenVINO Model Server (OVMS)*
+| Servidor de inferencia Intel desplegado como KServe InferenceService en OpenShift AI
+| Sirve el modelo `face-detection-retail-0005` (FP16) via REST/gRPC para detección facial
+
+| *CV Processor (Python)*
+| Microservicio Python que pollera OVMS y NeuroFace, produce y consume eventos Kafka
+| Publica eventos `person_registered` y `ovms_model_status`, envía alertas email via Mailpit
+|===
+
+=== Acceso al entorno
+
+* *Kafka Console*: `https://kafka-console-kafka-cdc.{cluster_domain}`
+* *Apicurio Registry*: `https://apicurio-registry-kafka-cdc.{cluster_domain}`
+* *Kafka Bridge (REST)*: `https://kafka-bridge-kafka-cdc.{cluster_domain}`
+* *Grafana*: `https://grafana-observability.{cluster_domain}`
+* *Developer Hub*: `https://backstage-developer-hub-developer-hub.{cluster_domain}`
+* *DevSpaces (Kaoto)*: `https://devspaces.{cluster_domain}`
+* *NeuroFace*: `https://neuroface-frontend-neuroface.{cluster_domain}`
+* *OpenShift AI*: `https://data-science-gateway.{cluster_domain}`
+* *Mailpit*: `https://n8n-mailpit-openshift-lightspeed.{cluster_domain}`
+
+== Suscripciones Red Hat requeridas
+
+[cols="1,2",options="header"]
+|===
+| Producto / Suscripción | Documentación
+
+| *Red Hat OpenShift Container Platform*
+| https://docs.redhat.com/en/documentation/openshift_container_platform/4.20[OpenShift Container Platform 4.20^]
+
+| *Red Hat Streams for Apache Kafka*
+| https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka[Streams for Apache Kafka^]
+
+| *Red Hat build of Debezium*
+| https://docs.redhat.com/en/documentation/red_hat_build_of_debezium[Red Hat build of Debezium^]
+
+| *Red Hat build of Apicurio Registry*
+| https://docs.redhat.com/en/documentation/red_hat_build_of_apicurio_registry[Apicurio Registry^]
+
+| *Red Hat build of Apache Camel*
+| https://docs.redhat.com/en/documentation/red_hat_build_of_apache_camel[Apache Camel^]
+
+| *Red Hat Developer Hub*
+| https://docs.redhat.com/en/documentation/red_hat_developer_hub[Developer Hub^]
+
+| *Red Hat OpenShift Dev Spaces*
+| https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces[OpenShift Dev Spaces^]
+
+| *Red Hat OpenShift Service Mesh*
+| https://docs.redhat.com/en/documentation/openshift_service_mesh[OpenShift Service Mesh^]
+
+| *Red Hat OpenShift Lightspeed*
+| https://docs.redhat.com/en/documentation/red_hat_openshift_lightspeed[OpenShift Lightspeed^]
+
+| *Red Hat OpenShift Serverless Logic*
+| https://docs.redhat.com/en/documentation/red_hat_openshift_serverless[OpenShift Serverless^]
+
+| *Red Hat build of Keycloak*
+| https://docs.redhat.com/en/documentation/red_hat_build_of_keycloak[Red Hat build of Keycloak^]
+
+| *Red Hat OpenShift GitOps*
+| https://docs.redhat.com/en/documentation/red_hat_openshift_gitops[OpenShift GitOps (ArgoCD)^]
+
+| *Red Hat OpenShift Pipelines*
+| https://docs.redhat.com/en/documentation/red_hat_openshift_pipelines[OpenShift Pipelines (Tekton)^]
+
+| *Red Hat OpenShift Serverless*
+| https://docs.redhat.com/en/documentation/red_hat_openshift_serverless[OpenShift Serverless (Knative)^]
+
+| *Cluster Observability Operator*
+| https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cluster_observability_operator/index[Cluster Observability Operator^]
+
+| *Red Hat OpenShift distributed tracing*
+| https://docs.redhat.com/en/documentation/red_hat_openshift_distributed_tracing_platform[OpenShift distributed tracing (OpenTelemetry)^]
+
+| *Grafana Operator*
+| https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cluster_observability_operator/index[Grafana via Cluster Observability^]
+
+| *Red Hat OpenShift AI*
+| https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed[OpenShift AI^]
+|===

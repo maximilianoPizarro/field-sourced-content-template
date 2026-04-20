@@ -1,0 +1,174 @@
+= Kaoto + Apache Camel
+:navtitle: Kaoto + Apache Camel
+
+++++
+<div id="scene-camel" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-camel', {height:380, camY:8, camZ:18});
+  if(!ctx) return;
+  var src = ThreeHelper.createNode(ctx.scene,'from(kafka)',0x231F20,-8,0,0,{width:2.8});
+  var um = ThreeHelper.createNode(ctx.scene,'unmarshal',0x7B1FA2,-3,0,0,{width:2.2});
+  var tr = ThreeHelper.createNode(ctx.scene,'transform',0xF57C00,2,0,0,{width:2.2});
+  var dst = ThreeHelper.createNode(ctx.scene,'to(http)',0x42A5F5,7,0,0,{width:2.2});
+  var dlq = ThreeHelper.createNode(ctx.scene,'DLQ',0xE53935,2,3,3,{width:1.5,height:0.8});
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,src,um,0x231F20,{speed:0.01}),
+    ThreeHelper.createEdge(ctx.scene,um,tr,0x7B1FA2,{speed:0.01}),
+    ThreeHelper.createEdge(ctx.scene,tr,dst,0xF57C00,{speed:0.01}),
+    ThreeHelper.createEdge(ctx.scene,tr,dlq,0xE53935,{speed:0.004})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
+== What is Apache Camel?
+
+https://camel.apache.org/[Apache Camel] is an open source integration framework that implements Enterprise Integration Patterns (EIP). It lets you connect diverse systems using a broad library of components.
+
+*Red Hat build of Apache Camel for Quarkus* is the supported distribution for OpenShift — cloud-native, fast startup, GraalVM native.
+
+NOTE: Red Hat Camel K (serverless) reached End of Life in June 2025. The migration path is *Camel for Quarkus*, which offers the same route model but with traditional deployment.
+
+== What is Kaoto?
+
+https://kaoto.io/[Kaoto] is a *low-code* visual designer for Apache Camel routes. It lets you create and edit integrations by dragging components — without writing YAML/XML by hand.
+
+*Kaoto is available as a VS Code extension* (`redhat.vscode-kaoto`) and comes pre-installed in the *DevSpaces* workspaces in this cluster.
+
+== Camel Route for the CDC Pipeline
+
+The integration route consumes CDC events from Kafka and sends email notifications to Mailpit:
+
+[source,yaml]
+----
+- route:
+    id: cdc-customer-notification
+    from:
+      uri: kafka:cdc.public.customers
+      parameters:
+        brokers: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092
+        groupId: camel-cdc-consumer
+        autoOffsetReset: latest
+    steps:
+      - log:
+          message: "CDC event received: ${body}"
+      - unmarshal:
+          json:
+            library: jackson
+      - choice:
+          when:
+            - jsonpath:
+                expression: "$.payload.op"
+              simple: "${body[payload][op]} == 'c'"
+              steps:
+                - setHeader:
+                    name: subject
+                    constant: "New Customer Created"
+                - setBody:
+                    simple: |
+                      {"from":{"name":"CDC Pipeline","email":"cdc@neuralbank.io"},
+                       "to":[{"name":"Admin","email":"admin@neuralbank.io"}],
+                       "subject":"New Customer Created",
+                       "text":"Customer created in the database."}
+          otherwise:
+            steps:
+              - setBody:
+                  simple: |
+                    {"from":{"name":"CDC Pipeline","email":"cdc@neuralbank.io"},
+                     "to":[{"name":"Admin","email":"admin@neuralbank.io"}],
+                     "subject":"Customer Record Changed",
+                     "text":"A change was detected on the customers table."}
+      - marshal:
+          json:
+            library: jackson
+      - to:
+          uri: http://n8n-mailpit.openshift-lightspeed.svc:8025/api/v1/send
+----
+
+== Using Kaoto in DevSpaces
+
+. Open DevSpaces: `https://devspaces.{cluster_domain}`
+. Create a new workspace or open an existing one
+. The *Kaoto* extension is pre-installed automatically
+. Open any `.camel.yaml` file — Kaoto shows the visual view
+. You can drag components, change parameters, and save — the YAML updates automatically
+
+=== Camel components used in this pipeline
+
+[cols="1,2",options="header"]
+|===
+| Component | Usage
+
+| `camel-kafka`
+| Consumes messages from the CDC topic
+
+| `camel-jackson`
+| Marshal/unmarshal JSON
+
+| `camel-http`
+| HTTP POST to the Mailpit API
+
+| `camel-jsonpath`
+| JSONPath expression evaluation for content-based routing
+
+| `camel-micrometer`
+| Exports Prometheus metrics for processing
+|===
+
+== How it Works
+
+=== Processing a CDC event in Camel
+
+When a new CDC event arrives on the topic `cdc.public.customers`, the Camel route runs the following internal steps:
+
+. **Poll** — The `camel-kafka` component calls `poll()` on the leader broker for the partitions assigned to the consumer group `camel-cdc-consumer`. Kafka returns a batch of records. Each record is processed individually as a Camel _Exchange_.
+
+. **Unmarshal** — The Exchange body (JSON string of the Debezium event) is deserialized to a `Map<String,Object>` using Jackson. This lets you access fields such as `payload.op`, `payload.after.first_name`, etc.
+
+. **Content-Based Routing** — The `choice()` evaluates `$.payload.op` via JSONPath:
+** If `op == 'c'` (INSERT): generates a "New Customer Created" email
+** For any other operation (UPDATE, DELETE): generates a generic change email
+
+. **Marshal + HTTP POST** — The transformed body is serialized back to JSON and sent via HTTP POST to the Mailpit API (`/api/v1/send`). The `camel-http` component handles connection pooling, retries, and timeouts.
+
+. **Error Handling** — If any step fails, `onException` catches the exception:
+** Marks the error as `handled` (does not propagate the failure upstream)
+** Sends the original message to the DLQ topic `dlq.cdc-camel-errors`
+** Logs the error for diagnosis
+** The Kafka offset is committed — the message is not reprocessed
+
+=== Camel Exchange Model
+
+Each message processed by Camel is an *Exchange* with:
+
+* **Body**: the message content (transformed at each step)
+* **Headers**: metadata (Kafka topic, partition, offset, timestamp, HTTP headers for the POST)
+* **Properties**: internal Exchange state (not visible to external components)
+
+The Exchange flows through the route as a *pipeline* — each step's output is the next step's input. This lets you chain transformations without shared state.
+
+== Camel processor metrics
+
+The Camel processor exposes Prometheus metrics at `/q/metrics`:
+
+[source,bash]
+----
+curl -s http://camel-cdc-processor.kafka-cdc.svc:8080/q/metrics | grep camel
+----
+
+These metrics are collected by the PodMonitor and displayed in the Grafana dashboard "Kafka CDC Pipeline".
+
+== Official Documentation
+
+* https://docs.redhat.com/en/documentation/red_hat_build_of_apache_camel[Red Hat build of Apache Camel^] — Supported distribution of Apache Camel
+* https://docs.redhat.com/en/documentation/red_hat_build_of_apache_camel/4.8/html/getting_started_with_camel_quarkus/index[Getting Started with Camel Quarkus^] — Quick start guide with Camel for Quarkus
+* https://camel.apache.org/components/4.x/[Apache Camel Components^] — Full component catalog (Kafka, HTTP, JSON, etc.)
+* https://camel.apache.org/camel-quarkus/next/index.html[Camel Quarkus Documentation^] — Camel on Quarkus (upstream)
+* https://kaoto.io/docs/[Kaoto Documentation^] — Visual Camel route designer
+* https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces[Red Hat OpenShift Dev Spaces^] — Cloud-native IDE with Kaoto pre-installed
+* https://camel.apache.org/camel-quarkus/next/reference/extensions/kafka.html[Camel Kafka Component^] — Kafka component reference in Camel

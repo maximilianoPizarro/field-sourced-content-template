@@ -57,12 +57,12 @@ commands:
   - id: build
     exec:
       component: tools
-      commandLine: "mvn package -DskipTests"
+      commandLine: "./mvnw package -DskipTests"
       workingDir: ${PROJECT_SOURCE}
   - id: run
     exec:
       component: tools
-      commandLine: "mvn quarkus:dev"
+      commandLine: "./mvnw quarkus:dev"
       workingDir: ${PROJECT_SOURCE}
 events:
   postStart:

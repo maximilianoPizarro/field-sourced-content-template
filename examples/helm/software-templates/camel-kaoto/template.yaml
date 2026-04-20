@@ -92,7 +92,7 @@ spec:
         url: ${{ steps['publish'].output.remoteUrl }}
       - title: Open in DevSpaces
         icon: chat
-        url: "https://devspaces.${{ parameters.clusterDomain }}/#https://gitea-gitea.${{ parameters.clusterDomain }}/ws-${{ parameters.owner }}/${{ parameters.name }}"
+        url: "https://devspaces.${{ parameters.clusterDomain }}/#https://gitea-gitea.${{ parameters.clusterDomain }}/ws-${{ parameters.owner }}/${{ parameters.name }}/raw/branch/main/devfile.yaml"
       - title: View in Catalog
         icon: catalog
         entityRef: ${{ steps['register'].output.entityRef }}

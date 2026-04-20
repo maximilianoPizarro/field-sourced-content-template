@@ -28,6 +28,11 @@ attributes:
         "Continue.continue"
       ]
     }
+projects:
+  - name: ${{ values.name }}
+    git:
+      remotes:
+        origin: https://gitea-gitea.${{ values.clusterDomain }}/ws-${{ values.owner }}/${{ values.name }}.git
 components:
   - name: tools
     container:

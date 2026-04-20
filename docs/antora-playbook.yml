@@ -70,7 +70,10 @@ ui:
         });
         </script>
     - path: partials/toolbar.hbs
-      contents: ""
+      contents: |
+        <div class="toolbar" role="navigation">
+          <button class="nav-toggle"></button>
+        </div>
     - path: partials/footer-content.hbs
       contents: |
         <footer class="footer" style="background:#151515;border-top:3px solid #c00;padding:24px 32px">
@@ -111,7 +114,7 @@ ui:
           margin: 0 !important;
         }
         main.article { max-width: none !important; }
-        .body.has-toc .nav-container {
+        .body .nav-container {
           width: 230px;
           min-width: 230px;
           flex-shrink: 0;
@@ -151,7 +154,7 @@ ui:
         }
         .article { max-width: none !important; }
         .toolbar { max-width: none !important; display: none; }
-        .body.has-toc .toc-sidebar {
+        .toc-sidebar {
           width: 220px;
           min-width: 220px;
           flex-shrink: 0;
@@ -280,7 +283,7 @@ ui:
           height: 100vh !important;
         }
         @media (max-width: 768px) {
-          .body.has-toc .nav-container {
+          .body .nav-container {
             position: fixed;
             top: 0; left: -260px;
             width: 260px;
@@ -290,10 +293,10 @@ ui:
             box-shadow: 4px 0 20px rgba(0,0,0,0.5);
             background: var(--color-brand-dark);
           }
-          .body.has-toc .nav-container.is-active {
+          .body .nav-container.is-active {
             left: 0;
           }
-          .body.has-toc .toc-sidebar { display: none; }
+          .toc-sidebar { display: none; }
           .navbar { padding: 0 8px; }
           .navbar .navbar-burger {
             display: flex !important;

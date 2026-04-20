@@ -17,3 +17,4 @@
 * xref:16-ie-sizing.adoc[16. Capacity Planning e Infraestructura]
 * xref:17-neuroface-cv.adoc[17. NeuroFace CV Pipeline]
 * xref:18-ai-playground-kafka-mcp.adoc[18. AI Playground + Kafka MCP]
+* xref:19-devspaces-continue-ai.adoc[19. DevSpaces + Continue AI]

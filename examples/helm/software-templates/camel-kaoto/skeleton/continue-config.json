@@ -6,9 +6,9 @@
       "apiBase": "http://granite-llm-predictor.neuroface.svc.cluster.local:8080/v1",
       "provider": "openai",
       "apiKey": "no-key",
-      "contextLength": 1024,
+      "contextLength": 8192,
       "completionOptions": {
-        "maxTokens": 256
+        "maxTokens": 1024
       }
     }
   ],
@@ -18,9 +18,9 @@
     "apiBase": "http://granite-llm-predictor.neuroface.svc.cluster.local:8080/v1",
     "provider": "openai",
     "apiKey": "no-key",
-    "contextLength": 1024,
+    "contextLength": 8192,
     "completionOptions": {
-      "maxTokens": 64
+      "maxTokens": 128
     }
   },
   "allowAnonymousTelemetry": false

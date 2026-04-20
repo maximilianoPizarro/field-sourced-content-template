@@ -918,11 +918,11 @@ spec:
         - "--port"
         - "8080"
         - "--ctx-size"
-        - "2048"
+        - "8192"
         - "--threads"
         - "8"
         - "--parallel"
-        - "2"
+        - "1"
       resources:
         requests:
           cpu: "4"

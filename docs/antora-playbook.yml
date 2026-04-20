@@ -89,10 +89,10 @@ ui:
             if (path.indexOf('/en/') !== -1) window.location.href = path.replace('/en/', '/es/');
             else if (path.indexOf('/es/') === -1) window.location.href = path.replace(/\/[^\/]*$/, '/es/index.html');
           };
-          var navLists = document.querySelectorAll('.nav-panel-menu > .nav-list');
-          if (navLists.length === 2) {
-            if (isEs) { navLists[0].style.display = 'none'; }
-            else { navLists[1].style.display = 'none'; }
+          var navLists = document.querySelectorAll('.nav-menu > .nav-list');
+          if (navLists.length >= 2) {
+            if (isEs) { navLists[0].style.display = 'none'; navLists[1].style.display = ''; }
+            else { navLists[0].style.display = ''; navLists[1].style.display = 'none'; }
           }
         });
         </script>
@@ -173,6 +173,7 @@ ui:
           background: rgba(204,0,0,0.08);
         }
         .nav-panel-explore { display: none !important; }
+        .nav-menu > .nav-list ~ .nav-list { display: none; }
         .body .content {
           flex: 1;
           max-width: none !important;

@@ -23,6 +23,7 @@ spec:
       required:
         - name
         - owner
+        - clusterDomain
       properties:
         name:
           title: Instance Name
@@ -62,8 +63,8 @@ spec:
         clusterDomain:
           title: Cluster Domain
           type: string
-          default: ""
-          description: "OpenShift apps domain (oc get ingresses.config cluster -o jsonpath='{.spec.domain}')"
+          description: "OpenShift apps domain"
+          ui:help: "Run: oc get ingresses.config cluster -o jsonpath='{.spec.domain}'"
   steps:
     - id: fetch-skeleton
       name: Generate Skeleton

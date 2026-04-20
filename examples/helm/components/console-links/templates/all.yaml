@@ -22,7 +22,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "10"
 spec:
   applicationMenu:
-    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4IiBmaWxsPSIjMjMxRjIwIj48cGF0aCBkPSJNNjQgMEMyOC43IDAgMCAyOC43IDAgNjRzMjguNyA2NCA2NCA2NCA2NC0yOC43IDY0LTY0UzkyLjMgMCA2NCAwem0wIDExNi4xYy0yOC43IDAtNTIuMS0yMy40LTUyLjEtNTIuMVMzNS4zIDExLjkgNjQgMTEuOXM1Mi4xIDIzLjQgNTIuMSA1Mi4xLTIzLjQgNTIuMS01Mi4xIDUyLjF6Ii8+PC9zdmc+"
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI0U4NTkwQyI+PHBhdGggZD0iTTIyIDExYy0uNC0xLjEtMS4zLTItMi41LTIuMy4xLS4yLjEtLjUuMS0uNyAwLTEuMS0uOS0yLTItMi0uNCAwLS43LjEtMSAuM0MxNi4xIDUuNSAxNS4xIDUgMTQgNWMtLjcgMC0xLjQuMi0yIC42QzExLjQgNS4yIDEwLjcgNSAxMCA1IDguMyA1IDcgNi4zIDcgOGMwIC4zIDAgLjUuMS44QzUuMyA5LjIgNCAxMC43IDQgMTIuNSA0IDE0LjQgNS42IDE2IDcuNSAxNkg4bDEgM2g2bDEtM2guNWMxLjkgMCAzLjUtMS42IDMuNS0zLjUgMC0uNi0uMS0xLjEtLjQtMS41ek05LjUgMTNjLS44IDAtMS41LS43LTEuNS0xLjVTOC43IDEwIDkuNSAxMHMxLjUuNyAxLjUgMS41UzEwLjMgMTMgOS41IDEzeiIvPjwvc3ZnPg=="
     section: "Event-Driven Architecture Live"
   href: "https://kafka-console-kafka-cdc.{{ $domain }}"
   location: ApplicationMenu
@@ -106,7 +106,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "10"
 spec:
   applicationMenu:
-    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzlCRjBFMSI+PHBhdGggZD0iTTEyIDJMMi41IDcuNWwxLjYgMS40TDEyIDE0LjRsMi41LTIuMUw5LjYgOC4xbDIuNC0yLjEgNS40IDUuMyA1LjEtNC44TDEyIDJ6bTcuOSA5LjRMMTIgMTguOGwtNy45LTcuNCAxLjYtMS40TDEyIDE1LjlsNi40LTZMMjAgMTEuNHoiLz48L3N2Zz4="
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTEiIGZpbGw9IiMzNkJBQTIiLz48cGF0aCBkPSJNNy41IDdoNC41bDQgNS00IDVINy41bDQtNXoiIGZpbGw9IiNmZmYiLz48L3N2Zz4="
     section: "Event-Driven Architecture Live"
   href: "https://backstage-developer-hub-developer-hub.{{ $domain }}"
   location: ApplicationMenu
@@ -139,3 +139,31 @@ spec:
   href: "https://workshop-registration.{{ $domain }}"
   location: ApplicationMenu
   text: "Demo Registration"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-gitea
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzYwOTkyNiI+PHBhdGggZD0iTTYgMTljMCAxLjEuOSAyIDIgMmg4YzEuMSAwIDItLjkgMi0yVjdINnYxMnpNOCA5aDh2MTBIOFY5em0xMC00aC0yVjNIOHYySDZ2MmgxMlY1em0tOC0xaDR2MWgtNFY0eiIvPjxwYXRoIGQ9Ik0xOSAxMGMxLjEgMCAyIC45IDIgMnMtLjkgMi0yIDJoLTF2LTRoMXoiIGZpbGw9IiM0YzdhMTAiLz48L3N2Zz4="
+    section: "Event-Driven Architecture Live"
+  href: "https://gitea-gitea.{{ $domain }}"
+  location: ApplicationMenu
+  text: "Gitea"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-minio
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI0M3MkM0OCI+PHBhdGggZD0iTTIgMjBoMjB2LTRIMnY0em0yLTNoMnYySDR2LTJ6TTIgNHY0aDIwVjRIMnptNCAzSDRWNWgydjJ6bS00IDdoMjB2LTRIMnY0em0yLTNoMnYySDR2LTJ6Ii8+PC9zdmc+"
+    section: "Event-Driven Architecture Live"
+  href: "https://minio-console-industrial-edge-ml-workspace.{{ $domain }}"
+  location: ApplicationMenu
+  text: "MinIO Console"

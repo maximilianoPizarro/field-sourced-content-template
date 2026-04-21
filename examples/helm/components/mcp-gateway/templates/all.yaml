@@ -919,15 +919,13 @@ spec:
               cpu: 500m
               memory: 512Mi
           readinessProbe:
-            httpGet:
-              path: /mcp
+            tcpSocket:
               port: 8080
             initialDelaySeconds: 30
             periodSeconds: 10
             failureThreshold: 6
           livenessProbe:
-            httpGet:
-              path: /mcp
+            tcpSocket:
               port: 8080
             initialDelaySeconds: 60
             periodSeconds: 30

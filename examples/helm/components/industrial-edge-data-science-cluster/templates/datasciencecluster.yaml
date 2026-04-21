@@ -17,12 +17,6 @@ spec:
     datasciencepipelines:
       managementState: Managed
     kserve:
-      serving:
-        ingressGateway:
-          certificate:
-            type: SelfSigned
-        managementState: Managed
-        name: knative-serving
       managementState: Removed
     modelmeshserving:
       managementState: Managed

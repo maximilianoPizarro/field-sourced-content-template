@@ -21,12 +21,14 @@ metadata:
 spec:
   replicas: 3
   roles:
-    - broker
     - controller
+    - broker
   storage:
-    type: persistent-claim
-    size: 10Gi
-    deleteClaim: false
+    type: jbod
+    volumes:
+      - id: 0
+        kraftMetadata: shared
+        type: ephemeral
 ---
 apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka

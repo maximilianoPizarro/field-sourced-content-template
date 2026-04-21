@@ -121,7 +121,6 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
   labels:
-    modelmesh-enabled: 'true'
     opendatahub.io/dashboard: 'true'
 ---
 apiVersion: v1
@@ -152,7 +151,6 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
   labels:
-    modelmesh-enabled: 'true'
     opendatahub.io/dashboard: 'true'
 ---
 apiVersion: v1
@@ -183,7 +181,6 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
   labels:
-    modelmesh-enabled: 'true'
     opendatahub.io/dashboard: 'true'
 ---
 apiVersion: v1

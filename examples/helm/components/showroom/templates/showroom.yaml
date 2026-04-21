@@ -386,6 +386,7 @@ spec:
           subPath: repo
       - name: domain-injector
         image: "quay.io/rhpds/git-cloner:v1.1.2"
+        imagePullPolicy: IfNotPresent
         command: ["sh", "-c"]
         args:
           - |
@@ -420,6 +421,7 @@ spec:
           subPath: www
       - name: ui-config-copier
         image: "quay.io/rhpds/git-cloner:v1.1.2"
+        imagePullPolicy: IfNotPresent
         command: ["sh", "-c", "cp /ui-config/ui-config.yml /showroom/www/ui-config.yml && echo 'ui-config.yml copied to www root'"]
         volumeMounts:
         - mountPath: /showroom/www
@@ -429,6 +431,7 @@ spec:
           name: ui-config
       - name: psql-installer
         image: "registry.redhat.io/rhel9/postgresql-16:latest"
+        imagePullPolicy: IfNotPresent
         command: ["bash", "-c"]
         args:
           - |

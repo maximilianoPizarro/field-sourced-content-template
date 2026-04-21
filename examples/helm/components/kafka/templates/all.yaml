@@ -4,9 +4,6 @@ metadata:
   name: kafka-cdc
   annotations:
     argocd.argoproj.io/sync-wave: "3"
-  labels:
-    istio.io/dataplane-mode: ambient
-    istio-discovery: enabled
 ---
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaNodePool
@@ -55,9 +52,6 @@ spec:
       offsets.topic.replication.factor: 3
       transaction.state.log.replication.factor: 3
       transaction.state.log.min.isr: 2
-      initial.broker.registration.timeout.ms: 300000
-      controller.quorum.election.timeout.ms: 5000
-      controller.quorum.fetch.timeout.ms: 10000
     metricsConfig:
       type: jmxPrometheusExporter
       valueFrom:

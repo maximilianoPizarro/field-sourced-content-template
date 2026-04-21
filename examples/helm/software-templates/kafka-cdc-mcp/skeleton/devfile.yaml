@@ -41,11 +41,17 @@ commands:
     exec:
       component: tools
       commandLine: |
-        mkdir -p /home/user/.vsix-cache
-        [ -f /home/user/.vsix-cache/kaoto.vsix ] || \
-          curl -sL "https://redhat.gallerycdn.vsassets.io/extensions/redhat/vscode-kaoto/2.10.2/1775215869920/Microsoft.VisualStudio.Services.VSIXPackage" -o /home/user/.vsix-cache/kaoto.vsix
-        [ -f /home/user/.vsix-cache/camel.vsix ] || \
-          curl -sL "https://redhat.gallerycdn.vsassets.io/extensions/redhat/vscode-apache-camel/1.14.0/1758543062217/Microsoft.VisualStudio.Services.VSIXPackage" -o /home/user/.vsix-cache/camel.vsix
+        export LD_LIBRARY_PATH=/checode/checode-linux-libc/ubi9/ld_libs/openssl:/checode/checode-linux-libc/ubi9/ld_libs/core:/usr/lib64
+        CHE_CODE=/checode/checode-linux-libc/ubi9/bin/che-code
+        EXT_DIR=/checode/checode-linux-libc/ubi9/extensions
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-kaoto --force 2>/dev/null || true
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-apache-camel --force 2>/dev/null || true
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension Continue.continue --force 2>/dev/null || true
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-yaml --force 2>/dev/null || true
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.java --force 2>/dev/null || true
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-quarkus --force 2>/dev/null || true
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-openshift-connector --force 2>/dev/null || true
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension jbangdev.jbang-vscode --force 2>/dev/null || true
         which jbang >/dev/null 2>&1 || curl -Ls https://sh.jbang.dev | bash -s - app setup
   - id: setup-continue
     exec:

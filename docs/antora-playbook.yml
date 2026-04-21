@@ -234,11 +234,12 @@ ui:
         }
         .admonitionblock .icon { background: var(--color-brand-blue); }
         pre.highlight {
-          background: #1e1e2e !important;
+          background: #f6f8fa !important;
           border-radius: 8px;
-          border: 1px solid #333;
+          border: 1px solid #d0d7de;
+          padding: 16px !important;
         }
-        pre.highlight code { font-size: 0.85rem; color: #e0e0e0; }
+        pre.highlight code { font-size: 0.85rem; color: #24292f; }
         .three-container {
           width: 100%;
           height: 500px;

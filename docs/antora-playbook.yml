@@ -256,26 +256,35 @@ ui:
         }
         .fullscreen-btn {
           position: absolute;
-          top: 10px;
-          right: 10px;
-          z-index: 100;
-          background: rgba(0,0,0,0.75);
+          top: 12px;
+          right: 12px;
+          z-index: 9999;
+          background: #CC0000;
           color: #fff;
-          border: 1px solid rgba(255,255,255,0.25);
-          border-radius: 6px;
-          padding: 6px 14px;
+          border: 2px solid #fff;
+          border-radius: 8px;
+          padding: 10px 20px;
           cursor: pointer;
-          font-size: 14px;
-          transition: background 0.2s, border-color 0.2s, transform 0.15s;
-          backdrop-filter: blur(4px);
+          font-size: 15px;
+          font-weight: 700;
+          font-family: RedHatDisplay, Arial, sans-serif;
+          letter-spacing: 0.5px;
+          transition: background 0.2s, border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+          box-shadow: 0 2px 12px rgba(204,0,0,0.5);
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
+          animation: fs-pulse 2s ease-in-out 3;
+        }
+        @keyframes fs-pulse {
+          0%, 100% { box-shadow: 0 2px 12px rgba(204,0,0,0.5); }
+          50% { box-shadow: 0 2px 24px rgba(204,0,0,0.9); }
         }
         .fullscreen-btn:hover {
-          background: rgba(0,102,204,0.8);
-          border-color: rgba(255,255,255,0.5);
-          transform: scale(1.05);
+          background: #ee0000;
+          border-color: #fff;
+          transform: scale(1.08);
+          box-shadow: 0 4px 20px rgba(204,0,0,0.7);
         }
         .doc .imageblock img { cursor: pointer; transition: transform 0.2s; border-radius: 6px; }
         .doc .imageblock img:hover { transform: scale(1.02); }
@@ -308,8 +317,10 @@ ui:
         :fullscreen .fullscreen-btn {
           top: 16px;
           right: 16px;
-          padding: 8px 18px;
-          font-size: 15px;
+          padding: 10px 22px;
+          font-size: 16px;
+          background: #CC0000;
+          animation: none;
         }
         :fullscreen canvas {
           width: 100vw !important;
@@ -405,7 +416,7 @@ ui:
 
             var fsBtn = document.createElement('button');
             fsBtn.className = 'fullscreen-btn';
-            fsBtn.innerHTML = '\u26F6 Fullscreen';
+            fsBtn.innerHTML = '\u26F6 <span>Fullscreen</span>';
             var isFullscreen = false;
 
             function resizeRenderer() {
@@ -557,7 +568,7 @@ ui:
             el.style.position = el.style.position || 'relative';
             var btn = document.createElement('button');
             btn.className = 'fullscreen-btn';
-            btn.innerHTML = '\u26F6 Fullscreen';
+            btn.innerHTML = '\u26F6 <span>Fullscreen</span>';
             btn.onclick = function() {
               if (!document.fullscreenElement && !document.webkitFullscreenElement) {
                 if (el.requestFullscreen) el.requestFullscreen();

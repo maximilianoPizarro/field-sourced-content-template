@@ -24,5 +24,39 @@
       "maxTokens": 128
     }
   },
+  "contextProviders": [
+    {
+      "name": "codebase",
+      "params": {}
+    },
+    {
+      "name": "folder",
+      "params": {}
+    },
+    {
+      "name": "file",
+      "params": {}
+    },
+    {
+      "name": "code",
+      "params": {}
+    },
+    {
+      "name": "currentFile",
+      "params": {}
+    },
+    {
+      "name": "tree",
+      "params": {}
+    },
+    {
+      "name": "problems",
+      "params": {}
+    },
+    {
+      "name": "terminal",
+      "params": {}
+    }
+  ],
   "allowAnonymousTelemetry": false
 }

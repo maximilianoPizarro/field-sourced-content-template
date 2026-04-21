@@ -131,3 +131,9 @@ image::industrial-edge-architecture.png[AI/ML architecture overview,align=center
 * CLI access to browse S3 objects
 * End-to-end data path from sensors through Kafka into S3 storage
 * GitOps management of all Industrial Edge components via ArgoCD
+
+== Screenshots
+
+image::industrialedge9.png[MinIO Console,align=center]
+
+image::industrialedge10.png[MinIO Buckets,align=center]

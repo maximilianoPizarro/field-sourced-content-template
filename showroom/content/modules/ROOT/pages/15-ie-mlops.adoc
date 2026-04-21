@@ -129,3 +129,7 @@ oc rollout restart deploy/machine-sensor-1 deploy/machine-sensor-2 -n industrial
 * Configuration change via ConfigMap → pod restart → immediate effect
 * New sensor data type appearing on the dashboard in seconds
 * Same data flowing through Kafka topics end-to-end
+
+== Screenshots
+
+image::industrialedge5.png[GitOps Configuration Change,align=center]

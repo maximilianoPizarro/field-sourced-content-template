@@ -191,3 +191,11 @@ The **Industrial Edge Software Template** in Developer Hub turns this validated 
 xref:21-scale-to-n.adoc[**→ Scale to N: Self-Service Edge Instances**]
 
 Each instance gets its own namespace, Kafka cluster, ArgoCD Application, and Backstage catalog registration. No manual intervention required.
+
+== Screenshots
+
+image::industrialedge.png[Industrial Edge Overview,align=center]
+
+image::industrialedge1.png[Industrial Edge ArgoCD,align=center]
+
+image::industrialedge2.png[Industrial Edge Namespaces,align=center]

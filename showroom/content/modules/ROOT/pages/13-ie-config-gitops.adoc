@@ -133,3 +133,9 @@ image::highleveldemo.png[High-level demo diagram showing sensor data flow throug
 * Live sensor messages flowing through topics
 * Camel K bridging MQTT->Kafka and Kafka->S3
 * MirrorMaker2 replicating factory data to the central cluster
+
+== Screenshots
+
+image::streams-multicluster.png[Kafka Streams Multi-Cluster,align=center]
+
+image::industrialedge5.png[Kafka Topics,align=center]

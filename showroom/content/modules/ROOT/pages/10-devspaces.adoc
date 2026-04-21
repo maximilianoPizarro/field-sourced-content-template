@@ -387,3 +387,9 @@ Dev Spaces workspaces run inside the OpenShift cluster and are subject to resour
 |===
 
 Administrators can adjust these limits via the `CheCluster` CR or per-namespace `ResourceQuota` objects.
+
+== Screenshots
+
+image::industrialedge6.png[DevSpaces IDE with Continue AI,align=center]
+
+image::camel.png[Kaoto Camel Route Editor,align=center]

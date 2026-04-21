@@ -94,3 +94,9 @@ image::edge-mfg-messaging-ml.png[Messaging and ML components detail,align=center
 * ML anomaly detection generating periodic alerts
 * IoT consumer backend forwarding sensor data to the inference service
 * Identical architecture deployed in dev and factory namespaces
+
+== Screenshots
+
+image::industrialedge7.png[Line Dashboard Realtime,align=center]
+
+image::industrialedge8.png[Anomaly Detection Alert,align=center]

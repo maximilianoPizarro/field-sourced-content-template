@@ -183,3 +183,13 @@ Access the OpenShift AI dashboard at link:https://data-science-gateway.{cluster_
 The NeuroFace platform includes an optional *PPE Safety Detection* module that uses YOLOv8n to monitor whether operators are wearing required protective equipment. The webcam feed from the frontend is analyzed in real time, and each detection event is published to the Kafka topic `cv.ppe.detections` for downstream analysis in Jupyter notebooks.
 
 For the full walkthrough — architecture, event schema, verification commands, and Granite LLM integration — see xref:20-ppe-safety.adoc[PPE Safety Detection].
+
+== Screenshots
+
+image::neuroface.png[NeuroFace Frontend,align=center]
+
+image::neuroface2.png[NeuroFace CV Detection,align=center]
+
+image::neuroface3.png[NeuroFace Backend API,align=center]
+
+image::neuroface4.png[NeuroFace Pipeline Overview,align=center]

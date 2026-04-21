@@ -166,7 +166,7 @@ El modelo Granite corre como un `InferenceService` de KServe con un `ServingRunt
 
 == IDE DevSpaces con Continue AI
 
-image::ROOT:devspaces-continue-ai.png[Workspace DevSpaces con extensión Continue AI,width=100%]
+image::ROOT:industrialedge6.png[DevSpaces IDE con Continue AI y Kaoto,width=100%]
 
 La captura muestra un workspace de DevSpaces con el panel de Continue AI abierto en el lado izquierdo. El asistente de IA usa el modelo Granite 3.1 2B servido por OpenShift AI para generar rutas Apache Camel.
 

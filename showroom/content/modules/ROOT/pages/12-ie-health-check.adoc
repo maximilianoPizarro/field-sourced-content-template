@@ -104,3 +104,9 @@ image::edge-mfg-data-flow.png[Overall data flows,align=center]
 * 4 sensor pods (2 in dev, 2 in factory) continuously publishing MQTT data
 * AMQ Broker receiving and routing messages
 * Vibration enabled, temperature disabled (ready for the GitOps demo)
+
+== Screenshots
+
+image::industrialedge3.png[IoT Sensor Pods,align=center]
+
+image::industrialedge4.png[Sensor Data Flow,align=center]

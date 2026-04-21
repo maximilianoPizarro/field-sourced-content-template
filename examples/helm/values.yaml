@@ -539,8 +539,8 @@ components:
 # Values injected by field content workload (do not modify)
 # ============================================================
 deployer:
-  domain: ""
-  apiUrl: ""
+  domain: "apps.cluster-xtvzv.dynamic.redhatworkshops.io"
+  apiUrl: "https://api.cluster-xtvzv.dynamic.redhatworkshops.io:6443"
 
 fieldContent:
   deploymentType: "helm"

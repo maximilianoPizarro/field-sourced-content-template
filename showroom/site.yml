@@ -8,7 +8,7 @@ content:
       start_path: showroom/content
 asciidoc:
   attributes:
-    cluster_domain: "apps.cluster-msf9p.dynamic.redhatworkshops.io"
+    cluster_domain: "%cluster_domain%"
     user: "%user%"
 ui:
   bundle:

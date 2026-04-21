@@ -264,7 +264,38 @@ A `devspaces` OIDC client is registered in the Keycloak `backstage` realm. DevSp
 
 **Result**: Users only need a Keycloak account (`user1`…`userN`) to access Developer Hub AND DevSpaces. No OpenShift User objects or manual RBAC required.
 
-### Cluster Sizing
+### Cluster Sizing (measured April 2026)
+
+Based on a real deployment running on RHDP with the full profile (all components enabled, no users scaffolded yet).
+
+#### Measured Baseline (0 users, full profile)
+
+| Metric | Value |
+|--------|-------|
+| **Cluster** | 3 control-plane (16 vCPU, 64 Gi) + 3 workers (64 vCPU, 128 Gi) |
+| **Total running pods** | 474 |
+| **Namespaces** | 522 (includes operator + system namespaces) |
+| **Worker CPU usage** | 15.2 vCPU of 192 vCPU (7.9%) |
+| **Worker memory usage** | 87 Gi of 384 Gi (22.6%) |
+| **Control-plane CPU** | 18.8 vCPU of 48 vCPU (39%) |
+| **Control-plane memory** | 93 Gi of 192 Gi (48.5%) |
+
+#### Pods by Component
+
+| Component | Pods | Namespaces |
+|-----------|------|------------|
+| Kafka CDC (Strimzi + Debezium + Bridge + Console) | 16 | `kafka-cdc` |
+| Industrial Edge (sensors, Kafka ×3, dashboards, ML) | 34 | 8 namespaces (`industrial-edge-*`) |
+| NeuroFace CV (frontend, backend, OVMS, YOLO, processor) | 8 | `neuroface` |
+| OpenShift AI / ML (Jupyter, S3 Browser, KServe) | 9 | `ml-development` |
+| ArgoCD | 8 | `openshift-gitops` |
+| Developer Hub | 2 | `developer-hub` |
+| Gitea | 5 | `gitea` |
+| Keycloak (RHBK) | 3 | `rhbk-operator` |
+| DevSpaces Operator | 3 | `devspaces` |
+| Lightspeed + MCP Gateway | 5 | `openshift-lightspeed` |
+| Showroom + Registration | 2 | `showroom` |
+| **Platform (OCP operators, monitoring, ingress)** | **~380** | various |
 
 #### Per-User Resource Footprint
 
@@ -278,46 +309,31 @@ A `devspaces` OIDC client is registered in the Keycloak `backstage` realm. DevSp
 | **Total per user (all 3 apps + DevSpaces)** | **3.5 vCPU** | **4.5 Gi** |
 | **Total per user (all 3 apps, no DevSpaces)** | **1.5 vCPU** | **1.5 Gi** |
 
-#### Infrastructure Overhead (fixed, independent of user count)
-
-| Layer | CPU (limits) | RAM (limits) | Disk |
-|-------|-------------|-------------|------|
-| OpenShift Platform (API server, etcd, ingress, monitoring) | 14 vCPU | 34 Gi | 220 GB |
-| Infrastructure Services (ArgoCD, Keycloak, Gitea, Developer Hub, Tekton, Istio, Kuadrant) | 36 vCPU | 54 Gi | 135 GB |
-| Container Images (pre-pulled) | — | — | 113 GB |
-| **Fixed total** | **50 vCPU** | **88 Gi** | **468 GB** |
-
-#### Scaling at 200 Users — Key Considerations
-
-At 200 users the following platform components become scale-sensitive:
-
-| Component | Impact at 200 users | Recommendation |
-|-----------|-------------------|----------------|
-| **ArgoCD Application Controller** | 200 ApplicationSets + up to 600 Applications | Increase memory limit to 8 Gi; consider `--sharding-algorithm round-robin` with 2 replicas |
-| **ArgoCD Repo Server** | Clones up to 600 repos | Scale to 2 replicas, increase CPU/memory limits |
-| **etcd / API Server** | 400+ namespaces, 1200+ RoleBindings, 600+ ArgoCD Applications | Ensure control plane nodes have ≥16 Gi RAM and fast SSD storage |
-| **Keycloak** | 200 user sessions | Scale to 2 replicas if login storms expected |
-| **Gitea** | 200 users, 200 orgs, up to 600 repos | Monitor PostgreSQL/SQLite I/O; consider external DB for >100 users |
-
 #### Scaling Profiles
 
-| Users | User Resources | Total (infra + users) | Recommended Workers | Instance Type |
-|-------|---------------|----------------------|-------------------|---------------|
-| **30** | 105 vCPU / 135 Gi | 155 vCPU / 223 Gi | 3 nodes | m5.8xlarge (32 vCPU, 128 Gi) |
-| **50** | 175 vCPU / 225 Gi | 225 vCPU / 313 Gi | 4 nodes | m5.8xlarge |
-| **100** | 350 vCPU / 450 Gi | 400 vCPU / 538 Gi | 7 nodes | m5.8xlarge |
-| **100** (no DevSpaces) | 150 vCPU / 150 Gi | 200 vCPU / 238 Gi | 4 nodes | m5.8xlarge |
-| **200** | 700 vCPU / 900 Gi | 750 vCPU / 988 Gi | **12 nodes** | **m5.8xlarge (32 vCPU, 128 Gi)** |
-| **200** (no DevSpaces) | 300 vCPU / 300 Gi | 350 vCPU / 388 Gi | **6 nodes** | **m5.8xlarge** |
-| **200** (30% DevSpaces concurrent) | 420 vCPU / 480 Gi | 470 vCPU / 568 Gi | **8 nodes** | **m5.8xlarge** |
+| Users | Worker CPU needed | Worker MEM needed | Recommended Workers | Instance Type |
+|-------|-------------------|-------------------|---------------------|---------------|
+| **Demo (0 users)** | 15 vCPU / 87 Gi | — | **3 nodes** | **64 vCPU, 128 Gi** |
+| **30** | 60 vCPU / 135 Gi | 120 vCPU / 222 Gi total | 3 nodes | 64 vCPU, 128 Gi |
+| **50** | 90 vCPU / 175 Gi | 150 vCPU / 262 Gi total | 3 nodes | 64 vCPU, 128 Gi |
+| **100** (30% DevSpaces) | 120 vCPU / 222 Gi | 180 vCPU / 309 Gi total | 3-4 nodes | 64 vCPU, 128 Gi |
+| **200** (30% DevSpaces) | 225 vCPU / 357 Gi | 285 vCPU / 444 Gi total | **5-6 nodes** | **64 vCPU, 128 Gi** |
 
-> **Recommended for 200 users**: **8–12 worker nodes** (m5.8xlarge: 32 vCPU, 128 Gi each), depending on DevSpaces concurrency. In practice, not all 200 users run DevSpaces workspaces simultaneously — with 30% concurrent DevSpaces usage, 8 workers suffice. If all users deploy all 3 templates AND use DevSpaces concurrently, scale to 12 workers.
+> **Key finding**: The original theoretical estimates (12 workers for 200 users) were significantly oversized. Real measurements show 3 workers with 64 vCPU / 128 Gi each handle the full platform at 7.9% CPU and 22.6% memory. Even at 200 users with 30% DevSpaces concurrency, 5-6 workers suffice.
 
-> **Note**: Without DevSpaces (users only view topology/CI/CD in Developer Hub), per-user footprint drops to **1.5 vCPU / 1.5 Gi** — enabling 200 users on a 6-worker cluster.
+#### Known Blockers from Real Deployments
 
-Control plane: 3 masters with **16 vCPU, 64 Gi RAM, 200 GB SSD** each (upgraded from standard 8 vCPU / 32 Gi for 200-user deployments due to etcd and API server load from 400+ namespaces).
+| Blocker | Impact | Fix |
+|---------|--------|-----|
+| Jupyter Notebook image not found | RHOAI notebooks fail to start | Use `s2i-generic-data-science-notebook:2025.1` instead of `jupyter-datascience-cpu-py312` |
+| DevSpaces extensions silently fail | `libnode.so.127` not found | Add `LD_LIBRARY_PATH=/checode/checode-linux-libc/ubi9/ld_libs` |
+| RHOAI Gateway port mismatch | 500 errors on Jupyter routes | Create direct Routes bypassing Gateway API (targetPort 8888) |
+| Quarkus build-strategy=docker | Build fails without Dockerfile | Remove property; let Quarkus default to S2I binary build |
+| Kafka CSV messages vs JSON unmarshal | JsonParseException in Camel routes | Use Simple language OGNL for CSV parsing |
+| KServe vs ModelMesh confusion | ServingRuntime format mismatch | Remove `modelmesh-enabled` labels; use KServe format |
+| Operator OOMKilled loops | COO, Kuadrant, Kiali crash | Apply CSV memory patches (512 Mi → 2 Gi) |
 
-> **Warning**: Single-node (SNO) deployments are not supported for >30 users. Standard 3-master control plane with 8 vCPU / 32 Gi is sufficient up to 100 users; for 200 users, upgrade masters to 16 vCPU / 64 Gi.
+Control plane: 3 masters with **16 vCPU, 64 Gi RAM** each. Standard 8 vCPU / 32 Gi is sufficient up to 100 users; for 200 users, upgrade to 16 vCPU / 64 Gi due to etcd load from 500+ namespaces.
 
 ## Deployment Profiles
 

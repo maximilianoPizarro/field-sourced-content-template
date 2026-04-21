@@ -365,6 +365,22 @@ spec:
         - mountPath: /showroom/repo
           name: showroom-files
           subPath: repo
+      - name: domain-injector
+        image: "registry.access.redhat.com/ubi9/ubi-minimal:latest"
+        command: ["sh", "-c"]
+        args:
+          - |
+            SITE_FILE="/showroom/repo/{{ .Values.showroom.content.antoraPlaybook }}"
+            if [ -f "$SITE_FILE" ]; then
+              sed -i 's|%cluster_domain%|{{ .Values.deployer.domain }}|g' "$SITE_FILE"
+              echo "Injected cluster_domain={{ .Values.deployer.domain }} into $SITE_FILE"
+            else
+              echo "WARNING: $SITE_FILE not found"
+            fi
+        volumeMounts:
+        - mountPath: /showroom/repo
+          name: showroom-files
+          subPath: repo
       - name: antora-builder
         image: "quay.io/rhpds/antora:v1.0.1"
         env:

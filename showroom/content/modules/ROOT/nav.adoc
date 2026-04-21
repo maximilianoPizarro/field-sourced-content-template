@@ -9,20 +9,13 @@
 * xref:08-reliability.adoc[7. Reliability & DRP]
 * xref:09-operations.adoc[8. Operations]
 * xref:10-devspaces.adoc[9. Self-Service IDE]
-
-.Computer Vision
 * xref:18-neuroface-cv.adoc[10. NeuroFace CV Pipeline]
 * xref:20-ppe-safety.adoc[11. PPE Safety Detection]
-
-.Industrial Edge
 * xref:11-industrial-edge.adoc[12. Industrial Edge Overview]
 * xref:12-ie-health-check.adoc[13. IoT Sensors]
 * xref:13-ie-config-gitops.adoc[14. Kafka Streams]
 * xref:14-ie-app-devops.adoc[15. Dashboard & Anomalies]
 * xref:15-ie-mlops.adoc[16. GitOps Config Change]
 * xref:16-ie-troubleshooting.adoc[17. MinIO Data Lake]
-* xref:17-ie-sizing.adoc[18. Capacity & Infrastructure]
-* xref:21-scale-to-n.adoc[19. Scale to N Instances]
-
-.AI Playground
-* xref:19-ai-playground-kafka-mcp.adoc[20. Kafka MCP Prompts]
+* xref:21-scale-to-n.adoc[18. Scale to N Instances]
+* xref:19-ai-playground-kafka-mcp.adoc[19. Kafka MCP Prompts]

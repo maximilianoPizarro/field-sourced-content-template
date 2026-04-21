@@ -246,8 +246,6 @@ To explore the Industrial Edge deployment, follow the showroom guide:
 . *GitOps Config Change* — Enable temperature sensors via ConfigMap
 . *MinIO Data Lake* — Browse stored sensor data in S3
 
-For capacity planning and infrastructure options, see xref:16-ie-sizing.adoc[Capacity Planning & Infrastructure].
-
 == Screenshots
 
 image::ROOT:industrialedge.png[Industrial Edge — Overview,width=100%]

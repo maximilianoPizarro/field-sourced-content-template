@@ -246,8 +246,6 @@ Para explorar el despliegue Industrial Edge, sigue la guía del showroom:
 . *Cambio de configuración GitOps* — Habilita sensores de temperatura mediante ConfigMap
 . *Data lake MinIO* — Navega por los datos de sensores almacenados en S3
 
-Para planificación de capacidad y opciones de infraestructura, consulta xref:16-ie-sizing.adoc[Planificación de capacidad e infraestructura].
-
 == Capturas de Pantalla
 
 image::ROOT:industrialedge.png[Industrial Edge — Vista general,width=100%]

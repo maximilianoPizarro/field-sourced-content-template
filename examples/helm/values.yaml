@@ -142,7 +142,7 @@ connectivityLink:
       selfHeal: true
       skipDryRunOnMissingResource: true
     - id: openshift-ai
-      enabled: true
+      enabled: false
       path: openshift-ai
       destinationNamespace: openshift-ai
       syncWave: "7"
@@ -249,7 +249,7 @@ connectivityLink:
       skipDryRunOnMissingResource: true
     # --- Kogito BPM (SonataFlow) ---
     - id: kogito-bpm
-      enabled: true
+      enabled: false
       path: kogito-bpm
       destinationNamespace: kogito-bpm
       syncWave: "9"

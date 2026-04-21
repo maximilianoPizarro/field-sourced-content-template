@@ -59,7 +59,7 @@ spec:
       serviceAccountName: gitea-token-creator
       containers:
         - name: create-token
-          image: curlimages/curl:latest
+          image: registry.access.redhat.com/ubi9/ubi:latest
           command:
             - /bin/sh
             - -c
@@ -150,7 +150,7 @@ spec:
           serviceAccountName: gitea-token-creator
           containers:
             - name: webhook-sync
-              image: curlimages/curl:latest
+              image: registry.access.redhat.com/ubi9/ubi:latest
               command:
                 - /bin/sh
                 - -c

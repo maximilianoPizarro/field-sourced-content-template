@@ -47,7 +47,7 @@ spec:
       serviceAccountName: default
       containers:
         - name: setup
-          image: curlimages/curl:latest
+          image: registry.access.redhat.com/ubi9/ubi:latest
           env:
             - name: ADMIN_USER
               value: {{ .Values.adminUser | quote }}

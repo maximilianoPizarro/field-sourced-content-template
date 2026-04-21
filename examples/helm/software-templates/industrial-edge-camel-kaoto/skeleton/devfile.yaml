@@ -135,7 +135,8 @@ commands:
       commandLine: |
         echo "=== Deploying to OpenShift namespace: $NAMESPACE ==="
         oc project $NAMESPACE 2>/dev/null || oc new-project $NAMESPACE
-        ./mvnw package -Popenshift -Dquarkus.kubernetes.namespace=$NAMESPACE -DskipTests
+        ./mvnw package -Popenshift -Dquarkus.kubernetes.deploy=false -Dquarkus.kubernetes.namespace=$NAMESPACE -DskipTests
+        oc apply -f target/kubernetes/openshift.yml -n $NAMESPACE
         echo "=== Deployment complete ==="
         echo "Route: $(oc get route ${{ values.name }} -n $NAMESPACE -o jsonpath='{.spec.host}' 2>/dev/null)"
       workingDir: /projects/${{ values.name }}

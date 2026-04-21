@@ -70,7 +70,7 @@ spec:
   source: redhat-operators
   sourceNamespace: openshift-marketplace
 ---
-apiVersion: opendatahub.io/v1alpha1
+apiVersion: opendatahub.io/v1alpha
 kind: OdhDashboardConfig
 metadata:
   name: odh-dashboard-config

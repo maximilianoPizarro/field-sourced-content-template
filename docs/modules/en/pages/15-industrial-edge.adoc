@@ -72,7 +72,7 @@ Supervisory Control and Data Acquisition (SCADA) systems have historically funct
 
 == Solution Overview
 
-image::ROOT:edge-manufacturing-overview.png[Industrial Edge solution overview,align=center]
+image::ROOT:edge-manufacturing-overview.png[Industrial Edge solution overview,width=100%,align=center]
 
 _Figure 1. Industrial edge solution overview. It is applicable across a number of verticals including manufacturing._
 
@@ -91,13 +91,13 @@ Different roles within an organization have different concerns and areas of focu
 
 == Logical Diagrams
 
-image::ROOT:industrial-edge-logical.png[Industrial Edge logical architecture,align=center]
+image::ROOT:industrial-edge-logical.png[Industrial Edge logical architecture,width=100%,align=center]
 
 _Figure 2. Industrial Edge solution as logically and physically distributed across multiple sites._
 
 === Overall Data Flows
 
-image::ROOT:edge-mfg-data-flow.png[Overall data flows,align=center]
+image::ROOT:edge-mfg-data-flow.png[Overall data flows,width=100%,align=center]
 
 _Figure 3. Overall data flows of the solution._
 
@@ -142,7 +142,7 @@ Two major data flow streams:
 
 === Edge Manufacturing with Messaging and ML
 
-image::ROOT:edge-mfg-messaging-ml.png[Edge manufacturing with messaging and ML,align=center]
+image::ROOT:edge-mfg-messaging-ml.png[Edge manufacturing with messaging and ML,width=100%,align=center]
 
 _Figure 4. Industrial Edge solution showing messaging and ML components schematically._
 
@@ -155,7 +155,7 @@ Sensor data is transmitted via *MQTT* to Red Hat AMQ, which routes it for two pu
 
 === Edge Manufacturing with GitOps
 
-image::ROOT:edge-mfg-gitops.png[GitOps workflows,align=center]
+image::ROOT:edge-mfg-gitops.png[GitOps workflows,width=100%,align=center]
 
 _Figure 5. Industrial Edge solution showing a schematic view of the GitOps workflows._
 
@@ -185,7 +185,7 @@ At 20K scale, the mirror handles 13K msg/sec from 3 source clusters with 7 exter
 
 == Demo Scenario
 
-image::ROOT:highleveldemo.png[High-level demo scenario,align=center]
+image::ROOT:highleveldemo.png[High-level demo scenario,width=100%,align=center]
 
 _Figure 6. High-level demo summary showing machine condition monitoring based on sensor data._
 

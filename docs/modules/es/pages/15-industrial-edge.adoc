@@ -72,7 +72,7 @@ Los sistemas SCADA (Supervisory Control and Data Acquisition) han funcionado his
 
 == Descripción general de la solución
 
-image::ROOT:edge-manufacturing-overview.png[Visión general de la solución Industrial Edge,align=center]
+image::ROOT:edge-manufacturing-overview.png[Visión general de la solución Industrial Edge,width=100%,align=center]
 
 _Figura 1. Visión general de la solución Industrial Edge. Aplicable a varios sectores verticales, entre ellos la fabricación._
 
@@ -91,13 +91,13 @@ Los distintos roles de una organización tienen preocupaciones y focos distintos
 
 == Diagramas lógicos
 
-image::ROOT:industrial-edge-logical.png[Arquitectura lógica Industrial Edge,align=center]
+image::ROOT:industrial-edge-logical.png[Arquitectura lógica Industrial Edge,width=100%,align=center]
 
 _Figura 2. Solución Industrial Edge distribuida de forma lógica y física en varios sitios._
 
 === Flujos de datos generales
 
-image::ROOT:edge-mfg-data-flow.png[Flujos de datos generales,align=center]
+image::ROOT:edge-mfg-data-flow.png[Flujos de datos generales,width=100%,align=center]
 
 _Figura 3. Flujos de datos generales de la solución._
 
@@ -142,7 +142,7 @@ Dos corrientes principales de flujo de datos:
 
 === Fabricación en el borde con mensajería y ML
 
-image::ROOT:edge-mfg-messaging-ml.png[Fabricación en el borde con mensajería y ML,align=center]
+image::ROOT:edge-mfg-messaging-ml.png[Fabricación en el borde con mensajería y ML,width=100%,align=center]
 
 _Figura 4. Solución Industrial Edge con componentes de mensajería y ML de forma esquemática._
 
@@ -155,7 +155,7 @@ Los datos de sensores se transmiten por *MQTT* a Red Hat AMQ, que los enruta con
 
 === Fabricación en el borde con GitOps
 
-image::ROOT:edge-mfg-gitops.png[Flujos de trabajo GitOps,align=center]
+image::ROOT:edge-mfg-gitops.png[Flujos de trabajo GitOps,width=100%,align=center]
 
 _Figura 5. Solución Industrial Edge con una vista esquemática de los flujos GitOps._
 
@@ -185,7 +185,7 @@ A escala de 20K, el espejo gestiona 13K msg/s desde 3 clústeres de origen con 7
 
 == Escenario de demostración
 
-image::ROOT:highleveldemo.png[Escenario de demo de alto nivel,align=center]
+image::ROOT:highleveldemo.png[Escenario de demo de alto nivel,width=100%,align=center]
 
 _Figura 6. Resumen de alto nivel de la demo con monitorización del estado de máquinas basada en datos de sensores._
 

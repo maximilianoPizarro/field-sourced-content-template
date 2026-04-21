@@ -233,6 +233,7 @@ ui:
           margin: 1rem 0;
         }
         .admonitionblock .icon { background: var(--color-brand-blue); }
+        .doc .imageblock img, .doc img { max-width: 100%; height: auto; }
         pre.highlight {
           background: #f6f8fa !important;
           border-radius: 8px;

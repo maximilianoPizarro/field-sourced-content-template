@@ -77,6 +77,25 @@ subjects:
   namespace: {{ .Values.showroom.namespace }}
 {{- end }}
 ---
+# Showroom RoleBindings — neuroface and industrial-edge namespaces
+{{- $showroomName := .Values.showroom.name }}
+{{- $showroomNs := .Values.showroom.namespace }}
+{{- range $ns := list "neuroface" "industrial-edge-stormshift-machine-sensor" "industrial-edge-stormshift-messaging" "industrial-edge-stormshift-line-dashboard" "industrial-edge-tst-all" "industrial-edge-data-lake" "industrial-edge-ml-workspace" "industrial-edge-inference" "industrial-edge-ci" "ml-development" "openshift-lightspeed" }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: showroom-view-{{ $ns }}
+  namespace: {{ $ns }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+- kind: ServiceAccount
+  name: {{ $showroomName }}
+  namespace: {{ $showroomNs }}
+---
+{{- end }}
 # Showroom Nginx ConfigMap
 kind: ConfigMap
 metadata:
@@ -366,7 +385,7 @@ spec:
           name: showroom-files
           subPath: repo
       - name: domain-injector
-        image: "registry.access.redhat.com/ubi9/ubi-minimal:latest"
+        image: "quay.io/rhpds/git-cloner:v1.1.2"
         command: ["sh", "-c"]
         args:
           - |

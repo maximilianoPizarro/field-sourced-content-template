@@ -79,7 +79,7 @@ commands:
     exec:
       component: tools
       commandLine: |
-        export LD_LIBRARY_PATH=/checode/checode-linux-libc/ubi9/ld_libs/openssl:/checode/checode-linux-libc/ubi9/ld_libs/core:/usr/lib64
+        export LD_LIBRARY_PATH=/checode/checode-linux-libc/ubi9/ld_libs:/checode/checode-linux-libc/ubi9/ld_libs/openssl:/checode/checode-linux-libc/ubi9/ld_libs/core:/usr/lib64
         CHE_CODE=/checode/checode-linux-libc/ubi9/bin/che-code
         EXT_DIR=/checode/checode-linux-libc/ubi9/extensions
         $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-kaoto --force 2>/dev/null || true

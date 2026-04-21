@@ -29,7 +29,7 @@ spec:
     defaultNamespace:
       autoProvision: true
       template: <username>-devspaces
-    secondsOfRunBeforeIdling: 1800
+    secondsOfRunBeforeIdling: 3600
     defaultPlugins:
       - editor: che-incubator/che-code/latest
         plugins:

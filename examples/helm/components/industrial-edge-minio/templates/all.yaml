@@ -139,6 +139,9 @@ spec:
       containers:
         - name: mc
           image: quay.io/minio/mc:latest
+          env:
+            - name: HOME
+              value: /tmp
           command:
             - /bin/sh
             - -c

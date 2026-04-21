@@ -92,7 +92,7 @@ This environment wires a production-style event backbone: relational data change
 
 | NeuroFace (Computer Vision)
 | Facial recognition with LBPH + OpenVINO Model Server (face-detection-retail-0005)
-| link:https://neuroface-frontend-neuroface.{cluster_domain}[NeuroFace App^]
+| link:https://neuroface-neuroface.{cluster_domain}[NeuroFace App^]
 
 | OpenVINO Model Server
 | Intel inference server deployed as KServe InferenceService on OpenShift AI
@@ -104,7 +104,7 @@ This environment wires a production-style event backbone: relational data change
 
 | PPE Safety Detection (YOLO)
 | YOLOv8n-based PPE compliance monitoring -- webcam frames analyzed for hardhat, safety-vest, goggles; events published to `cv.ppe.detections`
-| link:https://neuroface-frontend-neuroface.{cluster_domain}[NeuroFace PPE^]
+| link:https://neuroface-neuroface.{cluster_domain}[NeuroFace PPE^]
 |===
 
 == Demo steps

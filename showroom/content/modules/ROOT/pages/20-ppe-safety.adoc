@@ -117,7 +117,7 @@ Each webcam frame follows this path:
 
 === Open the PPE Module
 
-Navigate to link:https://neuroface-frontend-neuroface.{cluster_domain}[NeuroFace App^] and select *PPE Safety* from the sidebar. Allow webcam access and observe real-time bounding boxes over detected PPE items.
+Navigate to link:https://neuroface-neuroface.{cluster_domain}[NeuroFace App^] and select *PPE Safety* from the sidebar. Allow webcam access and observe real-time bounding boxes over detected PPE items.
 
 === Read from Kafka Topic
 

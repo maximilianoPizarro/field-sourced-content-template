@@ -120,7 +120,7 @@ Explore a complete *Change Data Capture (CDC)* pipeline running on Red Hat OpenS
 * *Grafana*: `https://grafana-observability.{cluster_domain}`
 * *Developer Hub*: `https://backstage-developer-hub-developer-hub.{cluster_domain}`
 * *DevSpaces (Kaoto)*: `https://devspaces.{cluster_domain}`
-* *NeuroFace*: `https://neuroface-frontend-neuroface.{cluster_domain}`
+* *NeuroFace*: `https://neuroface-neuroface.{cluster_domain}`
 * *OpenShift AI*: `https://data-science-gateway.{cluster_domain}`
 * *Mailpit*: `https://n8n-mailpit-openshift-lightspeed.{cluster_domain}`
 

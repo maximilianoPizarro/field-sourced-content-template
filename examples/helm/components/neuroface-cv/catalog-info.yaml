@@ -32,10 +32,10 @@ metadata:
     - angular
     - granite-llm
   links:
-    - url: https://neuroface-frontend-neuroface.apps.cluster-xtvzv.dynamic.redhatworkshops.io
+    - url: https://neuroface-neuroface.apps.cluster-xtvzv.dynamic.redhatworkshops.io
       title: NeuroFace Web App
       icon: dashboard
-    - url: https://neuroface-frontend-neuroface.apps.cluster-xtvzv.dynamic.redhatworkshops.io/ppe
+    - url: https://neuroface-neuroface.apps.cluster-xtvzv.dynamic.redhatworkshops.io/ppe
       title: PPE Safety Detection
       icon: dashboard
     - url: https://neuroface-ovms-neuroface.apps.cluster-xtvzv.dynamic.redhatworkshops.io/v1/config
@@ -73,10 +73,10 @@ metadata:
     - ppe
     - kafka-producer
   links:
-    - url: https://neuroface-frontend-neuroface.apps.cluster-xtvzv.dynamic.redhatworkshops.io
+    - url: https://neuroface-neuroface.apps.cluster-xtvzv.dynamic.redhatworkshops.io
       title: NeuroFace Frontend
       icon: dashboard
-    - url: https://neuroface-frontend-neuroface.apps.cluster-xtvzv.dynamic.redhatworkshops.io/ppe
+    - url: https://neuroface-neuroface.apps.cluster-xtvzv.dynamic.redhatworkshops.io/ppe
       title: PPE Safety Detection
       icon: dashboard
     - url: https://console-openshift-console.apps.cluster-xtvzv.dynamic.redhatworkshops.io/k8s/ns/neuroface/deployments

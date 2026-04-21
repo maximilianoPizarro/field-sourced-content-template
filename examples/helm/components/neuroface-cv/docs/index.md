@@ -6,8 +6,8 @@ Computer Vision pipeline built on [NeuroFace](https://github.com/maximilianoPiza
 
 | Resource | URL |
 |----------|-----|
-| **NeuroFace Web App** | [Frontend](https://neuroface-frontend-neuroface.\<CLUSTER_DOMAIN\>) |
-| **PPE Safety Tab** | [Frontend → PPE](https://neuroface-frontend-neuroface.\<CLUSTER_DOMAIN\>/ppe) |
+| **NeuroFace Web App** | [Frontend](https://neuroface-neuroface.\<CLUSTER_DOMAIN\>) |
+| **PPE Safety Tab** | [Frontend → PPE](https://neuroface-neuroface.\<CLUSTER_DOMAIN\>/ppe) |
 | **YOLO Health** | [/health](https://yolo-ppe-serving-neuroface.\<CLUSTER_DOMAIN\>/health) |
 | **OVMS Config** | [/v1/config](https://neuroface-ovms-neuroface.\<CLUSTER_DOMAIN\>/v1/config) |
 | **Jupyter Workbench** | [OpenShift AI](https://data-science-gateway.\<CLUSTER_DOMAIN\>/projects/neuroface) |

@@ -295,7 +295,7 @@ Open *Mailpit* (`\https://n8n-mailpit-openshift-lightspeed.{cluster_domain}`) to
 | Service | URL
 
 | *NeuroFace App*
-| `\https://neuroface-frontend-neuroface.{cluster_domain}`
+| `\https://neuroface-neuroface.{cluster_domain}`
 
 | *OpenShift AI*
 | `\https://data-science-gateway.{cluster_domain}/projects/neuroface`

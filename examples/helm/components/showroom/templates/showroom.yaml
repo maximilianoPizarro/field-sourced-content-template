@@ -312,7 +312,7 @@ data:
         url: 'https://grafana-observability.{{ .Values.deployer.domain }}'
         external: true
       - name: NeuroFace
-        url: 'https://neuroface-frontend-neuroface.{{ .Values.deployer.domain }}'
+        url: 'https://neuroface-neuroface.{{ .Values.deployer.domain }}'
         external: true
       - name: OpenShift AI
         url: 'https://data-science-gateway.{{ .Values.deployer.domain }}'

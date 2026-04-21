@@ -176,33 +176,112 @@ The screenshot shows a DevSpaces workspace with the Continue AI panel open on th
 
 . Create a new file: `touch routes/my-new-route.camel.yaml`
 . Open the file in the editor
-. Press `Ctrl+I` to open Continue's inline edit
-. Type a short prompt describing the route
+. Press `Ctrl+I` to open Continue's inline edit, or use the chat panel
+. Type a prompt describing the route — use `@` to include project context
 . Continue generates the YAML DSL code directly in the file
 . Open the file with Kaoto to visualize and refine the route
 
-=== Example Prompts
+=== Using Project Context (`@` Providers)
 
-These prompts are optimized for the Granite 2B model context window:
+Continue is pre-configured with context providers that give the AI visibility into your project. Type `@` in the chat to see available options:
 
 [cols="1,2", options="header"]
 |===
-| Prompt | Description
+| Provider | What it does
 
-| `Camel YAML route: Kafka "orders" to log`
-| Simple route that consumes from Kafka and logs messages
+| `@File`
+| Include a specific file as context (e.g. the existing CDC route)
 
-| `Camel YAML route with choice: Kafka "cdc-events", if op=c log "created", otherwise log "updated"`
-| Route with content-based routing on CDC operation type
+| `@Codebase`
+| Search relevant snippets across the entire project automatically
 
-| `Camel YAML route: timer every 30s, GET http://localhost:8080/q/health, log response`
-| Health check timer route
+| `@Folder`
+| Reference all code from a specific folder (e.g. `routes/`)
 
-| `Camel YAML route: Kafka "audit-events", unmarshal JSON, POST to http://order-service:8080/api`
-| Kafka-to-REST integration route
+| `@CurrentFile`
+| Include the file you have open in the editor
+
+| `@Tree`
+| Show the full project file structure
+
+| `@Problems`
+| Include current linter errors and warnings from the active file
 |===
 
-TIP: Keep prompts concise. The Granite 2B model works best with short, direct instructions.
+TIP: Using `@File routes/cdc-to-mail.camel.yaml` before a prompt gives the model a real example of the expected YAML DSL structure and produces much better results.
+
+=== Prompts for Working with the camel-kaoto Component
+
+The project has a sample route at `routes/cdc-to-mail.camel.yaml`. Use it as a reference when asking the AI to generate new routes.
+
+==== Basic — Generate routes from scratch
+
+[cols="1a,1a", options="header"]
+|===
+| Prompt | What it generates
+
+| `@File routes/cdc-to-mail.camel.yaml` + `Create a new Camel YAML route that consumes from Kafka topic "inventory-events", unmarshals JSON, and logs the product name`
+| A Kafka consumer route following the same structure as the existing CDC route
+
+| `@File routes/cdc-to-mail.camel.yaml` + `Create a route like this one but consuming from topic "audit-events" and POSTing to http://audit-service:8080/api/events`
+| A Kafka-to-REST route modeled after the existing template
+
+| `Create a Camel YAML route: timer every 30s, GET http://localhost:8080/q/health, log the response body`
+| A health-check timer route (no Kafka dependency)
+|===
+
+==== Intermediate — Content-based routing and transformations
+
+[cols="1a,1a", options="header"]
+|===
+| Prompt | What it generates
+
+| `@File routes/cdc-to-mail.camel.yaml` + `Add a new when branch for op=d (delete) that logs a warning "Record deleted" and sends to http://alert-service:8080/api/alert`
+| Extends the choice pattern with a delete-operation handler
+
+| `@Folder routes/` + `Create a new route that consumes from Kafka "order-events", uses choice to split by ${body[payload][status]}: "pending" logs info, "failed" POSTs to http://retry-service:8080/retry, otherwise logs warning`
+| A multi-branch content-based router for order processing
+
+| `@File routes/cdc-to-mail.camel.yaml` + `Create a similar route but marshal the response as XML instead of JSON before sending`
+| Route with XML marshalling instead of JSON
+|===
+
+==== Advanced — Multi-step integrations
+
+[cols="1a,1a", options="header"]
+|===
+| Prompt | What it generates
+
+| `@Codebase` + `Create a Camel YAML route that: 1) consumes from Kafka "payment-events", 2) unmarshals JSON, 3) enriches with a GET to http://customer-service:8080/api/customer/${body[payload][after][customer_id]}, 4) marshals to JSON, 5) POSTs to http://notification-service:8080/api/notify`
+| A multi-step enrichment pipeline: Kafka -> unmarshal -> REST enrich -> marshal -> REST notify
+
+| `@File routes/cdc-to-mail.camel.yaml` + `Create a Camel YAML route with error handling: consume from Kafka "transaction-events", unmarshal JSON, try POSTing to http://ledger:8080/api/record, on failure log the error and send to Kafka topic "dead-letter-transactions"`
+| A route with try/catch error handling and dead-letter queue
+
+| `@File pom.xml` + `@File routes/cdc-to-mail.camel.yaml` + `Create a route that reads from Kafka "sensor-data", aggregates 10 messages by ${header.sensorId}, marshals to JSON, and POSTs the batch to http://analytics:8080/api/batch`
+| An aggregation route that batches Kafka messages before sending
+|===
+
+==== Context & Exploration
+
+[cols="1a,1a", options="header"]
+|===
+| Prompt | What it does
+
+| `@Codebase` + `Explain the architecture of this Camel CDC project`
+| Analyzes the project structure, routes, and configuration
+
+| `@File routes/cdc-to-mail.camel.yaml` + `Explain step by step what this route does`
+| Provides a detailed walkthrough of each step in the route
+
+| `@Tree` + `What Camel routes exist in this project and what do they do?`
+| Lists and describes all routes found in the project
+
+| `@File src/main/resources/application.properties` + `What is the route discovery pattern configured?`
+| Explains how Quarkus discovers and loads Camel routes
+|===
+
+TIP: Keep prompts concise. The Granite 2B model (8192 token context) works best with short, direct instructions. When including files via `@File`, avoid adding too many large files at once.
 
 == Developer Hub Integration
 

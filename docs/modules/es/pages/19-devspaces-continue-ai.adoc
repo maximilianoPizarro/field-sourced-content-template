@@ -176,33 +176,112 @@ La captura muestra un workspace de DevSpaces con el panel de Continue AI abierto
 
 . Crear un archivo nuevo: `touch routes/mi-nueva-ruta.camel.yaml`
 . Abrir el archivo en el editor
-. Presionar `Ctrl+I` para abrir la edición inline de Continue
-. Escribir un prompt breve describiendo la ruta
+. Presionar `Ctrl+I` para abrir la edición inline de Continue, o usar el panel de chat
+. Escribir un prompt describiendo la ruta — usar `@` para incluir contexto del proyecto
 . Continue genera el código YAML DSL directamente en el archivo
 . Abrir el archivo con Kaoto para visualizar y refinar la ruta
 
-=== Prompts de Ejemplo
+=== Usando el Contexto del Proyecto (Proveedores `@`)
 
-Estos prompts están optimizados para la ventana de contexto del modelo Granite 2B:
+Continue está preconfigurado con proveedores de contexto que le dan visibilidad a la IA sobre el proyecto. Escribir `@` en el chat para ver las opciones disponibles:
 
 [cols="1,2", options="header"]
 |===
-| Prompt | Descripción
+| Proveedor | Qué hace
 
-| `Camel YAML route: Kafka "orders" to log`
-| Ruta simple que consume de Kafka y logea mensajes
+| `@File`
+| Incluye un archivo específico como contexto (ej. la ruta CDC existente)
 
-| `Camel YAML route with choice: Kafka "cdc-events", if op=c log "created", otherwise log "updated"`
-| Ruta con enrutamiento basado en contenido según tipo de operación CDC
+| `@Codebase`
+| Busca snippets relevantes en todo el proyecto automáticamente
 
-| `Camel YAML route: timer every 30s, GET http://localhost:8080/q/health, log response`
-| Ruta timer de health check
+| `@Folder`
+| Referencia todo el código de una carpeta específica (ej. `routes/`)
 
-| `Camel YAML route: Kafka "audit-events", unmarshal JSON, POST to http://order-service:8080/api`
-| Ruta de integración Kafka-a-REST
+| `@CurrentFile`
+| Incluye el archivo que tenés abierto en el editor
+
+| `@Tree`
+| Muestra la estructura completa de archivos del proyecto
+
+| `@Problems`
+| Incluye errores y warnings actuales del linter en el archivo activo
 |===
 
-TIP: Mantener los prompts concisos. El modelo Granite 2B funciona mejor con instrucciones cortas y directas.
+TIP: Usar `@File routes/cdc-to-mail.camel.yaml` antes de un prompt le da al modelo un ejemplo real de la estructura YAML DSL esperada y produce resultados mucho mejores.
+
+=== Prompts para Trabajar con el Componente camel-kaoto
+
+El proyecto tiene una ruta de ejemplo en `routes/cdc-to-mail.camel.yaml`. Usarla como referencia al pedir a la IA que genere nuevas rutas.
+
+==== Básico — Generar rutas desde cero
+
+[cols="1a,1a", options="header"]
+|===
+| Prompt | Qué genera
+
+| `@File routes/cdc-to-mail.camel.yaml` + `Create a new Camel YAML route that consumes from Kafka topic "inventory-events", unmarshals JSON, and logs the product name`
+| Una ruta consumidora de Kafka siguiendo la misma estructura de la ruta CDC existente
+
+| `@File routes/cdc-to-mail.camel.yaml` + `Create a route like this one but consuming from topic "audit-events" and POSTing to http://audit-service:8080/api/events`
+| Una ruta Kafka-a-REST modelada a partir del template existente
+
+| `Create a Camel YAML route: timer every 30s, GET http://localhost:8080/q/health, log the response body`
+| Una ruta timer de health-check (sin dependencia de Kafka)
+|===
+
+==== Intermedio — Enrutamiento basado en contenido y transformaciones
+
+[cols="1a,1a", options="header"]
+|===
+| Prompt | Qué genera
+
+| `@File routes/cdc-to-mail.camel.yaml` + `Add a new when branch for op=d (delete) that logs a warning "Record deleted" and sends to http://alert-service:8080/api/alert`
+| Extiende el patrón choice con un handler de operación de borrado
+
+| `@Folder routes/` + `Create a new route that consumes from Kafka "order-events", uses choice to split by ${body[payload][status]}: "pending" logs info, "failed" POSTs to http://retry-service:8080/retry, otherwise logs warning`
+| Un enrutador multi-branch basado en contenido para procesamiento de órdenes
+
+| `@File routes/cdc-to-mail.camel.yaml` + `Create a similar route but marshal the response as XML instead of JSON before sending`
+| Ruta con marshalling XML en vez de JSON
+|===
+
+==== Avanzado — Integraciones multi-paso
+
+[cols="1a,1a", options="header"]
+|===
+| Prompt | Qué genera
+
+| `@Codebase` + `Create a Camel YAML route that: 1) consumes from Kafka "payment-events", 2) unmarshals JSON, 3) enriches with a GET to http://customer-service:8080/api/customer/${body[payload][after][customer_id]}, 4) marshals to JSON, 5) POSTs to http://notification-service:8080/api/notify`
+| Un pipeline de enriquecimiento multi-paso: Kafka -> unmarshal -> REST enrich -> marshal -> REST notify
+
+| `@File routes/cdc-to-mail.camel.yaml` + `Create a Camel YAML route with error handling: consume from Kafka "transaction-events", unmarshal JSON, try POSTing to http://ledger:8080/api/record, on failure log the error and send to Kafka topic "dead-letter-transactions"`
+| Una ruta con manejo de errores try/catch y cola dead-letter
+
+| `@File pom.xml` + `@File routes/cdc-to-mail.camel.yaml` + `Create a route that reads from Kafka "sensor-data", aggregates 10 messages by ${header.sensorId}, marshals to JSON, and POSTs the batch to http://analytics:8080/api/batch`
+| Una ruta de agregación que agrupa mensajes Kafka antes de enviar
+|===
+
+==== Contexto y Exploración
+
+[cols="1a,1a", options="header"]
+|===
+| Prompt | Qué hace
+
+| `@Codebase` + `Explain the architecture of this Camel CDC project`
+| Analiza la estructura del proyecto, rutas y configuración
+
+| `@File routes/cdc-to-mail.camel.yaml` + `Explain step by step what this route does`
+| Provee un recorrido detallado de cada paso de la ruta
+
+| `@Tree` + `What Camel routes exist in this project and what do they do?`
+| Lista y describe todas las rutas encontradas en el proyecto
+
+| `@File src/main/resources/application.properties` + `What is the route discovery pattern configured?`
+| Explica cómo Quarkus descubre y carga las rutas Camel
+|===
+
+TIP: Mantener los prompts concisos. El modelo Granite 2B (8192 tokens de contexto) funciona mejor con instrucciones cortas y directas. Al incluir archivos vía `@File`, evitar agregar demasiados archivos grandes a la vez.
 
 == Integración con Developer Hub
 

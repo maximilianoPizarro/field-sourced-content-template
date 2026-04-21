@@ -1,0 +1,72 @@
+- route:
+    id: kafka-vibration-to-s3
+    description: "Aggregates vibration data from Kafka and stores in MinIO S3 data lake"
+    from:
+      uri: kafka:iot-sensor-sw-vibration
+      parameters:
+        brokers: ${{ values.kafkaBrokerUri }}
+        groupId: camel-kaoto-s3-vibr
+        autoOffsetReset: latest
+        valueDeserializer: org.apache.kafka.common.serialization.StringDeserializer
+      steps:
+        - log:
+            message: "Vibration event from Kafka: ${body}"
+        - convertBodyTo:
+            type: java.lang.String
+        - aggregate:
+            aggregationStrategy: "#class:org.apache.camel.processor.aggregate.GroupedBodyAggregationStrategy"
+            completionSize: 50
+            correlationExpression:
+              constant:
+                expression: "true"
+            steps:
+              - setHeader:
+                  name: CamelAwsS3Key
+                  simple: "ie-vibration-${date:now:yyyyMMdd-HHmmss}.txt"
+              - to:
+                  uri: aws2-s3://${{ values.s3Bucket }}
+                  parameters:
+                    accessKey: minioadmin
+                    secretKey: "RAW(minioadmin)"
+                    region: us-east-1
+                    overrideEndpoint: true
+                    uriEndpointOverride: ${{ values.s3Endpoint }}
+                    forcePathStyle: true
+              - log:
+                  message: "Uploaded vibration batch to S3 bucket ${{ values.s3Bucket }}"
+- route:
+    id: kafka-temperature-to-s3
+    description: "Aggregates temperature data from Kafka and stores in MinIO S3 data lake"
+    from:
+      uri: kafka:iot-sensor-sw-temperature
+      parameters:
+        brokers: ${{ values.kafkaBrokerUri }}
+        groupId: camel-kaoto-s3-temp
+        autoOffsetReset: latest
+        valueDeserializer: org.apache.kafka.common.serialization.StringDeserializer
+      steps:
+        - log:
+            message: "Temperature event from Kafka: ${body}"
+        - convertBodyTo:
+            type: java.lang.String
+        - aggregate:
+            aggregationStrategy: "#class:org.apache.camel.processor.aggregate.GroupedBodyAggregationStrategy"
+            completionSize: 50
+            correlationExpression:
+              constant:
+                expression: "true"
+            steps:
+              - setHeader:
+                  name: CamelAwsS3Key
+                  simple: "ie-temperature-${date:now:yyyyMMdd-HHmmss}.txt"
+              - to:
+                  uri: aws2-s3://${{ values.s3Bucket }}
+                  parameters:
+                    accessKey: minioadmin
+                    secretKey: "RAW(minioadmin)"
+                    region: us-east-1
+                    overrideEndpoint: true
+                    uriEndpointOverride: ${{ values.s3Endpoint }}
+                    forcePathStyle: true
+              - log:
+                  message: "Uploaded temperature batch to S3 bucket ${{ values.s3Bucket }}"

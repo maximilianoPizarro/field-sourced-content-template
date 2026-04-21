@@ -427,17 +427,17 @@ data:
               initialDelay: { seconds: 15 }
       locations:
         - type: url
-          target: https://github.com/maximilianoPizarro/field-sourced-content-template/blob/one/examples/helm/software-templates/templates-catalog.yaml
+          target: https://github.com/maximilianoPizarro/field-sourced-content-template/blob/main/examples/helm/software-templates/templates-catalog.yaml
         - type: url
-          target: https://github.com/maximilianoPizarro/field-sourced-content-template/blob/one/examples/helm/components/observability/catalog-info.yaml
+          target: https://github.com/maximilianoPizarro/field-sourced-content-template/blob/main/examples/helm/components/observability/catalog-info.yaml
         - type: url
-          target: https://github.com/maximilianoPizarro/field-sourced-content-template/blob/one/examples/helm/components/mailpit/catalog-info.yaml
+          target: https://github.com/maximilianoPizarro/field-sourced-content-template/blob/main/examples/helm/components/mailpit/catalog-info.yaml
         - type: url
-          target: https://github.com/maximilianoPizarro/field-sourced-content-template/blob/one/examples/helm/components/industrial-edge-tst/catalog-info.yaml
+          target: https://github.com/maximilianoPizarro/field-sourced-content-template/blob/main/examples/helm/components/industrial-edge-tst/catalog-info.yaml
         - type: url
-          target: https://github.com/maximilianoPizarro/field-sourced-content-template/blob/one/examples/helm/components/neuroface-cv/catalog-info.yaml
+          target: https://github.com/maximilianoPizarro/field-sourced-content-template/blob/main/examples/helm/components/neuroface-cv/catalog-info.yaml
         - type: url
-          target: https://github.com/maximilianoPizarro/field-sourced-content-template/blob/one/examples/helm/components/operators/catalog-info.yaml
+          target: https://github.com/maximilianoPizarro/field-sourced-content-template/blob/main/examples/helm/components/operators/catalog-info.yaml
       rules:
         - allow: [Component, Group, User, Resource, Location, Template, API, APIProduct, System, Domain]
     proxy:

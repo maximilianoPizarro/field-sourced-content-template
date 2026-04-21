@@ -1,0 +1,40 @@
+- route:
+    id: mqtt-temperature-to-kafka
+    description: "Bridges MQTT temperature sensor readings to Kafka topic"
+    from:
+      uri: paho:iot-sensor/sw/temperature
+      parameters:
+        brokerUrl: ${{ values.mqttBrokerUri }}
+        clientId: camel-kaoto-temp
+      steps:
+        - log:
+            message: "Temperature reading from MQTT: ${body}"
+        - setHeader:
+            name: kafka.KEY
+            constant: "${{ values.name }}"
+        - to:
+            uri: kafka:iot-sensor-sw-temperature
+            parameters:
+              brokers: ${{ values.kafkaBrokerUri }}
+        - log:
+            message: "Temperature forwarded to Kafka"
+- route:
+    id: mqtt-vibration-to-kafka
+    description: "Bridges MQTT vibration sensor readings to Kafka topic"
+    from:
+      uri: paho:iot-sensor/sw/vibration
+      parameters:
+        brokerUrl: ${{ values.mqttBrokerUri }}
+        clientId: camel-kaoto-vibr
+      steps:
+        - log:
+            message: "Vibration reading from MQTT: ${body}"
+        - setHeader:
+            name: kafka.KEY
+            constant: "${{ values.name }}"
+        - to:
+            uri: kafka:iot-sensor-sw-vibration
+            parameters:
+              brokers: ${{ values.kafkaBrokerUri }}
+        - log:
+            message: "Vibration forwarded to Kafka"

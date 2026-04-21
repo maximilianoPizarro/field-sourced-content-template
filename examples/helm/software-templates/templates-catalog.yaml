@@ -12,4 +12,5 @@ spec:
     - ./kafka-cdc-mcp/template.yaml
     - ./k8s-ops-mcp/template.yaml
     - ./industrial-edge/template.yaml
+    - ./industrial-edge-camel-kaoto/template.yaml
     - ./kafka-external-consumer/template.yaml

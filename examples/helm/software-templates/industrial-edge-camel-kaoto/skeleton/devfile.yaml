@@ -1,0 +1,158 @@
+schemaVersion: 2.2.2
+metadata:
+  name: ${{ values.name }}
+  version: 1.0.0
+  displayName: "Industrial Edge Camel Routes (Kaoto)"
+  description: >
+    Visual Camel routes replicating Industrial Edge integrations:
+    MQTT→Kafka, Kafka→S3, anomaly alerts→Mailpit.
+    Edit visually with Kaoto, deploy with OpenShift Toolkit.
+  language: yaml
+  projectType: camel
+  tags:
+    - Camel
+    - Kaoto
+    - Industrial-Edge
+    - Kafka
+    - MQTT
+    - Mailpit
+    - AI
+attributes:
+  .vscode/extensions.json: |
+    {
+      "recommendations": [
+        "redhat.vscode-kaoto",
+        "redhat.vscode-apache-camel",
+        "redhat.vscode-yaml",
+        "redhat.vscode-xml",
+        "redhat.java",
+        "redhat.vscode-quarkus",
+        "jbangdev.jbang-vscode",
+        "redhat.vscode-openshift-connector",
+        "Continue.continue"
+      ]
+    }
+  .vscode/settings.json: |
+    {
+      "kaoto.catalog.version": "4.12.0",
+      "files.associations": {
+        "*.camel.yaml": "yaml"
+      }
+    }
+projects:
+  - name: ${{ values.name }}
+    git:
+      remotes:
+        origin: https://gitea-gitea.${{ values.clusterDomain }}/ws-${{ values.owner }}/${{ values.name }}.git
+components:
+  - name: tools
+    container:
+      image: registry.redhat.io/devspaces/udi-rhel9:latest
+      memoryLimit: 3Gi
+      cpuLimit: "2"
+      mountSources: true
+      env:
+        - name: MQTT_BROKER_URI
+          value: "${{ values.mqttBrokerUri }}"
+        - name: KAFKA_BROKER_URI
+          value: "${{ values.kafkaBrokerUri }}"
+        - name: S3_ENDPOINT
+          value: "${{ values.s3Endpoint }}"
+        - name: S3_BUCKET
+          value: "${{ values.s3Bucket }}"
+        - name: MAILPIT_API_URL
+          value: "${{ values.mailpitApiUrl }}"
+        - name: NAMESPACE
+          value: "${{ values.namespace }}"
+      endpoints:
+        - name: quarkus-dev
+          targetPort: 8080
+          exposure: internal
+      volumeMounts:
+        - name: m2
+          path: /home/user/.m2
+  - name: m2
+    volume:
+      size: 2Gi
+commands:
+  - id: install-extensions
+    exec:
+      component: tools
+      commandLine: |
+        export LD_LIBRARY_PATH=/checode/checode-linux-libc/ubi9/ld_libs/openssl:/checode/checode-linux-libc/ubi9/ld_libs/core:/usr/lib64
+        CHE_CODE=/checode/checode-linux-libc/ubi9/bin/che-code
+        EXT_DIR=/checode/checode-linux-libc/ubi9/extensions
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-kaoto --force 2>/dev/null || true
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-apache-camel --force 2>/dev/null || true
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension Continue.continue --force 2>/dev/null || true
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-yaml --force 2>/dev/null || true
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.java --force 2>/dev/null || true
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-quarkus --force 2>/dev/null || true
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-openshift-connector --force 2>/dev/null || true
+        $CHE_CODE --extensions-dir $EXT_DIR --install-extension jbangdev.jbang-vscode --force 2>/dev/null || true
+        which jbang >/dev/null 2>&1 || curl -Ls https://sh.jbang.dev | bash -s - app setup
+  - id: setup-continue
+    exec:
+      component: tools
+      commandLine: |
+        mkdir -p /home/user/.continue
+        cp /projects/${{ values.name }}/continue-config.json /home/user/.continue/config.json
+        if [ -n "$CONTINUE_API_KEY" ]; then
+          sed -i "s|CONTINUE_API_KEY_PLACEHOLDER|$CONTINUE_API_KEY|g" /home/user/.continue/config.json
+        fi
+        if [ -n "$CONTINUE_API_BASE" ]; then
+          sed -i "s|https://litellm-prod.apps.maas.redhatworkshops.io/v1|$CONTINUE_API_BASE|g" /home/user/.continue/config.json
+        fi
+        if [ -n "$CONTINUE_MODEL" ]; then
+          sed -i "s|deepseek-r1-distill-qwen-14b|$CONTINUE_MODEL|g" /home/user/.continue/config.json
+        fi
+  - id: setup-project
+    exec:
+      component: tools
+      commandLine: |
+        cd /projects/${{ values.name }}
+        chmod +x mvnw 2>/dev/null || true
+  - id: build
+    exec:
+      component: tools
+      commandLine: "./mvnw package -DskipTests"
+      workingDir: /projects/${{ values.name }}
+      group:
+        kind: build
+        isDefault: true
+  - id: run-dev
+    exec:
+      component: tools
+      commandLine: "./mvnw quarkus:dev -Dquarkus.http.host=0.0.0.0"
+      workingDir: /projects/${{ values.name }}
+      group:
+        kind: run
+        isDefault: true
+  - id: deploy-openshift
+    exec:
+      component: tools
+      commandLine: |
+        echo "=== Deploying to OpenShift namespace: $NAMESPACE ==="
+        oc project $NAMESPACE 2>/dev/null || oc new-project $NAMESPACE
+        ./mvnw package -Popenshift -Dquarkus.kubernetes.namespace=$NAMESPACE -DskipTests
+        echo "=== Deployment complete ==="
+        echo "Route: $(oc get route ${{ values.name }} -n $NAMESPACE -o jsonpath='{.spec.host}' 2>/dev/null)"
+      workingDir: /projects/${{ values.name }}
+      group:
+        kind: deploy
+  - id: test-mailpit
+    exec:
+      component: tools
+      commandLine: |
+        echo "Sending test email to Mailpit..."
+        curl -s -X POST $MAILPIT_API_URL/api/v1/send \
+          -H "Content-Type: application/json" \
+          -d '{"from":{"name":"Camel Test","email":"test@camel.io"},"to":[{"name":"Admin","email":"admin@test.io"}],"subject":"Camel Kaoto Test","text":"Routes are working!","html":"<h2>Routes OK</h2><p>MQTT→Kafka, Kafka→S3, Alerts→Mailpit</p>"}'
+        echo ""
+        echo "Check: $MAILPIT_API_URL"
+      workingDir: /projects/${{ values.name }}
+events:
+  postStart:
+    - install-extensions
+    - setup-continue
+    - setup-project

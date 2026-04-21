@@ -1,0 +1,29 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.uniqueName }}
+  title: "${{ values.name }}"
+  description: ${{ values.description }}
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+    argocd/app-name: "${{ values.uniqueName }}"
+  tags:
+    - camel
+    - kaoto
+    - industrial-edge
+    - kafka
+    - mqtt
+    - mailpit
+  links:
+    - url: "https://devspaces.${{ values.clusterDomain }}/#https://gitea-gitea.${{ values.clusterDomain }}/ws-${{ values.owner }}/${{ values.name }}"
+      title: Open in DevSpaces
+      icon: chat
+    - url: "https://n8n-mailpit-openshift-lightspeed.${{ values.clusterDomain }}"
+      title: Mailpit
+      icon: email
+spec:
+  type: service
+  lifecycle: experimental
+  owner: ${{ values.owner }}
+  system: industrial-edge
+  providesApis: []

@@ -1,0 +1,144 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: industrial-edge-camel-kaoto
+  title: "Industrial Edge — Camel Routes (Kaoto)"
+  description: >
+    Camel Quarkus routes that replicate the Industrial Edge Camel K integrations
+    (MQTT→Kafka, Kafka→S3, anomaly alerts→Mailpit) as visual YAML routes
+    editable with the Kaoto designer in DevSpaces. Includes Continue AI,
+    OpenShift Toolkit for one-click deploy, and JBang for quick testing.
+  tags:
+    - camel
+    - kaoto
+    - industrial-edge
+    - kafka
+    - mqtt
+    - mailpit
+    - recommended
+spec:
+  owner: platform-engineering
+  type: service
+  parameters:
+    - title: Project Configuration
+      required:
+        - name
+        - owner
+        - clusterDomain
+      properties:
+        name:
+          title: Application Name
+          type: string
+          description: Unique name for the Camel routes project
+          ui:autofocus: true
+          default: "ie-camel-routes"
+          pattern: "^[a-z0-9-]+$"
+        owner:
+          title: User (OpenShift username)
+          type: string
+          description: "Your OpenShift username. Deploys to: <username>-apps"
+          default: ${{ user.entity.metadata.name }}
+          pattern: "^[a-z][a-z0-9-]*$"
+        description:
+          title: Description
+          type: string
+          default: "Industrial Edge Camel routes — Kaoto visual alternative to Camel K integrations"
+        clusterDomain:
+          title: Cluster Domain
+          type: string
+          description: "OpenShift apps domain"
+          ui:help: "Run: oc get ingresses.config cluster -o jsonpath='{.spec.domain}'"
+    - title: Integration Endpoints
+      properties:
+        mqttBrokerUri:
+          title: MQTT Broker URI
+          type: string
+          default: "tcp://broker-amq-mqtt-all-0-svc.industrial-edge-tst-all.svc:61616"
+        kafkaBrokerUri:
+          title: Kafka Bootstrap Server
+          type: string
+          default: "dev-cluster-kafka-bootstrap.industrial-edge-tst-all.svc:9092"
+        s3Endpoint:
+          title: MinIO S3 Endpoint
+          type: string
+          default: "http://minio.industrial-edge-ml-workspace.svc:9000"
+        s3Bucket:
+          title: S3 Bucket Name
+          type: string
+          default: "anomaly-detection"
+        mailpitHost:
+          title: Mailpit SMTP Host
+          type: string
+          default: "n8n-mailpit.openshift-lightspeed.svc"
+        mailpitApiUrl:
+          title: Mailpit REST API URL
+          type: string
+          default: "http://n8n-mailpit.openshift-lightspeed.svc:8025"
+  steps:
+    - id: fetch-skeleton
+      name: Fetch Skeleton
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          uniqueName: "${{ parameters.owner }}-${{ parameters.name }}"
+          owner: ${{ parameters.owner }}
+          description: ${{ parameters.description }}
+          namespace: "${{ parameters.owner }}-apps"
+          clusterDomain: ${{ parameters.clusterDomain }}
+          mqttBrokerUri: ${{ parameters.mqttBrokerUri }}
+          kafkaBrokerUri: ${{ parameters.kafkaBrokerUri }}
+          s3Endpoint: ${{ parameters.s3Endpoint }}
+          s3Bucket: ${{ parameters.s3Bucket }}
+          mailpitHost: ${{ parameters.mailpitHost }}
+          mailpitApiUrl: ${{ parameters.mailpitApiUrl }}
+
+    - id: publish
+      name: Publish to Gitea
+      action: publish:gitea
+      input:
+        repoUrl: "gitea-gitea.${{ parameters.clusterDomain }}?owner=ws-${{ parameters.owner }}&repo=${{ parameters.name }}"
+        description: ${{ parameters.description }}
+        defaultBranch: main
+        repoVisibility: public
+
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
+        catalogInfoPath: /main/catalog-info.yaml
+
+    - id: notify
+      name: Send Email Notification
+      action: http:backstage:request
+      input:
+        method: POST
+        path: /proxy/mailpit/api/v1/send
+        headers:
+          Content-Type: application/json
+        body:
+          From:
+            Email: "developer-hub@redhat.local"
+            Name: "Red Hat Developer Hub"
+          To:
+            - Email: "${{ parameters.owner }}@redhat.local"
+              Name: "${{ parameters.owner }}"
+          Subject: "Camel Kaoto Routes — Project Created"
+          Text: "Your Industrial Edge Camel routes project ${{ parameters.name }} is ready. Open in DevSpaces to edit routes visually with Kaoto."
+          HTML: "<div style='font-family:Red Hat Text,Helvetica,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden'><div style='background:#EE0000;padding:24px 32px;text-align:center'><h1 style='color:#fff;margin:0;font-size:20px'>Industrial Edge — Camel Kaoto</h1></div><div style='padding:32px'><p style='color:#6a6e73;font-size:14px'>Your Camel routes project <b>${{ parameters.name }}</b> has been created with 3 visual routes:</p><ul style='color:#151515;font-size:14px'><li>MQTT → Kafka (sensor bridge)</li><li>Kafka → S3/MinIO (data lake)</li><li>Anomaly Alerts → Mailpit (notifications)</li></ul><p style='color:#6a6e73;font-size:13px'>Open in DevSpaces to edit with Kaoto and deploy with OpenShift Toolkit.</p></div></div>"
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps['publish'].output.remoteUrl }}
+      - title: Open in DevSpaces (Kaoto)
+        icon: chat
+        url: "https://devspaces.${{ parameters.clusterDomain }}/#https://gitea-gitea.${{ parameters.clusterDomain }}/ws-${{ parameters.owner }}/${{ parameters.name }}"
+      - title: Mailpit
+        icon: email
+        url: "https://n8n-mailpit-openshift-lightspeed.${{ parameters.clusterDomain }}"
+      - title: View in Catalog
+        icon: catalog
+        entityRef: ${{ steps['register'].output.entityRef }}

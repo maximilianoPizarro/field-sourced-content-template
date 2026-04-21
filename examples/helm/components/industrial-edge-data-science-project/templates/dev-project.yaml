@@ -129,7 +129,7 @@ spec:
               memory: 128Mi
       containers:
         - name: jupyterlab
-          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/jupyter-datascience-cpu-py312-ubi9:2025.1
+          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.1
           envFrom:
             - secretRef:
                 name: aws-connection-user-bucket
@@ -142,7 +142,7 @@ spec:
                 --ServerApp.base_url=/notebook/ml-development/jupyterlab
                 --ServerApp.quit_button=False
             - name: JUPYTER_IMAGE
-              value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/jupyter-datascience-cpu-py312-ubi9:2025.1
+              value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.1
           ports:
             - containerPort: 8888
               name: notebook-port
@@ -217,7 +217,7 @@ spec:
       affinity: {}
       containers:
         - name: s3-browser
-          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/jupyter-datascience-cpu-py312-ubi9:2025.1
+          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.1
           envFrom:
             - secretRef:
                 name: aws-connection-user-bucket
@@ -230,7 +230,7 @@ spec:
                 --ServerApp.base_url=/notebook/ml-development/s3-browser
                 --ServerApp.quit_button=False
             - name: JUPYTER_IMAGE
-              value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/jupyter-datascience-cpu-py312-ubi9:2025.1
+              value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.1
           ports:
             - containerPort: 8888
               name: notebook-port

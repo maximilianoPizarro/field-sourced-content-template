@@ -81,34 +81,24 @@ spec:
 apiVersion: kubeflow.org/v1
 kind: Notebook
 metadata:
-  annotations:
-    notebooks.opendatahub.io/inject-oauth: 'true'
-    notebooks.opendatahub.io/last-size-selection: Small
-    notebooks.opendatahub.io/oauth-logout-url: >-
-      https://data-science-gateway.{{ .Values.clusterDomain }}/projects/ml-development?notebookLogout=jupyterlab
-    opendatahub.io/username: 'user'
-    openshift.io/description: ''
-    openshift.io/display-name: JupyterLab
   name: jupyterlab
   namespace: ml-development
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    notebooks.opendatahub.io/inject-oauth: "true"
+    opendatahub.io/image-display-name: "Standard Data Science"
+    openshift.io/display-name: "Anomaly Detection — Industrial Edge"
+    openshift.io/description: "Workbench for anomaly detection model training, MinIO data lake, and real-time inference testing"
+    notebooks.opendatahub.io/oauth-logout-url: "https://data-science-gateway.{{ .Values.clusterDomain }}/projects/ml-development?notebookLogout=jupyterlab"
   labels:
     app: jupyterlab
-    opendatahub.io/dashboard: 'true'
-    opendatahub.io/odh-managed: 'true'
-    opendatahub.io/user: 'user'
+    opendatahub.io/dashboard: "true"
+    opendatahub.io/odh-managed: "true"
 spec:
   template:
     spec:
-      affinity:
-        nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - preference:
-                matchExpressions:
-                  - key: nvidia.com/gpu.present
-                    operator: NotIn
-                    values:
-                      - 'true'
-              weight: 1
+      affinity: {}
       initContainers:
         - name: seed-notebooks
           image: registry.access.redhat.com/ubi9/ubi-minimal:latest
@@ -120,7 +110,7 @@ spec:
                 echo "Notebooks already seeded, skipping"
                 exit 0
               fi
-              BASE_URL="https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/one/examples/helm/components/industrial-edge-data-science-project/notebooks"
+              BASE_URL="https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/main/examples/helm/components/industrial-edge-data-science-project/notebooks"
               echo "Seeding Industrial Edge notebooks..."
               curl -sL "$BASE_URL/1_anomaly_detection_training.ipynb" -o "$DEST/1_anomaly_detection_training.ipynb"
               curl -sL "$BASE_URL/2_realtime_inference_test.ipynb" -o "$DEST/2_realtime_inference_test.ipynb"
@@ -138,196 +128,56 @@ spec:
               cpu: 200m
               memory: 128Mi
       containers:
-        - resources:
-            limits:
-              cpu: '2'
-              memory: 8Gi
-            requests:
-              cpu: '1'
-              memory: 8Gi
-          readinessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /notebook/ml-development/jupyterlab/api
-              port: notebook-port
-              scheme: HTTP
-            initialDelaySeconds: 10
-            periodSeconds: 5
-            successThreshold: 1
-            timeoutSeconds: 1
-          name: jupyterlab
-          livenessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /notebook/ml-development/jupyterlab/api
-              port: notebook-port
-              scheme: HTTP
-            initialDelaySeconds: 10
-            periodSeconds: 5
-            successThreshold: 1
-            timeoutSeconds: 1
+        - name: jupyterlab
+          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/jupyter-datascience-cpu-py312-ubi9:2025.1
           envFrom:
-            - secretRef:
-                name: gitea-admin-secret-and-branch
             - secretRef:
                 name: aws-connection-user-bucket
           env:
             - name: NOTEBOOK_ARGS
               value: |-
                 --ServerApp.port=8888
-                                  --ServerApp.token=''
-                                  --ServerApp.password=''
-                                  --ServerApp.base_url=/notebook/ml-development/jupyterlab
-                                  --ServerApp.quit_button=False
-                                  --ServerApp.tornado_settings={"user":"user","hub_host":"https://data-science-gateway.{{ .Values.clusterDomain }}","hub_prefix":"/projects/ml-development"}
+                --ServerApp.token=''
+                --ServerApp.password=''
+                --ServerApp.base_url=/notebook/ml-development/jupyterlab
+                --ServerApp.quit_button=False
             - name: JUPYTER_IMAGE
               value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/jupyter-datascience-cpu-py312-ubi9:2025.1
-            - name: SSL_CERT_FILE
-              value: /etc/pki/tls/custom-certs/ca-bundle.crt
-            - name: PIPELINES_SSL_SA_CERTS
-              value: /etc/pki/tls/custom-certs/ca-bundle.crt
-            - name: GIT_SSL_CAINFO
-              value: /etc/pki/tls/custom-certs/ca-bundle.crt
-            - name: PIP_CERT
-              value: /etc/pki/tls/custom-certs/ca-bundle.crt
-            - name: TRUSTED_CA_BUNDLE_PATH
-              value: /etc/pki/tls/custom-certs/ca-bundle.crt
-            - name: REQUESTS_CA_BUNDLE
-              value: /etc/pki/tls/custom-certs/ca-bundle.crt
           ports:
             - containerPort: 8888
               name: notebook-port
               protocol: TCP
-          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: "1"
+              memory: 4Gi
+            limits:
+              cpu: "2"
+              memory: 8Gi
           volumeMounts:
             - mountPath: /opt/app-root/src
               name: jupyterlab
-            - mountPath: /opt/app-root/runtimes
-              name: elyra-dsp-details
-            - mountPath: /dev/shm
-              name: shm
-            - mountPath: /etc/pki/tls/custom-certs/ca-bundle.crt
-              name: trusted-ca
-              readOnly: true
-              subPath: ca-bundle.crt
-            - mountPath: /opt/app-root/pipeline-runtimes/
-              name: runtime-images
-          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/jupyter-datascience-cpu-py312-ubi9:2025.1
           workingDir: /opt/app-root/src
-        - resources:
-            limits:
-              cpu: 100m
-              memory: 64Mi
-            requests:
-              cpu: 100m
-              memory: 64Mi
-          readinessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /oauth/healthz
-              port: oauth-proxy
-              scheme: HTTPS
-            initialDelaySeconds: 5
-            periodSeconds: 5
-            successThreshold: 1
-            timeoutSeconds: 1
-          name: oauth-proxy
           livenessProbe:
-            failureThreshold: 3
             httpGet:
-              path: /oauth/healthz
-              port: oauth-proxy
-              scheme: HTTPS
-            initialDelaySeconds: 30
+              path: /notebook/ml-development/jupyterlab/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
             periodSeconds: 5
-            successThreshold: 1
-            timeoutSeconds: 1
-          env:
-            - name: NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-          ports:
-            - containerPort: 8443
-              name: oauth-proxy
-              protocol: TCP
-          imagePullPolicy: Always
-          volumeMounts:
-            - mountPath: /etc/oauth/client
-              name: oauth-client
-            - mountPath: /etc/oauth/config
-              name: oauth-config
-            - mountPath: /etc/tls/private
-              name: tls-certificates
-          args:
-            - '--provider=openshift'
-            - '--https-address=:8443'
-            - '--http-address='
-            - '--openshift-service-account=jupyterlab'
-            - '--cookie-secret-file=/etc/oauth/config/cookie_secret'
-            - '--cookie-expire=24h0m0s'
-            - '--tls-cert=/etc/tls/private/tls.crt'
-            - '--tls-key=/etc/tls/private/tls.key'
-            - '--upstream=http://localhost:8888'
-            - '--upstream-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
-            - '--email-domain=*'
-            - '--skip-provider-button'
-            - '--client-id=jupyterlab-ml-development-oauth-client'
-            - '--client-secret-file=/etc/oauth/client/secret'
-            - '--scope=user:info user:check-access'
-            - >-
-              --openshift-sar={"verb":"get","resource":"notebooks","resourceAPIGroup":"kubeflow.org","resourceName":"jupyterlab","namespace":"$(NAMESPACE)"}
-            - >-
-              --logout-url=https://data-science-gateway.{{ .Values.clusterDomain }}/projects/ml-development?notebookLogout=jupyterlab
-      enableServiceLinks: false
-      serviceAccountName: jupyterlab
+            failureThreshold: 40
+          readinessProbe:
+            httpGet:
+              path: /notebook/ml-development/jupyterlab/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 40
       volumes:
         - name: jupyterlab
           persistentVolumeClaim:
             claimName: workbench-pvc
-        - name: elyra-dsp-details
-          secret:
-            secretName: ds-pipeline-config-custom
-        - emptyDir:
-            medium: Memory
-          name: shm
-        - name: oauth-config
-          secret:
-            defaultMode: 420
-            secretName: jupyterlab-oauth-config
-        - name: tls-certificates
-          secret:
-            defaultMode: 420
-            secretName: jupyterlab-tls
-        - name: trusted-ca-bundle
-          configMap:
-            name: workbench-trusted-ca-bundle
-            defaultMode: 420
-        - name: kube-root-ca
-          configMap:
-            name: kube-root-ca.crt
-            defaultMode: 420
-        - name: openshift-service-ca
-          configMap:
-            name: openshift-service-ca.crt
-            defaultMode: 420
-        - name: ca-bundles
-          emptyDir: {}
-        - configMap:
-            items:
-              - key: ca-bundle.crt
-                path: ca-bundle.crt
-            name: workbench-trusted-ca-bundle
-            optional: true
-          name: trusted-ca
-        - configMap:
-            name: pipeline-runtime-images
-            optional: true
-          name: runtime-images
-        - name: oauth-client
-          secret:
-            defaultMode: 420
-            secretName: jupyterlab-oauth-client
 ---
 kind: PersistentVolumeClaim
 apiVersion: v1
@@ -347,256 +197,72 @@ spec:
 apiVersion: kubeflow.org/v1
 kind: Notebook
 metadata:
-  annotations:
-    notebooks.opendatahub.io/inject-oauth: 'true'
-    notebooks.opendatahub.io/last-size-selection: Small
-    notebooks.opendatahub.io/oauth-logout-url: >-
-      https://data-science-gateway.{{ .Values.clusterDomain }}/projects/ml-development?notebookLogout=s3-browser
-    opendatahub.io/username: 'user'
-    openshift.io/description: ''
-    openshift.io/display-name: 'S3 Browser'
   name: s3-browser
   namespace: ml-development
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    notebooks.opendatahub.io/inject-oauth: "true"
+    opendatahub.io/image-display-name: "Standard Data Science"
+    openshift.io/display-name: "S3 Data Lake Browser"
+    openshift.io/description: "Browse MinIO S3 data lake — sensor data, trained models, and pipeline artifacts"
+    notebooks.opendatahub.io/oauth-logout-url: "https://data-science-gateway.{{ .Values.clusterDomain }}/projects/ml-development?notebookLogout=s3-browser"
   labels:
     app: s3-browser
-    opendatahub.io/dashboard: 'true'
-    opendatahub.io/odh-managed: 'true'
-    opendatahub.io/user: 'user'
+    opendatahub.io/dashboard: "true"
+    opendatahub.io/odh-managed: "true"
 spec:
   template:
     spec:
-      affinity:
-        nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - preference:
-                matchExpressions:
-                  - key: nvidia.com/gpu.present
-                    operator: NotIn
-                    values:
-                      - 'true'
-              weight: 1
-      initContainers:
-        - name: fetch-ca
-          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/odh-tec:v0.1
-          imagePullPolicy: Always
-          command:
-          - 'sh'
-          - '-c'
-          - >-
-            cat /var/run/kube-root-ca/ca.crt /var/run/trusted-ca/ca-bundle.crt /var/run/openshift-service-ca/service-ca.crt > /tmp/ca-bundles/ca-bundle.crt || true;
-            ls -l /tmp/ca-bundles/
-          volumeMounts:
-          - mountPath: /var/run/kube-root-ca
-            name: kube-root-ca
-          - mountPath: /var/run/trusted-ca
-            name: trusted-ca-bundle
-          - mountPath: /var/run/openshift-service-ca
-            name: openshift-service-ca
-          - mountPath: /tmp/ca-bundles
-            name: ca-bundles
+      affinity: {}
       containers:
-        - resources:
-            limits:
-              cpu: '2'
-              memory: 8Gi
-            requests:
-              cpu: '1'
-              memory: 8Gi
-          readinessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /notebook/ml-development/s3-browser/api
-              port: notebook-port
-              scheme: HTTP
-            initialDelaySeconds: 10
-            periodSeconds: 5
-            successThreshold: 1
-            timeoutSeconds: 1
-          name: s3-browser
-          livenessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /notebook/ml-development/s3-browser/api
-              port: notebook-port
-              scheme: HTTP
-            initialDelaySeconds: 10
-            periodSeconds: 5
-            successThreshold: 1
-            timeoutSeconds: 1
+        - name: s3-browser
+          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/jupyter-datascience-cpu-py312-ubi9:2025.1
+          envFrom:
+            - secretRef:
+                name: aws-connection-user-bucket
           env:
             - name: NOTEBOOK_ARGS
               value: |-
                 --ServerApp.port=8888
-                                  --ServerApp.token=''
-                                  --ServerApp.password=''
-                                  --ServerApp.base_url=/notebook/ml-development/s3-browser
-                                  --ServerApp.quit_button=False
-                                  --ServerApp.tornado_settings={"user":"user","hub_host":"https://data-science-gateway.{{ .Values.clusterDomain }}","hub_prefix":"/projects/ml-development"}
+                --ServerApp.token=''
+                --ServerApp.password=''
+                --ServerApp.base_url=/notebook/ml-development/s3-browser
+                --ServerApp.quit_button=False
             - name: JUPYTER_IMAGE
-              value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/odh-tec:v0.1
-            - name: SSL_CERT_FILE
-              value: /etc/pki/tls/custom-certs/ca-bundle.crt
-            - name: PIPELINES_SSL_SA_CERTS
-              value: /etc/pki/tls/custom-certs/ca-bundle.crt
-            - name: GIT_SSL_CAINFO
-              value: /etc/pki/tls/custom-certs/ca-bundle.crt
-            - name: PIP_CERT
-              value: /etc/pki/tls/custom-certs/ca-bundle.crt
-            - name: TRUSTED_CA_BUNDLE_PATH
-              value: /etc/pki/tls/custom-certs/ca-bundle.crt
-            - name: REQUESTS_CA_BUNDLE
-              value: /etc/pki/tls/custom-certs/ca-bundle.crt
+              value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/jupyter-datascience-cpu-py312-ubi9:2025.1
           ports:
             - containerPort: 8888
               name: notebook-port
               protocol: TCP
-          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: "500m"
+              memory: 2Gi
+            limits:
+              cpu: "1"
+              memory: 4Gi
           volumeMounts:
             - mountPath: /opt/app-root/src
               name: s3-browser
-            - mountPath: /dev/shm
-              name: shm
-            - mountPath: /etc/pki/tls/custom-certs/ca-bundle.crt
-              name: trusted-ca
-              readOnly: true
-              subPath: ca-bundle.crt
-            - mountPath: /opt/app-root/pipeline-runtimes/
-              name: runtime-images
-            - mountPath: /opt/app-root/runtimes
-              name: elyra-dsp-details
-          envFrom:
-            - secretRef:
-                name: aws-connection-user-bucket
-          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/odh-tec:v0.1
           workingDir: /opt/app-root/src
-        - resources:
-            limits:
-              cpu: 100m
-              memory: 64Mi
-            requests:
-              cpu: 100m
-              memory: 64Mi
-          readinessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /oauth/healthz
-              port: oauth-proxy
-              scheme: HTTPS
-            initialDelaySeconds: 5
-            periodSeconds: 5
-            successThreshold: 1
-            timeoutSeconds: 1
-          name: oauth-proxy
           livenessProbe:
-            failureThreshold: 3
             httpGet:
-              path: /oauth/healthz
-              port: oauth-proxy
-              scheme: HTTPS
-            initialDelaySeconds: 30
+              path: /notebook/ml-development/s3-browser/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
             periodSeconds: 5
-            successThreshold: 1
-            timeoutSeconds: 1
-          env:
-            - name: NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-          ports:
-            - containerPort: 8443
-              name: oauth-proxy
-              protocol: TCP
-          imagePullPolicy: Always
-          volumeMounts:
-            - mountPath: /etc/oauth/client
-              name: oauth-client
-            - mountPath: /etc/oauth/config
-              name: oauth-config
-            - mountPath: /etc/tls/private
-              name: tls-certificates
-          args:
-            - '--provider=openshift'
-            - '--https-address=:8443'
-            - '--http-address='
-            - '--openshift-service-account=s3-browser'
-            - '--cookie-secret-file=/etc/oauth/config/cookie_secret'
-            - '--cookie-expire=24h0m0s'
-            - '--tls-cert=/etc/tls/private/tls.crt'
-            - '--tls-key=/etc/tls/private/tls.key'
-            - '--upstream=http://localhost:8888'
-            - '--upstream-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
-            - '--email-domain=*'
-            - '--skip-provider-button'
-            - '--client-id=s3-browser-ml-development-oauth-client'
-            - '--client-secret-file=/etc/oauth/client/secret'
-            - '--scope=user:info user:check-access'
-            - >-
-              --openshift-sar={"verb":"get","resource":"notebooks","resourceAPIGroup":"kubeflow.org","resourceName":"s3-browser","namespace":"$(NAMESPACE)"}
-            - >-
-              --logout-url=https://data-science-gateway.{{ .Values.clusterDomain }}/projects/ml-development?notebookLogout=s3-browser
-      enableServiceLinks: false
-      serviceAccountName: s3-browser
+            failureThreshold: 40
+          readinessProbe:
+            httpGet:
+              path: /notebook/ml-development/s3-browser/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 40
       volumes:
         - name: s3-browser
           persistentVolumeClaim:
             claimName: s3-browser-pvc
-        - emptyDir:
-            medium: Memory
-          name: shm
-        - name: oauth-config
-          secret:
-            defaultMode: 420
-            secretName: s3-browser-oauth-config
-        - name: tls-certificates
-          secret:
-            defaultMode: 420
-            secretName: s3-browser-tls
-        - name: trusted-ca-bundle
-          configMap:
-            name: workbench-trusted-ca-bundle
-            defaultMode: 420
-        - name: kube-root-ca
-          configMap:
-            name: kube-root-ca.crt
-            defaultMode: 420
-        - name: openshift-service-ca
-          configMap:
-            name: openshift-service-ca.crt
-            defaultMode: 420
-        - name: ca-bundles
-          emptyDir: {}
-        - configMap:
-            items:
-              - key: ca-bundle.crt
-                path: ca-bundle.crt
-            name: workbench-trusted-ca-bundle
-            optional: true
-          name: trusted-ca
-        - configMap:
-            name: pipeline-runtime-images
-            optional: true
-          name: runtime-images
-        - name: elyra-dsp-details
-          secret:
-            optional: true
-            secretName: ds-pipeline-config
-        - name: oauth-client
-          secret:
-            defaultMode: 420
-            secretName: s3-browser-oauth-client
----
-kind: RoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: elyra-pipelines-jupyterlab
-  namespace: ml-development
-  labels:
-    opendatahub.io/dashboard: 'true'
-subjects:
-  - kind: ServiceAccount
-    name: jupyterlab
-    namespace: ml-development
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: ds-pipeline-user-access-dspa

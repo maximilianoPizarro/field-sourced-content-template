@@ -467,6 +467,41 @@ oc rollout restart deployment/lightspeed-app-server -n openshift-lightspeed
 
 > **Note**: The `litellm-secret` in `litemaas` (master-key, ui-password) and `postgres-secret` (db password) ship with default values in Git. Change them in production clusters via the same `oc patch secret` approach.
 
+#### Continue AI — LLM for DevSpaces Workspaces
+
+All software templates include [Continue AI](https://continue.dev/) pre-configured with an external LLM via LiteLLM proxy. The API key is injected at workspace startup from a Kubernetes Secret that auto-mounts into every DevSpaces workspace.
+
+A template file is provided at `examples/helm/components/devspaces/secret-continue-ai-template.yaml`. To configure:
+
+```bash
+# Create the secret with your LLM credentials (auto-mounts to all DevSpaces workspaces)
+oc apply -f - <<'EOF'
+apiVersion: v1
+kind: Secret
+metadata:
+  name: continue-ai-config
+  namespace: devspaces
+  labels:
+    controller.devfile.io/mount-to-devworkspace: "true"
+    controller.devfile.io/watch-secret: "true"
+  annotations:
+    controller.devfile.io/mount-as: env
+type: Opaque
+stringData:
+  CONTINUE_API_KEY: "<YOUR_LITELLM_API_KEY>"
+  CONTINUE_API_BASE: "<YOUR_LITELLM_URL>/v1"
+  CONTINUE_MODEL: "<YOUR_MODEL_NAME>"
+EOF
+```
+
+The `controller.devfile.io/mount-to-devworkspace: "true"` label causes DevSpaces to auto-inject these environment variables into every new workspace. The devfile `postStart` event reads them to patch `~/.continue/config.json` with the real credentials.
+
+| Secret | Namespace | Keys | Used by |
+|--------|-----------|------|---------|
+| `continue-ai-config` | `devspaces` | `CONTINUE_API_KEY`, `CONTINUE_API_BASE`, `CONTINUE_MODEL` | All DevSpaces workspaces → Continue AI extension |
+
+> **Important**: Do NOT commit this secret with real credentials to Git. The template file in the repo contains only placeholder values.
+
 ### Service Access URLs
 
 All services use the cluster domain pattern `apps.<cluster-domain>`:

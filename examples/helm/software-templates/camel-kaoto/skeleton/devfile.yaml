@@ -60,12 +60,27 @@ commands:
         $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-yaml --force
         $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.java --force
         $CHE_CODE --extensions-dir $EXT_DIR --install-extension redhat.vscode-quarkus --force
+  - id: setup-continue
+    exec:
+      component: tools
+      commandLine: |
+        mkdir -p /home/user/.continue
+        cp /projects/${{ values.name }}/continue-config.json /home/user/.continue/config.json
+        if [ -n "$CONTINUE_API_KEY" ]; then
+          sed -i "s|CONTINUE_API_KEY_PLACEHOLDER|$CONTINUE_API_KEY|g" /home/user/.continue/config.json
+        fi
+        if [ -n "$CONTINUE_API_BASE" ]; then
+          sed -i "s|https://litellm-prod.apps.maas.redhatworkshops.io/v1|$CONTINUE_API_BASE|g" /home/user/.continue/config.json
+        fi
+        if [ -n "$CONTINUE_MODEL" ]; then
+          sed -i "s|deepseek-r1-distill-qwen-14b|$CONTINUE_MODEL|g" /home/user/.continue/config.json
+        fi
   - id: setup-project
     exec:
       component: tools
       commandLine: |
         chmod +x /projects/${{ values.name }}/mvnw
-        mkdir -p /home/user/.continue && cp /projects/${{ values.name }}/continue-config.json /home/user/.continue/config.json
+        which jbang >/dev/null 2>&1 || curl -Ls https://sh.jbang.dev | bash -s - app setup
   - id: build
     exec:
       component: tools
@@ -79,4 +94,5 @@ commands:
 events:
   postStart:
     - install-extensions
+    - setup-continue
     - setup-project

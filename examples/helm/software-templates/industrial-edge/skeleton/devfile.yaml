@@ -21,7 +21,8 @@ attributes:
         "redhat.java",
         "redhat.vscode-quarkus",
         "jbangdev.jbang-vscode",
-        "redhat.vscode-openshift-connector"
+        "redhat.vscode-openshift-connector",
+        "Continue.continue"
       ]
     }
   .vscode/settings.json: |
@@ -64,6 +65,21 @@ commands:
         [ -f /home/user/.vsix-cache/jbang.vsix ] || \
           curl -sL "https://jbangdev.gallerycdn.vsassets.io/extensions/jbangdev/jbang-vscode/0.12.0/1734960116430/Microsoft.VisualStudio.Services.VSIXPackage" -o /home/user/.vsix-cache/jbang.vsix
         which jbang >/dev/null 2>&1 || curl -Ls https://sh.jbang.dev | bash -s - app setup
+  - id: setup-continue
+    exec:
+      component: tools
+      commandLine: |
+        mkdir -p /home/user/.continue
+        cp /projects/${{values.uniqueName}}/continue-config.json /home/user/.continue/config.json
+        if [ -n "$CONTINUE_API_KEY" ]; then
+          sed -i "s|CONTINUE_API_KEY_PLACEHOLDER|$CONTINUE_API_KEY|g" /home/user/.continue/config.json
+        fi
+        if [ -n "$CONTINUE_API_BASE" ]; then
+          sed -i "s|https://litellm-prod.apps.maas.redhatworkshops.io/v1|$CONTINUE_API_BASE|g" /home/user/.continue/config.json
+        fi
+        if [ -n "$CONTINUE_MODEL" ]; then
+          sed -i "s|deepseek-r1-distill-qwen-14b|$CONTINUE_MODEL|g" /home/user/.continue/config.json
+        fi
   - id: run-camel
     exec:
       component: tools
@@ -72,3 +88,4 @@ commands:
 events:
   postStart:
     - install-extensions
+    - setup-continue

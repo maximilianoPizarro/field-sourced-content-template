@@ -40,6 +40,9 @@ spec:
           - redhat.java
           - redhat.vscode-quarkus
           - redhat.vscode-apache-camel
+          - jbangdev.jbang-vscode
+          - redhat.vscode-openshift-connector
+          - Continue.continue
     storage:
       pvcStrategy: per-user
   gitServices: {}

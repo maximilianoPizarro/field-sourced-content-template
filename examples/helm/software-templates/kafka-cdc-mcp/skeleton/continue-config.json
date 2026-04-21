@@ -1,0 +1,37 @@
+{
+  "models": [
+    {
+      "title": "DeepSeek R1 (LiteLLM)",
+      "model": "deepseek-r1-distill-qwen-14b",
+      "apiBase": "https://litellm-prod.apps.maas.redhatworkshops.io/v1",
+      "provider": "openai",
+      "apiKey": "CONTINUE_API_KEY_PLACEHOLDER",
+      "contextLength": 32768,
+      "completionOptions": {
+        "maxTokens": 4096
+      }
+    }
+  ],
+  "tabAutocompleteModel": {
+    "title": "DeepSeek R1 Autocomplete",
+    "model": "deepseek-r1-distill-qwen-14b",
+    "apiBase": "https://litellm-prod.apps.maas.redhatworkshops.io/v1",
+    "provider": "openai",
+    "apiKey": "CONTINUE_API_KEY_PLACEHOLDER",
+    "contextLength": 32768,
+    "completionOptions": {
+      "maxTokens": 256
+    }
+  },
+  "contextProviders": [
+    { "name": "codebase", "params": {} },
+    { "name": "folder", "params": {} },
+    { "name": "file", "params": {} },
+    { "name": "code", "params": {} },
+    { "name": "currentFile", "params": {} },
+    { "name": "tree", "params": {} },
+    { "name": "problems", "params": {} },
+    { "name": "terminal", "params": {} }
+  ],
+  "allowAnonymousTelemetry": false
+}

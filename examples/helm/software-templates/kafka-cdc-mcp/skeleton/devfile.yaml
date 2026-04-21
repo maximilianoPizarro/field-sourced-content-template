@@ -14,7 +14,10 @@ attributes:
         "redhat.vscode-apache-camel",
         "redhat.java",
         "redhat.vscode-quarkus",
-        "redhat.vscode-yaml"
+        "redhat.vscode-yaml",
+        "jbangdev.jbang-vscode",
+        "redhat.vscode-openshift-connector",
+        "Continue.continue"
       ]
     }
 components:
@@ -43,6 +46,22 @@ commands:
           curl -sL "https://redhat.gallerycdn.vsassets.io/extensions/redhat/vscode-kaoto/2.10.2/1775215869920/Microsoft.VisualStudio.Services.VSIXPackage" -o /home/user/.vsix-cache/kaoto.vsix
         [ -f /home/user/.vsix-cache/camel.vsix ] || \
           curl -sL "https://redhat.gallerycdn.vsassets.io/extensions/redhat/vscode-apache-camel/1.14.0/1758543062217/Microsoft.VisualStudio.Services.VSIXPackage" -o /home/user/.vsix-cache/camel.vsix
+        which jbang >/dev/null 2>&1 || curl -Ls https://sh.jbang.dev | bash -s - app setup
+  - id: setup-continue
+    exec:
+      component: tools
+      commandLine: |
+        mkdir -p /home/user/.continue
+        cp /projects/${{ values.name }}/continue-config.json /home/user/.continue/config.json
+        if [ -n "$CONTINUE_API_KEY" ]; then
+          sed -i "s|CONTINUE_API_KEY_PLACEHOLDER|$CONTINUE_API_KEY|g" /home/user/.continue/config.json
+        fi
+        if [ -n "$CONTINUE_API_BASE" ]; then
+          sed -i "s|https://litellm-prod.apps.maas.redhatworkshops.io/v1|$CONTINUE_API_BASE|g" /home/user/.continue/config.json
+        fi
+        if [ -n "$CONTINUE_MODEL" ]; then
+          sed -i "s|deepseek-r1-distill-qwen-14b|$CONTINUE_MODEL|g" /home/user/.continue/config.json
+        fi
   - id: build
     exec:
       component: tools
@@ -62,3 +81,4 @@ commands:
 events:
   postStart:
     - install-vsix-extensions
+    - setup-continue

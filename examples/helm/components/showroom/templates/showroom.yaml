@@ -419,7 +419,7 @@ spec:
           name: showroom-files
           subPath: www
       - name: ui-config-copier
-        image: "registry.access.redhat.com/ubi9/ubi-minimal:latest"
+        image: "quay.io/rhpds/git-cloner:v1.1.2"
         command: ["sh", "-c", "cp /ui-config/ui-config.yml /showroom/www/ui-config.yml && echo 'ui-config.yml copied to www root'"]
         volumeMounts:
         - mountPath: /showroom/www

@@ -2,6 +2,56 @@
 :toc: left
 :toclevels: 3
 
+++++
+<div id="scene-ie" style="width:100%;min-height:420px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-ie', {height:420, camX:4, camY:14, camZ:30, rotateSpeed:0.35});
+  if(!ctx) return;
+
+  // Far Edge — Factory Floor
+  var s1 = ThreeHelper.createNode(ctx.scene,'Sensor 1',0x607D8B,-18,0,-4);
+  var s2 = ThreeHelper.createNode(ctx.scene,'Sensor 2',0x607D8B,-18,0,0);
+  var s3 = ThreeHelper.createNode(ctx.scene,'Sensor 3',0x607D8B,-18,0,4);
+  var amq = ThreeHelper.createNode(ctx.scene,'AMQ Broker\nMQTT',0xCC0000,-11,0,0,{width:3});
+
+  // Near Edge — Factory DC
+  var kafkaF = ThreeHelper.createNode(ctx.scene,'Kafka\nFactory',0x231F20,-4,0,-3,{width:3});
+  var camelMqtt = ThreeHelper.createNode(ctx.scene,'Camel K\nMQTT\u2192Kafka',0xFF6D00,-4,0,3,{width:3});
+  var iot = ThreeHelper.createNode(ctx.scene,'IoT\nConsumer',0x9C27B0,2,0,-3);
+  var dash = ThreeHelper.createNode(ctx.scene,'Line\nDashboard',0x42A5F5,2,0,3);
+
+  // Core DC
+  var kafkaDL = ThreeHelper.createNode(ctx.scene,'Kafka\nData Lake',0x231F20,9,0,0,{width:3});
+  var mm2 = ThreeHelper.createNode(ctx.scene,'Mirror\nMaker2',0x1A73E8,9,3,4);
+  var camelS3 = ThreeHelper.createNode(ctx.scene,'Camel K\nKafka\u2192S3',0xFF6D00,15,0,-3,{width:3});
+  var minio = ThreeHelper.createNode(ctx.scene,'MinIO S3\nData Lake',0x43A047,21,0,-3,{width:3});
+  var mlserv = ThreeHelper.createNode(ctx.scene,'KServe\nAnomaly ML',0x0068B5,9,0,-5,{width:3});
+  var oai = ThreeHelper.createNode(ctx.scene,'OpenShift AI\nJupyter',0xEE0000,15,0,3,{width:3});
+
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,s1,amq,0x607D8B,{speed:0.010}),
+    ThreeHelper.createEdge(ctx.scene,s2,amq,0x607D8B,{speed:0.009}),
+    ThreeHelper.createEdge(ctx.scene,s3,amq,0x607D8B,{speed:0.011}),
+    ThreeHelper.createEdge(ctx.scene,amq,camelMqtt,0xCC0000,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,camelMqtt,kafkaF,0xFF6D00,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,amq,iot,0xCC0000,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,amq,dash,0xCC0000,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,iot,mlserv,0x9C27B0,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,kafkaF,kafkaDL,0x231F20,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,kafkaDL,mm2,0x1A73E8,{speed:0.005}),
+    ThreeHelper.createEdge(ctx.scene,kafkaDL,camelS3,0x231F20,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,camelS3,minio,0xFF6D00,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,minio,oai,0x43A047,{speed:0.006})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
 [.lead]
 *Caso de uso:* Mejorar la eficiencia de fabricación y la calidad del producto con inteligencia artificial y aprendizaje automático (AI/ML) hasta el borde de la red.
 

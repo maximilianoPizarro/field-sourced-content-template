@@ -135,11 +135,105 @@ El CV Processor ejecuta un loop de polling continuo:
 }
 ----
 
+== Detección de Seguridad PPE (YOLO + OpenShift AI + Kafka)
+
+++++
+<div id="scene-ppe" style="width:100%;min-height:380px;"></div>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-ppe', {height:400, camX:2, camY:12, camZ:26, rotateSpeed:0.4});
+  if(!ctx) return;
+
+  var cam    = ThreeHelper.createNode(ctx.scene,'Webcam',0x607D8B,-14,0,0);
+  var fe     = ThreeHelper.createNode(ctx.scene,'Angular\nFrontend',0x9C27B0,-8,0,0);
+  var be     = ThreeHelper.createNode(ctx.scene,'FastAPI\nBackend',0x9C27B0,-2,0,0);
+  var yolo   = ThreeHelper.createNode(ctx.scene,'YOLO v8n\nServing',0x43A047,4,0,-3);
+  var llm    = ThreeHelper.createNode(ctx.scene,'Granite\n3.1 LLM',0x1A73E8,4,0,3);
+  var kafka  = ThreeHelper.createNode(ctx.scene,'Kafka\ncv.ppe.detections',0x231F20,10,0,0,{width:3.5});
+  var jup    = ThreeHelper.createNode(ctx.scene,'Jupyter\nNotebook',0xFF9800,16,0,-3);
+  var dash   = ThreeHelper.createNode(ctx.scene,'Compliance\nDashboard',0x42A5F5,16,0,3);
+
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,cam,fe,0x607D8B,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,fe,be,0x9C27B0,{speed:0.009}),
+    ThreeHelper.createEdge(ctx.scene,be,yolo,0x43A047,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,be,llm,0x1A73E8,{speed:0.006}),
+    ThreeHelper.createEdge(ctx.scene,be,kafka,0x231F20,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,kafka,jup,0xFF9800,{speed:0.007}),
+    ThreeHelper.createEdge(ctx.scene,kafka,dash,0x42A5F5,{speed:0.006})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
+El módulo de *Detección de Seguridad PPE* extiende la plataforma NeuroFace con monitoreo en tiempo real de Equipos de Protección Personal. Los frames de la webcam se envían a un endpoint de serving *YOLOv8n* para detección de objetos, y un *Granite 3.1 LLM* genera análisis de seguridad en lenguaje natural cuando se detectan violaciones. Los eventos se publican a Kafka para dashboards de compliance.
+
+=== Arquitectura PPE
+
+[cols="1,2,1",options="header"]
+|===
+| Componente | Rol | Namespace
+
+| *YOLO PPE Serving*
+| Servidor HTTP Python con Ultralytics YOLOv8n — recibe JPEG, retorna bounding boxes y labels de clase
+| `neuroface`
+
+| *Granite 3.1 2B LLM*
+| KServe InferenceService — genera análisis de seguridad ante violaciones PPE
+| `neuroface`
+
+| *Kafka Topic*
+| `cv.ppe.detections` en Strimzi `cdc-cluster` con SASL_SSL + SCRAM-SHA-512
+| `kafka-cdc`
+
+| *Kafka DLQ*
+| `dlq.ppe-errors` — cola de mensajes fallidos
+| `kafka-cdc`
+
+| *Jupyter Workbench*
+| `ppe-yolo-detection.ipynb` — consume eventos Kafka, genera gráficos de compliance
+| `neuroface`
+|===
+
+=== Flujo de Datos PPE
+
+Cada frame de webcam sigue este recorrido:
+
+. *Captura* — El frontend Angular captura un frame vía WebRTC
+. *Inferencia YOLO* — El backend reenvía a YOLO serving (`/v1/predict`), obtiene bounding boxes con nombres de clase y scores de confianza
+. *Verificación de Compliance* — El backend compara las detecciones contra las clases PPE esperadas (`hardhat`, `safety-vest`, `goggles`) y asigna estado: `compliant`, `violation` o `no_persons`
+. *Análisis LLM* (ante violación) — Granite 3.1 genera un análisis de seguridad explicando los riesgos
+. *Publicación a Kafka* — Evento completo publicado a `cv.ppe.detections`
+. *Consumo en Notebook* — Jupyter renderiza dashboards de compliance con matplotlib
+
+=== Evento Kafka PPE
+
+[source,json]
+----
+{
+  "event_type": "ppe_compliance_check",
+  "source": "neuroface-ppe-backend",
+  "timestamp": "2026-04-19T18:30:00Z",
+  "ppe_status": "violation",
+  "person_count": 1,
+  "expected_ppe": ["hardhat", "safety-vest", "goggles"],
+  "present_ppe": ["safety-vest"],
+  "missing_ppe": ["hardhat", "goggles"],
+  "detections": [
+    {"class_name": "person", "confidence": 0.92, "bbox": {"x1": 120, "y1": 50, "x2": 380, "y2": 470}},
+    {"class_name": "safety-vest", "confidence": 0.87, "bbox": {"x1": 145, "y1": 180, "x2": 355, "y2": 390}}
+  ],
+  "llm_analysis": "Violación PPE: 1 operador sin casco y gafas protectoras. Riesgo: lesión craneal y exposición ocular. Acción correctiva inmediata requerida."
+}
+----
+
 == Seguridad
 
 * *Kafka*: SASL_SSL con SCRAM-SHA-512 (credenciales `cdc-user` desde Kubernetes Secret)
 * *Kafka Console OIDC*: Autenticado vía Keycloak (RHBK) — roles: `platformadmin` → admin, `userN` → viewer
-* *OVMS*: Acceso interno al cluster únicamente (sin Route externa)
+* *OVMS / YOLO*: Acceso interno al cluster únicamente (sin Route externa)
+* *Endpoint LLM*: KServe con inyección de token ServiceAccount
 * *Tráfico inter-namespace*: Todas las conexiones Kafka usan TLS
 
 == Integración con OpenShift AI

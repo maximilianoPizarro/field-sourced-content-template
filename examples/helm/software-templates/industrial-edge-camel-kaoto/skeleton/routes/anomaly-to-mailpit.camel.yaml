@@ -11,24 +11,22 @@
       steps:
         - log:
             message: "Anomaly check — vibration data: ${body}"
-        - unmarshal:
-            json:
-              library: jackson
+        - setHeader:
+            name: sensorPayload
+            simple: "${body}"
         - choice:
             when:
-              - jsonpath:
-                  expression: "$[?(@.anomaly == true)]"
-                  suppressExceptions: true
+              - simple: "${body.split(',')[2]} > 15.0"
                 steps:
                   - log:
-                      message: "ANOMALY DETECTED — sending alert to Mailpit"
+                      message: "ANOMALY DETECTED — vibration ${headers.sensorPayload.split(',')[2]} exceeds threshold"
                   - setBody:
                       simple: >
                         {"from":{"name":"Industrial Edge Alerts","email":"alerts@industrial-edge.io"},
                          "to":[{"name":"Operations","email":"ops@industrial-edge.io"}],
-                         "subject":"Vibration Anomaly Detected — ${date:now:yyyy-MM-dd HH:mm:ss}",
-                         "text":"Anomaly detected in vibration sensor data. Original payload: ${body}",
-                         "html":"<div style='font-family:sans-serif;max-width:500px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden'><div style='background:#c9190b;padding:16px;text-align:center'><h2 style='color:#fff;margin:0'>Vibration Anomaly</h2></div><div style='padding:24px'><p><b>Time:</b> ${date:now:yyyy-MM-dd HH:mm:ss}</p><p><b>Source:</b> ${headers[kafka.KEY]}</p><p><b>Action:</b> Review machine immediately</p></div></div>"}
+                         "subject":"Vibration Anomaly — ${headers.sensorPayload.split(',')[0]} — ${date:now:yyyy-MM-dd HH:mm:ss}",
+                         "text":"Anomaly: vibration=${headers.sensorPayload.split(',')[2]} from machine=${headers.sensorPayload.split(',')[0]} sensor=${headers.sensorPayload.split(',')[1]}",
+                         "html":"<div style='font-family:sans-serif;max-width:500px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden'><div style='background:#c9190b;padding:16px;text-align:center'><h2 style='color:#fff;margin:0'>Vibration Anomaly</h2></div><div style='padding:24px'><p><b>Time:</b> ${date:now:yyyy-MM-dd HH:mm:ss}</p><p><b>Machine:</b> ${headers.sensorPayload.split(',')[0]}</p><p><b>Sensor:</b> ${headers.sensorPayload.split(',')[1]}</p><p><b>Vibration:</b> ${headers.sensorPayload.split(',')[2]}</p><p><b>Action:</b> Review machine immediately</p></div></div>"}
                   - setHeader:
                       name: Content-Type
                       constant: application/json

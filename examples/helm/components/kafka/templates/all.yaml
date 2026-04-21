@@ -55,6 +55,9 @@ spec:
       offsets.topic.replication.factor: 3
       transaction.state.log.replication.factor: 3
       transaction.state.log.min.isr: 2
+      broker.registration.timeout.ms: 300000
+      controller.quorum.election.timeout.ms: 5000
+      controller.quorum.fetch.timeout.ms: 10000
     metricsConfig:
       type: jmxPrometheusExporter
       valueFrom:

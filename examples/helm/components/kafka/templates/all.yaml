@@ -42,7 +42,6 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   kafka:
-    version: "4.0.0"
     listeners:
       - name: plain
         port: 9092

@@ -119,3 +119,9 @@ Además de verificar desde la consola de OpenShift, puedes seguir el pipeline di
 ## Cierre del flujo
 
 Has demostrado el ciclo completo **Dev Spaces → Git → Tekton → OpenShift**, alineado con **GitOps** y con la ficha del componente en **Developer Hub**. Pudiste seguir el pipeline tanto desde la consola de OpenShift como desde la pestaña **CI** del componente en Developer Hub. Este es el modelo de trabajo que las organizaciones buscan al adoptar Developer Hub: el desarrollador permanece en un entorno coherente mientras la plataforma aplica estándares y automatización.
+
+### Capturas de Pantalla
+
+![Dev Spaces — IDE y pipeline]({{ site.baseurl }}/assets/images/neuroface.png)
+
+![Dev Spaces — Pipeline CI]({{ site.baseurl }}/assets/images/neuroface3.png)

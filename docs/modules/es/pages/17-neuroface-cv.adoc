@@ -306,3 +306,14 @@ Abrir *Mailpit* (`\https://n8n-mailpit-openshift-lightspeed.{cluster_domain}`) p
 | *Mailpit*
 | `\https://n8n-mailpit-openshift-lightspeed.{cluster_domain}`
 |===
+
+
+== Capturas de Pantalla
+
+image::ROOT:neuroface.png[NeuroFace — UI de registro facial,width=100%]
+
+image::ROOT:neuroface2.png[NeuroFace — Pipeline de detección,width=100%]
+
+image::ROOT:neuroface3.png[NeuroFace — Eventos Kafka,width=100%]
+
+image::ROOT:neuroface4.png[NeuroFace — Notificaciones Mailpit,width=100%]

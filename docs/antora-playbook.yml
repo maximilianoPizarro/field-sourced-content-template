@@ -143,10 +143,9 @@ ui:
         html { background: var(--color-bg-page); }
         .body {
           display: flex;
-          max-width: none !important;
           margin: 0 !important;
         }
-        main.article { max-width: none !important; }
+        main.article { }
         .body .nav-container {
           width: 230px;
           min-width: 230px;
@@ -177,17 +176,17 @@ ui:
         .nav-menu > .nav-list > .nav-item[data-depth="0"] ~ .nav-item[data-depth="0"] { display: none; }
         .body .content {
           flex: 1;
-          max-width: none !important;
+          max-width: 1100px;
           background: var(--color-bg-content);
-          min-height: 100vh;
         }
         .doc {
-          max-width: none !important;
-          margin: 0 !important;
+          max-width: 960px;
+          margin: 0 auto !important;
           padding: 2rem 3rem !important;
+          overflow-wrap: break-word;
         }
-        .article { max-width: none !important; }
-        .toolbar { max-width: none !important; display: none; }
+        .article { }
+        .toolbar { display: none; }
         .toc-sidebar {
           width: 220px;
           min-width: 220px;
@@ -221,13 +220,14 @@ ui:
           color: #1a1a1a;
           border-left: 4px solid var(--color-brand-red);
           padding-left: 12px;
-          margin-top: 2rem;
+          margin-top: 1.5rem;
         }
         .doc h3 { color: #333; }
         .doc a { color: var(--color-brand-blue); }
         .doc th { background: var(--color-brand-dark); color: #fff; }
         .doc td { border-bottom: 1px solid #e8e8e8; }
-        .doc table { width: 100%; border-collapse: collapse; }
+        .doc table { max-width: 100%; width: auto; border-collapse: collapse; table-layout: auto; }
+        .doc .tableblock { overflow-x: auto; }
         .admonitionblock {
           border-radius: 6px;
           margin: 1rem 0;
@@ -243,7 +243,8 @@ ui:
         pre.highlight code { font-size: 0.85rem; color: #24292f; }
         .three-container {
           width: 100%;
-          height: 500px;
+          min-height: 350px;
+          height: auto;
           border: 1px solid #333;
           border-radius: 12px;
           margin: 1.5rem 0;

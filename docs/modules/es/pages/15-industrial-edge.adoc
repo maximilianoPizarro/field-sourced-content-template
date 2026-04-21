@@ -248,6 +248,34 @@ Para explorar el despliegue Industrial Edge, sigue la guía del showroom:
 
 Para planificación de capacidad y opciones de infraestructura, consulta xref:16-ie-sizing.adoc[Planificación de capacidad e infraestructura].
 
+== Capturas de Pantalla
+
+image::ROOT:industrialedge.png[Industrial Edge — Vista general,width=100%]
+
+image::ROOT:industrialedge1.png[Industrial Edge — Sensores IoT,width=100%]
+
+image::ROOT:industrialedge2.png[Industrial Edge — AMQ Broker,width=100%]
+
+image::ROOT:industrialedge3.png[Industrial Edge — Kafka Streams,width=100%]
+
+image::ROOT:industrialedge4.png[Industrial Edge — Line Dashboard,width=100%]
+
+image::ROOT:industrialedge5.png[Industrial Edge — Camel K Integration,width=100%]
+
+image::ROOT:industrialedge6.png[Industrial Edge — MinIO Data Lake,width=100%]
+
+image::ROOT:industrialedge7.png[Industrial Edge — OpenShift AI,width=100%]
+
+image::ROOT:industrialedge8.png[Industrial Edge — Detección de anomalías,width=100%]
+
+image::ROOT:industrialedge9.png[Industrial Edge — GitOps ArgoCD,width=100%]
+
+image::ROOT:industrialedge10.png[Industrial Edge — Arquitectura completa,width=100%]
+
+image::ROOT:streams-multicluster.png[Kafka Streams — Arquitectura multi-cluster,width=100%]
+
+image::ROOT:camel.png[Kaoto — Diseñador visual de rutas Camel,width=100%]
+
 == Referencias
 
 * https://validatedpatterns.io/patterns/industrial-edge/[Red Hat Validated Patterns — Industrial Edge^]

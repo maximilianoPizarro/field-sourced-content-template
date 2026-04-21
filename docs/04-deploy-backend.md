@@ -121,3 +121,9 @@ Sustituye `YOUR_ROUTE_HOST` por el hostname que muestra la Route en OpenShift.
 ## Resumen
 
 Has recorrido el camino completo **Hub → plantilla → Gitea → Argo CD → Tekton → OpenShift → Notificación**, validando además la API en `/api/customers` y `/api/credits`. Cada componente usa un nombre único con prefijo de usuario para evitar colisiones en el entorno compartido. Este flujo es la base para los módulos de pipelines, frontend y Dev Spaces.
+
+### Capturas de Pantalla
+
+![Developer Hub — Creación de componente]({{ site.baseurl }}/assets/images/neuroface.png)
+
+![Developer Hub — Catálogo y componentes]({{ site.baseurl }}/assets/images/neuroface2.png)

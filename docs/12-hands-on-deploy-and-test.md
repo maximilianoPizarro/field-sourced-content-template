@@ -188,3 +188,13 @@ Go back to Developer Hub and explore:
 | **Token expiry** | Short-lived (minutes) | No expiry (revoke by deleting Secret) |
 
 > **Tip:** For quick terminal testing, **API Key** is faster. For production web apps, **OIDC** provides better security.
+
+### Screenshots
+
+![Developer Hub — Template Creation]({{ site.baseurl }}/assets/images/neuroface.png)
+
+![Developer Hub — Catalog Overview]({{ site.baseurl }}/assets/images/neuroface2.png)
+
+![Developer Hub — CI Pipeline]({{ site.baseurl }}/assets/images/neuroface3.png)
+
+![Developer Hub — Frontend and Notifications]({{ site.baseurl }}/assets/images/neuroface4.png)

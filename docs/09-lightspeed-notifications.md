@@ -122,3 +122,9 @@ Para verificar ambas funcionalidades en una sola actividad:
 ## Resumen
 
 Has explorado **Lightspeed** como asistente de IA integrado en Developer Hub, capaz de responder preguntas sobre la plataforma con contexto RAG, y el sistema de **Notificaciones** que proporciona visibilidad en tiempo real (in-app y por email) sobre el ciclo de vida de los componentes. Estas capacidades refuerzan la propuesta de Developer Hub como **portal integral** que no solo automatiza, sino que informa y asiste al desarrollador durante todo el flujo de trabajo.
+
+### Capturas de Pantalla
+
+![Developer Hub — Lightspeed y Notificaciones]({{ site.baseurl }}/assets/images/neuroface2.png)
+
+![Developer Hub — Mailpit Notificaciones]({{ site.baseurl }}/assets/images/neuroface4.png)

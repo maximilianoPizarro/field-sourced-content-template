@@ -100,3 +100,7 @@ Abre la **Route** o URL del frontend en el navegador. Comprueba que la interfaz 
 ## Resumen
 
 Has añadido **frontend** y **MCP** con plantillas, has verificado **GitOps** y **catálogo** (cada componente con nombre único `YOUR_USER-name`), has localizado **Gateway** y **HTTPRoute** que formalizan la conectividad segura del MCP, y has recibido notificaciones por cada componente creado. El siguiente módulo profundiza en **Argo CD**, entidades de **API** y políticas **Kuadrant**.
+
+### Capturas de Pantalla
+
+![Developer Hub — Frontend y Gateway]({{ site.baseurl }}/assets/images/neuroface4.png)

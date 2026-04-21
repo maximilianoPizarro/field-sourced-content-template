@@ -190,3 +190,13 @@ All 10 should return `200`. If you extend the loop to 130+ requests within one m
 | **Key management** | Keycloak issues tokens | Kubernetes Secrets with labels |
 
 Both patterns are powered by the same underlying stack: **Istio Gateway + HTTPRoute + Kuadrant policies**, demonstrating the flexibility of Red Hat Connectivity Link to support different authentication models within the same platform.
+
+### Screenshots
+
+![Developer Hub — Catalog and Components]({{ site.baseurl }}/assets/images/neuroface.png)
+
+![Developer Hub — Deployed Applications]({{ site.baseurl }}/assets/images/neuroface2.png)
+
+![Developer Hub — Pipeline and Topology]({{ site.baseurl }}/assets/images/neuroface3.png)
+
+![Developer Hub — API and Notifications]({{ site.baseurl }}/assets/images/neuroface4.png)

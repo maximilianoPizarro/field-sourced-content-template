@@ -163,6 +163,10 @@ curl -s http://camel-cdc-processor.kafka-cdc.svc:8080/q/metrics | grep camel
 
 Estas métricas son recogidas por el PodMonitor y visualizadas en el dashboard de Grafana "Kafka CDC Pipeline".
 
+== Capturas de Pantalla
+
+image::ROOT:camel.png[Kaoto — Diseñador visual de rutas Camel en DevSpaces,width=100%]
+
 == Documentación Oficial
 
 * https://docs.redhat.com/en/documentation/red_hat_build_of_apache_camel[Red Hat build of Apache Camel^] — Distribución soportada de Apache Camel

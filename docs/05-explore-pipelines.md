@@ -98,3 +98,7 @@ Así conectas la vista "infraestructura" (OpenShift/Tekton) con la vista "produc
 ## Resumen
 
 Has seguido un **PipelineRun** tarea a tarea tanto desde la pestaña **CI** de Developer Hub como desde la consola de OpenShift, validado el estado del despliegue en **Topology** y relacionado el componente con su entrada en el catálogo. Esto completa la visión operativa del backend Neuralbank antes de añadir frontend y MCP.
+
+### Capturas de Pantalla
+
+![Developer Hub — Pipeline CI y Topology]({{ site.baseurl }}/assets/images/neuroface3.png)

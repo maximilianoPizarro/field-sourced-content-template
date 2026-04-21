@@ -140,3 +140,31 @@ Para eliminar una instancia, ejecutar el template **Remove Component (Cleanup)**
 | Pods | ~8-10 | ~5-6 |
 
 Para un worker pool de 48 vCPU / 192 GiB, se pueden ejecutar ~15-20 instancias con Kafka 3-node, o ~30-35 instancias con Kafka 1-node.
+
+### Capturas de Pantalla
+
+![Industrial Edge — Vista general]({{ site.baseurl }}/assets/images/industrialedge.png)
+
+![Industrial Edge — Sensores IoT]({{ site.baseurl }}/assets/images/industrialedge1.png)
+
+![Industrial Edge — AMQ Broker]({{ site.baseurl }}/assets/images/industrialedge2.png)
+
+![Industrial Edge — Kafka Streams]({{ site.baseurl }}/assets/images/industrialedge3.png)
+
+![Industrial Edge — Line Dashboard]({{ site.baseurl }}/assets/images/industrialedge4.png)
+
+![Industrial Edge — Camel K Integration]({{ site.baseurl }}/assets/images/industrialedge5.png)
+
+![Industrial Edge — MinIO Data Lake]({{ site.baseurl }}/assets/images/industrialedge6.png)
+
+![Industrial Edge — OpenShift AI]({{ site.baseurl }}/assets/images/industrialedge7.png)
+
+![Industrial Edge — Detección de anomalías]({{ site.baseurl }}/assets/images/industrialedge8.png)
+
+![Industrial Edge — GitOps ArgoCD]({{ site.baseurl }}/assets/images/industrialedge9.png)
+
+![Industrial Edge — Arquitectura completa]({{ site.baseurl }}/assets/images/industrialedge10.png)
+
+![Kafka Streams — Multi-cluster]({{ site.baseurl }}/assets/images/streams-multicluster.png)
+
+![Kaoto — Diseñador visual de rutas Camel]({{ site.baseurl }}/assets/images/camel.png)

@@ -1583,7 +1583,13 @@ spec:
   podMetricsEndpoints:
   - interval: 30s
     path: /q/metrics
-    port: "8080"
+    targetPort: 8080
   selector:
-    matchLabels:
-      app: customer-onboarding
+    matchExpressions:
+    - key: app
+      operator: In
+      values:
+      - customer-onboarding
+      - mcpclusterreport
+    - key: sonataflow.org/workflow-app
+      operator: Exists

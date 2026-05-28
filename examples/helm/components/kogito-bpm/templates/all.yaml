@@ -18,6 +18,13 @@ spec:
       enabled: true
       podTemplate:
         container:
+          resources:
+            requests:
+              cpu: 100m
+              memory: 1536Mi
+            limits:
+              cpu: 500m
+              memory: 2Gi
           env:
           - name: QUARKUS_HTTP_CORS
             value: "true"
@@ -33,8 +40,274 @@ spec:
             value: "false"
           - name: QUARKUS_OIDC_TENANT_ENABLED
             value: "false"
+          - name: QUARKUS_HTTP_HTTP2
+            value: "false"
+          startupProbe:
+            httpGet:
+              path: /q/health/ready
+              port: 8080
+              scheme: HTTP
+            failureThreshold: 60
+            periodSeconds: 5
+            initialDelaySeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /q/health/ready
+              port: 8080
+              scheme: HTTP
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /q/health/live
+              port: 8080
+              scheme: HTTP
+            periodSeconds: 30
+            failureThreshold: 3
+            initialDelaySeconds: 120
     jobService:
       enabled: true
+---
+# Lightweight HTTP bridge: SonataFlow REST cannot drive MCP session handshake (initialize + tools/call)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcp-invoker-bridge
+  namespace: kogito-bpm
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+  labels:
+    app: mcp-invoker-bridge
+data:
+  server.py: |
+    import json
+    import http.client
+    import os
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    MCP_HOST = os.environ.get("MCP_HOST", "kafka-mcp-server.kafka-cdc.svc.cluster.local")
+    MCP_PORT = int(os.environ.get("MCP_PORT", "8080"))
+    MAILPIT_HOST = os.environ.get("MAILPIT_HOST", "n8n-mailpit.openshift-lightspeed.svc")
+    MAILPIT_PORT = int(os.environ.get("MAILPIT_PORT", "8025"))
+    LISTEN_PORT = int(os.environ.get("LISTEN_PORT", "8090"))
+
+    def unwrap(payload):
+        if not isinstance(payload, dict):
+            return {}
+        merged = dict(payload)
+        for key in ("body", "workflowdata"):
+            inner = payload.get(key)
+            if isinstance(inner, dict):
+                merged.update(inner)
+        return merged
+
+    def mcp_request(body, session_id=None):
+        conn = http.client.HTTPConnection(MCP_HOST, MCP_PORT, timeout=60)
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        }
+        if session_id:
+            headers["Mcp-Session-Id"] = session_id
+        conn.request("POST", "/mcp", json.dumps(body), headers)
+        resp = conn.getresponse()
+        raw = resp.read().decode("utf-8", errors="replace")
+        resp_headers = {k.lower(): v for k, v in resp.getheaders()}
+        data = raw
+        for line in raw.split("\n"):
+            if line.startswith("data: "):
+                data = line[6:]
+                break
+        conn.close()
+        return resp.status, resp_headers, data
+
+    def call_mcp_tool(tool_name, tool_args):
+        _, headers, _ = mcp_request({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": {"name": "mcp-invoker-bridge", "version": "1.0"},
+            },
+        })
+        sid = headers.get("mcp-session-id")
+        if not sid:
+            raise RuntimeError("MCP initialize missing Mcp-Session-Id header")
+        mcp_request({"jsonrpc": "2.0", "method": "notifications/initialized"}, sid)
+        _, _, body = mcp_request({
+            "jsonrpc": "2.0",
+            "id": 3,
+            "method": "tools/call",
+            "params": {"name": tool_name, "arguments": tool_args},
+        }, sid)
+        parsed = json.loads(body or "{}")
+        if parsed.get("error"):
+            raise RuntimeError(json.dumps(parsed["error"]))
+        content = parsed.get("result", {}).get("content", [])
+        if content and isinstance(content[0], dict):
+            return content[0].get("text", json.dumps(parsed.get("result")))
+        return json.dumps(parsed.get("result", {}))
+
+    def send_mailpit(recipient, subject, text):
+        mail = {
+            "From": {"Name": "SonataFlow MCP", "Email": "sonataflow-mcp@neuralbank.io"},
+            "To": [{"Name": "Workshop", "Email": recipient}],
+            "Subject": subject,
+            "Text": text,
+        }
+        conn = http.client.HTTPConnection(MAILPIT_HOST, MAILPIT_PORT, timeout=15)
+        conn.request("POST", "/api/v1/send", json.dumps(mail), {"Content-Type": "application/json"})
+        resp = conn.getresponse()
+        raw = resp.read().decode("utf-8", errors="replace")
+        conn.close()
+        if resp.status >= 400:
+            raise RuntimeError(f"Mailpit HTTP {resp.status}: {raw}")
+        return raw
+
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, fmt, *args):
+            return
+
+        def do_GET(self):
+            if self.path in ("/health", "/q/health"):
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b"ok")
+            else:
+                self.send_response(404)
+                self.end_headers()
+
+        def do_POST(self):
+            length = int(self.headers.get("Content-Length", 0))
+            payload = json.loads(self.rfile.read(length) or b"{}")
+            data = unwrap(payload)
+            try:
+                if self.path == "/call-tool":
+                    tool_name = data.get("toolName", "list_topics")
+                    tool_args = data.get("toolArgs") or {}
+                    result = call_mcp_tool(tool_name, tool_args)
+                    body = json.dumps({"result": result}).encode()
+                    self.send_response(200)
+                elif self.path == "/send-mail":
+                    recipient = (
+                        data.get("recipient")
+                        or (data.get("mail", {}).get("To") or [{}])[0].get("Email")
+                        or "workshop.demo@neuralbank.io"
+                    )
+                    namespace = data.get("namespace", "kafka-cdc")
+                    tool_name = data.get("toolName", "list_topics")
+                    mcp = data.get("mcpResult") or {}
+                    subject = (
+                        data.get("subject")
+                        or data.get("mail", {}).get("Subject")
+                        or f"[SonataFlow] MCP cluster report | {namespace}"
+                    )
+                    text = (
+                        data.get("text")
+                        or data.get("mail", {}).get("Text")
+                        or f"MCP kafka-mcp-server | tool={tool_name} | ns={namespace}\n\n{mcp.get('result', mcp.get('error', mcp))}"
+                    )
+                    result = send_mailpit(recipient, subject, text)
+                    body = json.dumps({"mailpit": result}).encode()
+                    self.send_response(200)
+                else:
+                    self.send_response(404)
+                    self.end_headers()
+                    return
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            except Exception as exc:
+                body = json.dumps({"error": str(exc)}).encode()
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(body)
+
+    if __name__ == "__main__":
+        HTTPServer(("0.0.0.0", LISTEN_PORT), Handler).serve_forever()
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-invoker-bridge
+  namespace: kogito-bpm
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+  labels:
+    app: mcp-invoker-bridge
+    app.kubernetes.io/part-of: kogito-bpm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-invoker-bridge
+  template:
+    metadata:
+      labels:
+        app: mcp-invoker-bridge
+    spec:
+      containers:
+      - name: bridge
+        image: docker.io/library/python:3.12-alpine
+        command: ["python", "/app/server.py"]
+        ports:
+        - containerPort: 8090
+          name: http
+        env:
+        - name: MCP_HOST
+          value: kafka-mcp-server.kafka-cdc.svc.cluster.local
+        - name: MCP_PORT
+          value: "8080"
+        - name: LISTEN_PORT
+          value: "8090"
+        volumeMounts:
+        - name: script
+          mountPath: /app
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8090
+          initialDelaySeconds: 3
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8090
+          initialDelaySeconds: 5
+          periodSeconds: 30
+      volumes:
+      - name: script
+        configMap:
+          name: mcp-invoker-bridge
+          defaultMode: 0755
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-invoker-bridge
+  namespace: kogito-bpm
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+  labels:
+    app: mcp-invoker-bridge
+spec:
+  selector:
+    app: mcp-invoker-bridge
+  ports:
+  - name: http
+    port: 8090
+    targetPort: 8090
 ---
 apiVersion: sonataflow.org/v1alpha08
 kind: SonataFlow
@@ -203,6 +476,144 @@ spec:
         value: http://sonataflow-data-index-http.kogito-bpm.svc.cluster.local:8080
       - name: KOGITO_JOBSERVICE_URL
         value: http://sonataflow-jobs-http.kogito-bpm.svc.cluster.local:8080
+      startupProbe:
+        httpGet:
+          path: /q/health/live
+          port: 8080
+          scheme: HTTP
+        failureThreshold: 30
+        periodSeconds: 10
+        initialDelaySeconds: 5
+      readinessProbe:
+        httpGet:
+          path: /q/health/live
+          port: 8080
+          scheme: HTTP
+        periodSeconds: 10
+        failureThreshold: 3
+      livenessProbe:
+        httpGet:
+          path: /q/health/live
+          port: 8080
+          scheme: HTTP
+        periodSeconds: 30
+        failureThreshold: 3
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcpclusterreport-props
+  namespace: kogito-bpm
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+  labels:
+    app: mcpclusterreport
+data:
+  application.properties: |
+    quarkus.http.cors=true
+    quarkus.http.cors.origins=/.*/
+---
+# SonataFlow workflow: invoke kafka MCP server and send report via Mailpit
+apiVersion: sonataflow.org/v1alpha08
+kind: SonataFlow
+metadata:
+  name: mcpclusterreport
+  namespace: kogito-bpm
+  annotations:
+    sonataflow.org/description: "Calls kafka-mcp-server via MCP and emails the report through Mailpit"
+    sonataflow.org/version: "1.0.0"
+    argocd.argoproj.io/sync-wave: "9"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  labels:
+    app: mcpclusterreport
+    app.kubernetes.io/part-of: kogito-bpm
+    app.openshift.io/runtime: kogito
+spec:
+  flow:
+    start: NormalizeInput
+    functions:
+      - name: normalizeInput
+        type: expression
+        operation: |
+          . + {
+            namespace: (.namespace // "kafka-cdc"),
+            toolName: (.toolName // "list_topics"),
+            topicName: (.topicName // "bpm.onboarding.metrics"),
+            recipient: (.recipient // "workshop.demo@neuralbank.io")
+          }
+      - name: callMcpBridge
+        type: custom
+        operation: "rest:post:http://mcp-invoker-bridge.kogito-bpm.svc:8090/call-tool"
+      - name: sendMailpit
+        type: custom
+        operation: "rest:post:http://mcp-invoker-bridge.kogito-bpm.svc:8090/send-mail"
+      - name: logComplete
+        type: custom
+        operation: sysout
+    states:
+      - name: NormalizeInput
+        type: operation
+        actions:
+          - name: defaults
+            functionRef:
+              refName: normalizeInput
+        transition: CallMcpTool
+
+      - name: CallMcpTool
+        type: operation
+        actions:
+          - name: invokeMcp
+            functionRef:
+              refName: callMcpBridge
+            actionDataFilter:
+              fromStateData: |
+                {toolName: .toolName, toolArgs: (if .toolArgs then .toolArgs else {} end)}
+              toStateData: ".mcpResult"
+        transition: SendReportEmail
+
+      - name: SendReportEmail
+        type: operation
+        actions:
+          - name: sendMail
+            functionRef:
+              refName: sendMailpit
+            actionDataFilter:
+              fromStateData: "."
+          - name: logDone
+            functionRef:
+              refName: logComplete
+              arguments:
+                message: "MCP report emailed via Mailpit"
+        end: true
+  podTemplate:
+    container:
+      env:
+      - name: KOGITO_DATAINDEX_URL
+        value: http://sonataflow-data-index-http.kogito-bpm.svc.cluster.local:8080
+      - name: KOGITO_JOBSERVICE_URL
+        value: http://sonataflow-jobs-http.kogito-bpm.svc.cluster.local:8080
+      startupProbe:
+        httpGet:
+          path: /q/health/live
+          port: 8080
+          scheme: HTTP
+        failureThreshold: 30
+        periodSeconds: 10
+        initialDelaySeconds: 5
+      readinessProbe:
+        httpGet:
+          path: /q/health/live
+          port: 8080
+          scheme: HTTP
+        periodSeconds: 10
+        failureThreshold: 3
+      livenessProbe:
+        httpGet:
+          path: /q/health/live
+          port: 8080
+          scheme: HTTP
+        periodSeconds: 30
+        failureThreshold: 3
 ---
 # HTTP port alias for Data Index (workaround: operator exposes port 80 as h2c; workflow health check needs HTTP/1.1 on 8080)
 apiVersion: v1
@@ -675,14 +1086,16 @@ spec:
           restartPolicy: Never
           containers:
           - name: trigger
-            image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+            image: quay.io/curl/curl:8.5.0
             command: ["sh", "-c"]
             args:
             - |
               NAMES="Ana Luis Sofia Diego Elena Pablo"
               TIERS="5000 25000 75000"
-              NAME=$(echo $NAMES | tr ' ' '\n' | shuf -n1 2>/dev/null || echo "Demo")
-              AMOUNT=$(echo $TIERS | tr ' ' '\n' | shuf -n1 2>/dev/null || echo "25000")
+              set -- $NAMES
+              NAME=$(eval "echo \${$((RANDOM % $# + 1))}")
+              set -- $TIERS
+              AMOUNT=$(eval "echo \${$((RANDOM % $# + 1))}")
               ID=$((RANDOM + 10000))
               curl -s -X POST http://customer-onboarding.kogito-bpm.svc:8080/ \
                 -H "Content-Type: application/json" \
@@ -690,5 +1103,54 @@ spec:
                 -H "ce-type: cdc.public.customers" \
                 -H "ce-source: debezium/cdc" \
                 -H "ce-id: cron-${ID}" \
-                -d "{\"payload\":{\"after\":{\"id\":${ID},\"first_name\":\"${NAME}\",\"last_name\":\"CronDemo\",\"email\":\"${NAME,,}.demo@neuralbank.io\",\"amount\":${AMOUNT}},\"op\":\"c\",\"source\":{\"table\":\"customers\"}}}"
+                -d "{\"payload\":{\"after\":{\"id\":${ID},\"first_name\":\"${NAME}\",\"last_name\":\"CronDemo\",\"email\":\"${NAME}.demo@neuralbank.io\",\"amount\":${AMOUNT}},\"op\":\"c\",\"source\":{\"table\":\"customers\"}}}"
               echo " -> triggered ${NAME} amount=${AMOUNT}"
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: mcpclusterreport
+  namespace: kogito-bpm
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+spec:
+  host: mcpclusterreport-kogito-bpm.{{ .Values.clusterDomain }}
+  to:
+    kind: Service
+    name: mcpclusterreport
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+# CronJob — periodic MCP + Mailpit report (SonataFlow workflow)
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sonataflow-mcp-mail-trigger
+  namespace: kogito-bpm
+  annotations:
+    argocd.argoproj.io/sync-wave: "11"
+spec:
+  schedule: "0 */6 * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  concurrencyPolicy: Replace
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 120
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+          - name: trigger
+            image: quay.io/curl/curl:8.5.0
+            command: ["sh", "-c"]
+            args:
+            - |
+              curl -s -X POST http://mcpclusterreport.kogito-bpm.svc:8080/ \
+                -H "Content-Type: application/json" \
+                -d '{"namespace":"kafka-cdc","toolName":"list_topics","recipient":"workshop.demo@neuralbank.io"}'
+              echo " -> mcpclusterreport triggered"

@@ -97,9 +97,7 @@ metadata:
   name: kogito-bpm
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-  labels:
-    istio.io/dataplane-mode: ambient
-    istio-discovery: enabled
+  # Plain HTTP between SonataFlow, Data Index, and Jobs Service — ambient mesh breaks in-cluster HTTP
 ---
 apiVersion: v1
 kind: Namespace

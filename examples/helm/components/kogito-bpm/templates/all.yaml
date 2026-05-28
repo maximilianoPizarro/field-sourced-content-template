@@ -196,6 +196,46 @@ spec:
               arguments:
                 message: "Onboarding complete"
         end: true
+  podTemplate:
+    container:
+      env:
+      - name: KOGITO_DATAINDEX_URL
+        value: http://sonataflow-data-index-http.kogito-bpm.svc.cluster.local:8080
+      - name: KOGITO_JOBSERVICE_URL
+        value: http://sonataflow-jobs-http.kogito-bpm.svc.cluster.local:8080
+---
+# HTTP port alias for Data Index (workaround: operator exposes port 80 as h2c; workflow health check needs HTTP/1.1 on 8080)
+apiVersion: v1
+kind: Service
+metadata:
+  name: sonataflow-data-index-http
+  namespace: kogito-bpm
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+spec:
+  selector:
+    sonataflow.org/service: sonataflow-platform-data-index-service
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sonataflow-jobs-http
+  namespace: kogito-bpm
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+spec:
+  selector:
+    sonataflow.org/service: sonataflow-platform-jobs-service
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
 ---
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaTopic

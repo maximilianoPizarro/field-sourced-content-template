@@ -21,8 +21,8 @@ argocd:
 # ============================================================
 connectivityLink:
   operators:
-    channel: stable-4.20
-    version: 4.20.4
+    channel: stable-4.21
+    version: 4.21.9
     # servicemeshoperator3: templates/servicemeshoperator3.yaml (omit here to avoid duplicate)
     subscriptions:
       - name: cluster-observability-operator
@@ -48,7 +48,7 @@ connectivityLink:
         source: community-operators
       - name: rhods-operator
         namespace: redhat-ods-operator
-        channel: stable-3.3
+        channel: stable-3.4
         source: redhat-operators
 
   # Argo CD Applications (order via sync-wave on Application metadata)

@@ -206,7 +206,7 @@ spec:
           fi
 
           echo "=== All patches applied ==="
-## rhods-operator Subscription removed — already managed by connectivityLink.operators.subscriptions in values.yaml (channel stable-2.25)
+## rhods-operator Subscription removed — already managed by connectivityLink.operators.subscriptions in values.yaml (channel stable-3.4)
 ## ---
 ## vLLM CPU model commented out to free cluster resources
 ## ---

@@ -199,5 +199,5 @@ Esta guía publicada sigue el patrón Validated Patterns *completo* (`values-glo
 | Operador | Por qué está acá
 
 | *OpenShift Integration Operator*
-| https://operatorhub.io/operator/openshift-integration-operator[Catálogo community de OperatorHub^] (`community-operators`, canal `alpha`). Ciclo de vida y plugin Kaoto en consola para Apache Camel. No es un producto soportado por Red Hat. Ver xref:19-openshift-integration-operator.adoc[módulo 19].
+| https://operatorhub.io/operator/openshift-integration-operator[Catálogo community de OperatorHub^] (`community-operators`, canal `candidate-v0`). Ciclo de vida y plugin Kaoto en consola para Apache Camel. No es un producto soportado por Red Hat. Ver xref:19-openshift-integration-operator.adoc[módulo 19].
 |===

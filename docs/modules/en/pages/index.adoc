@@ -199,5 +199,5 @@ This published guide follows the *full* Validated Pattern (`values-global.yaml` 
 | Operator | Why it is here
 
 | *OpenShift Integration Operator*
-| https://operatorhub.io/operator/openshift-integration-operator[OperatorHub community catalog^] (`community-operators`, channel `alpha`). Lifecycle and Kaoto console plugin for Apache Camel. Not a Red Hat supported product. See xref:19-openshift-integration-operator.adoc[module 19].
+| https://operatorhub.io/operator/openshift-integration-operator[OperatorHub community catalog^] (`community-operators`, channel `candidate-v0`). Lifecycle and Kaoto console plugin for Apache Camel. Not a Red Hat supported product. See xref:19-openshift-integration-operator.adoc[module 19].
 |===

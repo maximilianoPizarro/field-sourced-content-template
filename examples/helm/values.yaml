@@ -50,7 +50,7 @@ connectivityLink:
         source: redhat-operators
       - name: openshift-integration-operator
         namespace: openshift-integration
-        channel: alpha
+        channel: candidate-v0
         source: community-operators
 
   # Argo CD Applications (order via sync-wave on Application metadata)

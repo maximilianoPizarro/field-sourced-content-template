@@ -123,9 +123,15 @@ clusterGroup:
     redhat-ods-applications:
       operatorGroup: false
     redhat-ods-operator:
-      operatorGroup: false
+      # Required for the rhods-operator Subscription. Without an OperatorGroup
+      # OLM never creates an InstallPlan and Argo waits forever on that Subscription
+      # (child Applications never sync).
+      operatorGroup: true
+      targetNamespaces: []
 
   subscriptions:
+    # Do not set `csv:` / startingCSV. Pins go stale on the next RHDP catalog
+    # refresh, mark the Subscription Degraded, and clustergroup sync waves stall.
     cluster-observability-operator:
       name: cluster-observability-operator
       namespace: openshift-cluster-observability-operator
@@ -166,13 +172,11 @@ clusterGroup:
       namespace: rhbk-operator
       channel: stable-v26.4
       source: redhat-operators
-      csv: rhbk-operator.v26.4.9-opr.1
     rhdh:
       name: rhdh
       namespace: rhdh-operator
       channel: fast
       source: redhat-operators
-      csv: rhdh-operator.v1.8.3
     servicemesh:
       name: servicemeshoperator3
       namespace: openshift-operators
@@ -208,13 +212,11 @@ clusterGroup:
       namespace: openshift-opentelemetry-operator
       channel: stable
       source: redhat-operators
-      csv: opentelemetry-operator.v0.144.0-1
     devspaces:
       name: devspaces
       namespace: openshift-operators
       channel: stable
       source: redhat-operators
-      csv: devspacesoperator.v3.26.0
     lightspeed:
       name: lightspeed-operator
       namespace: openshift-lightspeed
@@ -223,7 +225,7 @@ clusterGroup:
     openshift-integration-operator:
       name: openshift-integration-operator
       namespace: openshift-integration
-      channel: alpha
+      channel: candidate-v0
       source: community-operators
 
   applications:

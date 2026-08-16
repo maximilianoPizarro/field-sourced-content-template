@@ -48,3 +48,22 @@ spec:
       requests:
         cpu: 125m
         memory: 256Mi
+  # Treat AtLatestKnown as Healthy even if a stale InstallPlanFailed/ResolutionFailed
+  # condition remains (common on RHDP when GitOps CRDs already exist). Otherwise
+  # clustergroup sync waves wait forever and child Applications never appear.
+  extraConfig:
+    resource.customizations.health.operators.coreos.com_Subscription: |
+      hs = {}
+      if obj.status ~= nil and obj.status.state == "AtLatestKnown" then
+        hs.status = "Healthy"
+        hs.message = "AtLatestKnown"
+        return hs
+      end
+      if obj.status ~= nil and obj.status.state == "UpgradeFailed" then
+        hs.status = "Degraded"
+        hs.message = obj.status.state
+        return hs
+      end
+      hs.status = "Progressing"
+      hs.message = "Waiting for operator install"
+      return hs

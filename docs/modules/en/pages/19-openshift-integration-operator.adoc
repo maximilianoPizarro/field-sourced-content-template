@@ -30,7 +30,7 @@
 
 https://maximilianopizarro.github.io/openshift-integration-operator/[OpenShift Integration Operator^] is the lifecycle and UX layer for Apache Camel on OpenShift. It does not replace Camel Quarkus. You design flows visually, try them ephemerally, then promote them to GitOps.
 
-The operator is listed in the https://operatorhub.io/operator/openshift-integration-operator[OperatorHub community catalog^] (`community-operators`, package `openshift-integration-operator`, channel `alpha`). Current CSV on OperatorHub is *0.8.2*. It is community software (Apache 2.0), not a Red Hat supported product.
+The operator is listed in the https://operatorhub.io/operator/openshift-integration-operator[OperatorHub community catalog^] (`community-operators`, package `openshift-integration-operator`, channel `candidate-v0`). Current CSV on OperatorHub is *0.8.2*. It is community software (Apache 2.0), not a Red Hat supported product.
 
 This full lab installs it with the Validated Patterns `clusterGroup.subscriptions` entry in `values-hub.yaml`. OpenShift GitOps reconciles a Subscription in namespace `openshift-integration` (`AllNamespaces`). After the CSV is `Succeeded`, the OpenShift Console shows *Integration Platform*.
 
@@ -50,7 +50,7 @@ metadata:
   name: openshift-integration-operator
   namespace: openshift-integration
 spec:
-  channel: alpha
+  channel: candidate-v0
   name: openshift-integration-operator
   source: community-operators
   sourceNamespace: openshift-marketplace
@@ -184,7 +184,7 @@ oc get consoleplugin
 oc get crd integrationflows.platform.io
 ----
 
-Expect CSV `openshift-integration-operator.v0.8.2` (or newer on channel `alpha`) in phase `Succeeded`, and ConsolePlugin `integration-console-plugin`. Then open *Integration Platform* in the console.
+Expect CSV `openshift-integration-operator.v0.8.2` (or newer on channel `candidate-v0`) in phase `Succeeded`, and ConsolePlugin `integration-console-plugin`. Then open *Integration Platform* in the console.
 
 == Official documentation
 

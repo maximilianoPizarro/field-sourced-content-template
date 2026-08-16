@@ -30,7 +30,7 @@
 
 https://maximilianopizarro.github.io/openshift-integration-operator/[OpenShift Integration Operator^] es la capa de ciclo de vida y UX de Apache Camel sobre OpenShift. No reemplaza Camel Quarkus. Diseñás flujos de forma visual, los probás en modo efímero y los promovés a GitOps.
 
-El operador está en el https://operatorhub.io/operator/openshift-integration-operator[catálogo community de OperatorHub^] (`community-operators`, paquete `openshift-integration-operator`, canal `alpha`). El CSV actual en OperatorHub es *0.8.2*. Es software community (Apache 2.0), no un producto soportado por Red Hat.
+El operador está en el https://operatorhub.io/operator/openshift-integration-operator[catálogo community de OperatorHub^] (`community-operators`, paquete `openshift-integration-operator`, canal `candidate-v0`). El CSV actual en OperatorHub es *0.8.2*. Es software community (Apache 2.0), no un producto soportado por Red Hat.
 
 Este lab completo lo instala con la entrada `clusterGroup.subscriptions` de `values-hub.yaml`. OpenShift GitOps reconcilia un Subscription en el namespace `openshift-integration` (`AllNamespaces`). Cuando el CSV queda en `Succeeded`, la consola de OpenShift muestra *Integration Platform*.
 
@@ -50,7 +50,7 @@ metadata:
   name: openshift-integration-operator
   namespace: openshift-integration
 spec:
-  channel: alpha
+  channel: candidate-v0
   name: openshift-integration-operator
   source: community-operators
   sourceNamespace: openshift-marketplace
@@ -184,7 +184,7 @@ oc get consoleplugin
 oc get crd integrationflows.platform.io
 ----
 
-Esperá el CSV `openshift-integration-operator.v0.8.2` (o más nuevo en el canal `alpha`) en fase `Succeeded`, y el ConsolePlugin `integration-console-plugin`. Después abrí *Integration Platform* en la consola.
+Esperá el CSV `openshift-integration-operator.v0.8.2` (o más nuevo en el canal `candidate-v0`) en fase `Succeeded`, y el ConsolePlugin `integration-console-plugin`. Después abrí *Integration Platform* en la consola.
 
 == Documentación oficial
 

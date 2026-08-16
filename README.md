@@ -242,14 +242,22 @@ This parameter drives all user provisioning via Helm `range` loops:
 | Backstage RBAC assignments | `developer-hub` | 1 policy line (`role:default/authenticated`) |
 | Workshop registration seats | `workshop-registration` | 1 seat (up to `maxUsers`) |
 | OpenShift htpasswd users | `oauth-users` | 1 line in IdP `workshop-users` |
+| OpenShift Group `workshop-attendees` | `oauth-users` | `user1`…`userN` → console viewer |
+| `platformadmin` ClusterRoleBinding | `oauth-users` | `cluster-admin` |
 
 ### Pre-deployed Components
 
 Shared demo workloads (Kafka CDC, Industrial Edge, NeuroFace) live in platform namespaces (`kafka-cdc`, `industrial-edge-*`, `neuroface`). Each attendee scaffolds extra apps into **`userN-apps`**. There is no `neuralbank-stack` or `nfl-wallet-prod` namespace.
 
-### Access Model: Developer Hub as Single Pane of Glass
+### Access Model: Developer Hub and OpenShift Console
 
-Users interact exclusively through **Developer Hub** — no OpenShift Console access required:
+Attendees still work primarily in **Developer Hub**. They also log in to the OpenShift Console (`workshop-users` htpasswd) to open console plugins (Lightspeed, Integration Platform) and inspect shared lab namespaces.
+
+| Identity | OpenShift RBAC | What they can do |
+|----------|----------------|------------------|
+| `platformadmin` | **`cluster-admin`** | Operators, all namespaces, Quick Try, any console module |
+| `user1`…`userN` | **`workshop-console-viewer`** (get/list/watch cluster-wide) + **`admin`** on `userN-apps` / `userN-devspaces` + **`edit`** on `openshift-integration` | See Kafka, NeuroFace, Industrial Edge, Lightspeed, Integration Flows; scaffold into their own namespaces; Quick Try in `openshift-integration` |
+| `user1`…`userN` | **not** `cluster-admin` | Cannot delete shared Kafka / Pattern / operators |
 
 | Capability | Where | How |
 |------------|-------|-----|
@@ -265,7 +273,7 @@ Users interact exclusively through **Developer Hub** — no OpenShift Console ac
 
 ### DevSpaces Authentication via Keycloak OIDC
 
-DevSpaces is configured to authenticate users via the same **Keycloak OIDC** provider used by Developer Hub, eliminating the need for OpenShift user accounts:
+DevSpaces authenticates via the same **Keycloak OIDC** provider as Developer Hub. The OpenShift Console uses the htpasswd IdP `workshop-users` (`userN` / `platformadmin`, password `Welcome123!`).
 
 ```yaml
 # CheCluster spec.networking.auth

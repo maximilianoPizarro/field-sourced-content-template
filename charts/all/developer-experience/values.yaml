@@ -58,7 +58,7 @@ showroom:
 userInfo:
   enabled: true
   title: "Event-Driven Architecture Workshop"
-  instructions: "Open Showroom first. OpenShift / Gitea / Developer Hub: user1…userN / Welcome123!. Registration, Kafka Console, and Argo CD URLs are listed on this page."
+  instructions: "Open Showroom first. OpenShift console: IdP workshop-users. platformadmin is cluster-admin; user1…userN can view lab namespaces. Password Welcome123!."
 
 # Injected by parent chart / Pattern extraLocalClusterDomainFields
 deployer:

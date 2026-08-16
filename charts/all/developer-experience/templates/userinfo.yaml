@@ -26,6 +26,8 @@ data:
   user_count: {{ $userCount | quote }}
   workshop_user: "user1"
   workshop_password: "Welcome123!"
+  openshift_idp: "workshop-users"
+  platformadmin_role: "cluster-admin"
   openshift_users: {{ printf "user1 … user%s / Welcome123! (also platformadmin)" ($userCount | toString) | quote }}
   showroom_url: {{ printf "https://showroom-showroom.%s" $domain | quote }}
   registration_url: {{ printf "https://workshop-registration.%s" $domain | quote }}

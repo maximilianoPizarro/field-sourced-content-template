@@ -117,3 +117,94 @@ spec:
 
           echo "OAuth patched. Users can log in via 'workshop-users' provider."
           echo "OAuth pods will restart automatically (~2 min)."
+---
+# OpenShift Group for htpasswd attendees (user1…userN). platformadmin is bound separately.
+apiVersion: user.openshift.io/v1
+kind: Group
+metadata:
+  name: workshop-attendees
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+users:
+{{- range $i := until $userCount }}
+- user{{ add1 $i }}
+{{- end }}
+---
+# Instructor / platform engineer: full cluster scope (Operators, all lab namespaces, console plugins).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: platformadmin-cluster-admin
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: platformadmin
+---
+# Read-only cluster access so the OpenShift console can list Kafka, IntegrationFlow,
+# NeuroFace, Industrial Edge, Lightspeed, Operators, and CRDs (not only userN-apps).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: workshop-console-viewer
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch"]
+- nonResourceURLs: ["*"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: workshop-attendees-console-viewer
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: workshop-console-viewer
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: workshop-attendees
+---
+# Metrics in Developer/Administrator Observe (if the ClusterRole exists on the cluster).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: workshop-attendees-cluster-monitoring-view
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-monitoring-view
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: workshop-attendees
+---
+# Module 19: list/create/update IntegrationFlow and pause/resume in the console plugin.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: workshop-attendees-integration-edit
+  namespace: openshift-integration
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: workshop-attendees

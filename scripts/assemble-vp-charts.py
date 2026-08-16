@@ -58,7 +58,7 @@ LITE_WRAP = {
 }
 
 CHART_META = {
-    "platform": "Namespaces, OAuth htpasswd users, console links, GitOps tuning",
+    "platform": "Namespaces, OAuth htpasswd users, workshop RBAC, console links, GitOps tuning",
     "identity-scm": "RHBK plus Gitea Route/Job (upstream Gitea chart is a separate Application)",
     "developer-experience": "Developer Hub, ApplicationSets, Showroom, registration, DevSpaces",
     "cdc-pipeline": "Kafka CDC, Apicurio, Camel, Mailpit, Kogito, cleanup",

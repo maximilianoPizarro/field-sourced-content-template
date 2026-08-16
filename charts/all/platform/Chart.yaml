@@ -1,6 +1,6 @@
 apiVersion: v2
 name: platform
-description: Namespaces, OAuth htpasswd users, console links, GitOps tuning
+description: Namespaces, OAuth htpasswd users, workshop RBAC, console links, GitOps tuning
 type: application
 version: 0.1.0
 appVersion: "1.0"

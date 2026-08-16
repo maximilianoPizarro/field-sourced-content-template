@@ -20,7 +20,6 @@ metadata:
   namespace: kafka-cdc
 spec:
   kafka:
-    version: "4.0.0"
     replicas: 3
     listeners:
       - name: plain

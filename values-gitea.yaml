@@ -1,5 +1,10 @@
-# Extra values for the upstream Gitea chart (clusterGroup.applications.gitea).
+# Extra values for the upstream Gitea chart 12.5 (clusterGroup.applications.gitea).
 # ROOT_URL is set via a Helm override using global.localClusterDomain.
+#
+# Subcharts (PostgreSQL / Valkey) use Bitnami compatibility helpers; keep
+# adaptSecurityContext=force so they drop fixed UIDs under OpenShift.
+# The Gitea Deployment itself does not use those helpers: it must keep
+# UID/fsGroup 1000 plus anyuid SCC (charts/all/identity-scm).
 global:
   compatibility:
     openshift:
@@ -14,8 +19,14 @@ gitea:
       ROOT_URL: ""
 image:
   rootless: true
+serviceAccount:
+  create: true
+  name: gitea
+# RWO Ceph RBD cannot Multi-Attach during RollingUpdate.
+strategy:
+  type: Recreate
 podSecurityContext:
-  fsGroup: null
+  fsGroup: 1000
 containerSecurityContext:
   allowPrivilegeEscalation: false
   capabilities:
@@ -23,6 +34,8 @@ containerSecurityContext:
       - ALL
   readOnlyRootFilesystem: true
   runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
 initContainers:
   resources:
     limits:
@@ -31,14 +44,25 @@ initContainers:
     requests:
       cpu: 50m
       memory: 64Mi
+# Chart templates hardcode secret defaultMode: 110 (decimal). YAML 1.2 does
+# not parse 0110 as octal, so init scripts are execute-only and the kernel
+# cannot read the shebang. Remount the same Secret as 0755 over /usr/sbinx.
+extraVolumes:
+  - name: init-executable
+    secret:
+      secretName: gitea-init
+      defaultMode: 493
+extraInitVolumeMounts:
+  - name: init-executable
+    mountPath: /usr/sbinx
 postgresql-ha:
   enabled: false
 postgresql:
   enabled: true
-redis-cluster:
-  enabled: false
-redis:
+valkey-cluster:
   enabled: true
+valkey:
+  enabled: false
 persistence:
   enabled: true
   size: 10Gi

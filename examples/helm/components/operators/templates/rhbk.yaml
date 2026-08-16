@@ -18,8 +18,6 @@ metadata:
     argocd.argoproj.io/sync-wave: "3"
 spec:
   channel: stable-v26.4
-  # Pin to RHBK 26.4; verify: oc get packagemanifest rhbk-operator -n openshift-marketplace -o jsonpath='{.status.channels[*].currentCSV}'
-  startingCSV: rhbk-operator.v26.4.9-opr.1
   installPlanApproval: Automatic
   name: rhbk-operator
   source: redhat-operators

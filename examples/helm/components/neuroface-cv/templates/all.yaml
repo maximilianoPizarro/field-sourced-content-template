@@ -890,6 +890,7 @@ metadata:
   namespace: neuroface
   annotations:
     argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     openshift.io/display-name: "llama.cpp (OpenAI-compatible)"
     opendatahub.io/apiProtocol: REST
     opendatahub.io/template-display-name: "llama.cpp Runtime"
@@ -951,6 +952,7 @@ metadata:
   namespace: neuroface
   annotations:
     argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     serving.kserve.io/deploymentMode: RawDeployment
     openshift.io/display-name: "Granite 3.1 2B Instruct"
     opendatahub.io/apiProtocol: REST
@@ -1165,7 +1167,7 @@ rules:
   - apiGroups: [""]
     resources: ["secrets"]
     resourceNames: ["cdc-cluster-cluster-ca-cert", "cdc-user"]
-    verbs: ["get"]
+    verbs: ["get", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -1219,57 +1221,59 @@ subjects:
     name: kafka-secret-sync
     namespace: neuroface
 ---
-apiVersion: batch/v1
-kind: Job
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: kafka-secret-sync-{{ .Release.Revision | default "1" }}
+  name: kafka-secret-sync
   namespace: neuroface
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-    argocd.argoproj.io/hook: Sync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
-  backoffLimit: 4
-  ttlSecondsAfterFinished: 300
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-secret-sync
   template:
+    metadata:
+      labels:
+        app: kafka-secret-sync
     spec:
       serviceAccountName: kafka-secret-sync
-      restartPolicy: OnFailure
       containers:
         - name: sync
           image: registry.redhat.io/openshift4/ose-cli:latest
           command: ["bash", "-c"]
           args:
             - |
-              MAX_WAIT=300
-              INTERVAL=10
-              ELAPSED=0
-              echo "Waiting for Kafka secrets in kafka-cdc namespace..."
-              while [ $ELAPSED -lt $MAX_WAIT ]; do
-                if oc get secret cdc-cluster-cluster-ca-cert -n kafka-cdc >/dev/null 2>&1 && \
-                   oc get secret cdc-user -n kafka-cdc >/dev/null 2>&1; then
-                  echo "Kafka secrets found after ${ELAPSED}s"
-                  break
+              set -euo pipefail
+              copy_secret() {
+                local SECRET_NAME="$1"
+                local tmp
+                tmp=$(mktemp -d)
+                oc extract "secret/${SECRET_NAME}" -n kafka-cdc --to="${tmp}" --confirm
+                oc create secret generic "$SECRET_NAME" -n neuroface --from-file="${tmp}" \
+                  --dry-run=client -o yaml | oc apply -f -
+                rm -rf "${tmp}"
+              }
+              echo "Waiting for Kafka secrets in kafka-cdc..."
+              while true; do
+                if oc get secret cdc-cluster-cluster-ca-cert -n kafka-cdc >/dev/null 2>&1 \
+                   && oc get secret cdc-user -n kafka-cdc >/dev/null 2>&1; then
+                  copy_secret cdc-cluster-cluster-ca-cert
+                  copy_secret cdc-user
+                  echo "Secret sync complete; sleeping 60s"
+                else
+                  echo "Kafka secrets not ready yet; retrying in 60s"
                 fi
-                echo "Secrets not ready yet (${ELAPSED}/${MAX_WAIT}s)... waiting"
-                sleep $INTERVAL
-                ELAPSED=$((ELAPSED + INTERVAL))
+                sleep 60
               done
-              if [ $ELAPSED -ge $MAX_WAIT ]; then
-                echo "ERROR: Timed out waiting for Kafka secrets"
-                exit 1
-              fi
-              for SECRET_NAME in cdc-cluster-cluster-ca-cert cdc-user; do
-                if oc get secret "$SECRET_NAME" -n neuroface >/dev/null 2>&1; then
-                  echo "Secret $SECRET_NAME already exists in neuroface"
-                  continue
-                fi
-                echo "Copying $SECRET_NAME from kafka-cdc to neuroface..."
-                oc get secret "$SECRET_NAME" -n kafka-cdc -o json \
-                  | python3 -c "import sys,json; s=json.load(sys.stdin); s['metadata']={'name':s['metadata']['name'],'namespace':'neuroface','labels':{'app.kubernetes.io/managed-by':'kafka-secret-sync'}}; json.dump(s,sys.stdout)" \
-                  | oc apply -f - -n neuroface
-              done
-              echo "Secret sync complete"
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
 ---
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaTopic

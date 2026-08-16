@@ -982,11 +982,12 @@ stringData:
   VALIDATION_PROVIDER: "vllm"
   VALIDATION_MODEL_NAME: "qwen25-7b-instruct"
 ---
-apiVersion: rhdh.redhat.com/v1alpha3
+apiVersion: rhdh.redhat.com/v1alpha4
 kind: Backstage
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
   name: developer-hub
   namespace: developer-hub
 spec:

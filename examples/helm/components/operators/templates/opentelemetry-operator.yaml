@@ -26,8 +26,6 @@ metadata:
     argocd.argoproj.io/sync-wave: "2"
 spec:
   channel: stable
-  # Pin to specific version; verify: oc get packagemanifest opentelemetry-product -n openshift-marketplace -o jsonpath='{.status.channels[*].currentCSV}'
-  startingCSV: opentelemetry-operator.v0.144.0-1
   installPlanApproval: Automatic
   name: opentelemetry-product
   source: redhat-operators

@@ -174,7 +174,6 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     strimzi.io/use-connector-resources: "true"
 spec:
-  version: "4.0.0"
   replicas: 2
   bootstrapServers: cdc-cluster-kafka-bootstrap:9093
   authentication:
@@ -187,11 +186,11 @@ spec:
     trustedCertificates:
       - secretName: cdc-cluster-cluster-ca-cert
         certificate: ca.crt
+  groupId: cdc-connect-cluster
+  configStorageTopic: cdc-connect-configs
+  offsetStorageTopic: cdc-connect-offsets
+  statusStorageTopic: cdc-connect-status
   config:
-    group.id: cdc-connect-cluster
-    offset.storage.topic: cdc-connect-offsets
-    config.storage.topic: cdc-connect-configs
-    status.storage.topic: cdc-connect-status
     offset.storage.replication.factor: 3
     config.storage.replication.factor: 3
     status.storage.replication.factor: 3

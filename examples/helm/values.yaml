@@ -378,8 +378,13 @@ connectivityLink:
               ROOT_URL: ""  # injected at deploy as https://gitea-gitea.<deployer.domain>
         image:
           rootless: true
+        serviceAccount:
+          create: true
+          name: gitea
+        strategy:
+          type: Recreate
         podSecurityContext:
-          fsGroup: null
+          fsGroup: 1000
         containerSecurityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -387,6 +392,8 @@ connectivityLink:
               - ALL
           readOnlyRootFilesystem: true
           runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
         initContainers:
           resources:
             limits:
@@ -395,14 +402,22 @@ connectivityLink:
             requests:
               cpu: 50m
               memory: 64Mi
+        extraVolumes:
+          - name: init-executable
+            secret:
+              secretName: gitea-init
+              defaultMode: 493
+        extraInitVolumeMounts:
+          - name: init-executable
+            mountPath: /usr/sbinx
         postgresql-ha:
           enabled: false
         postgresql:
           enabled: true
-        redis-cluster:
-          enabled: false
-        redis:
+        valkey-cluster:
           enabled: true
+        valkey:
+          enabled: false
         persistence:
           enabled: true
           size: 10Gi

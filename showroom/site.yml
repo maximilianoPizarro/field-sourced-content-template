@@ -3,8 +3,10 @@ site:
   start_page: event-driven-demo::index.adoc
 content:
   sources:
-    - url: .
-      start_path: content
+    # Playbook lives in showroom/; Antora resolves url relative to the playbook
+    # file, so '.' is not a git repo. Point at the clone root instead.
+    - url: ..
+      start_path: showroom/content
 asciidoc:
   attributes:
     cluster_domain: "%cluster_domain%"

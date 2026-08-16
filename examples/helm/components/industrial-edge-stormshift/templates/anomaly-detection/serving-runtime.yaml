@@ -1,3 +1,4 @@
+{{- if .Capabilities.APIVersions.Has "serving.kserve.io/v1alpha1" }}
 apiVersion: serving.kserve.io/v1alpha1
 kind: ServingRuntime
 metadata:
@@ -64,3 +65,4 @@ spec:
         medium: Memory
         sizeLimit: 2Gi
       name: shm
+{{- end }}

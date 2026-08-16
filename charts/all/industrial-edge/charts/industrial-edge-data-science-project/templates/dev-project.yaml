@@ -38,12 +38,15 @@ spec:
     requests:
       storage: 5Gi
   volumeMode: Filesystem
+{{- if .Capabilities.APIVersions.Has "datasciencepipelinesapplications.opendatahub.io/v1" }}
 ---
 apiVersion: datasciencepipelinesapplications.opendatahub.io/v1
 kind: DataSciencePipelinesApplication
 metadata:
   name: dspa
   namespace: ml-development
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   apiServer:
     caBundleFileMountPath: ''
@@ -77,6 +80,8 @@ spec:
   scheduledWorkflow:
     cronScheduleTimezone: UTC
     deploy: true
+{{- end }}
+{{- if .Capabilities.APIVersions.Has "kubeflow.org/v1" }}
 ---
 apiVersion: kubeflow.org/v1
 kind: Notebook
@@ -266,3 +271,4 @@ spec:
         - name: s3-browser
           persistentVolumeClaim:
             claimName: s3-browser-pvc
+{{- end }}

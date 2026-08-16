@@ -394,6 +394,9 @@ spec:
             SITE_FILE="/showroom/repo/{{ .Values.showroom.content.antoraPlaybook }}"
             if [ -f "$SITE_FILE" ]; then
               sed -i 's|%cluster_domain%|{{ .Values.deployer.domain }}|g' "$SITE_FILE"
+              # Antora requires url to be a git repo. The playbook is under showroom/.
+              sed -i '/url: \.\s*$/s/url: \./url: ../' "$SITE_FILE"
+              sed -i 's/start_path: content$/start_path: showroom\/content/' "$SITE_FILE"
               echo "Injected cluster_domain={{ .Values.deployer.domain }} into $SITE_FILE"
             else
               echo "WARNING: $SITE_FILE not found"

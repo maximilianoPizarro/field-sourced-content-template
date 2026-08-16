@@ -1,3 +1,4 @@
+{{- if .Capabilities.APIVersions.Has "serving.kserve.io/v1alpha1" }}
 apiVersion: serving.kserve.io/v1alpha1
 kind: ServingRuntime
 metadata:
@@ -10,6 +11,7 @@ metadata:
     opendatahub.io/kserve-runtime: mlserver
     prometheus.io/path: /metrics
     prometheus.io/port: "8082"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
   name: anomaly-detection-model-server
   namespace: industrial-edge-tst-all
   labels:
@@ -63,3 +65,4 @@ spec:
         medium: Memory
         sizeLimit: 2Gi
       name: shm
+{{- end }}

@@ -1,8 +1,10 @@
+{{- if .Capabilities.APIVersions.Has "serving.kserve.io/v1beta1" }}
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
 metadata:
   annotations:
     serving.kserve.io/deploymentMode: ModelMesh
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
   labels:
     opendatahub.io/dashboard: "true"
   name: inference-service
@@ -16,3 +18,4 @@ spec:
       storage:
         key: aws-connection-user-bucket
         path: initial_model.joblib
+{{- end }}

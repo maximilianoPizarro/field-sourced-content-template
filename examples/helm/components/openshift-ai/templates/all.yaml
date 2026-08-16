@@ -24,7 +24,7 @@ spec:
     dashboard:
       managementState: Managed
     datasciencepipelines:
-      managementState: Removed
+      managementState: Managed
     kserve:
       managementState: Managed
       serving:
@@ -35,7 +35,7 @@ spec:
     llamastackoperator:
       managementState: Managed
     modelmeshserving:
-      managementState: Removed
+      managementState: Managed
     modelregistry:
       managementState: Managed
     ray:

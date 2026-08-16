@@ -394,6 +394,8 @@ spec:
             SITE_FILE="/showroom/repo/{{ .Values.showroom.content.antoraPlaybook }}"
             if [ -f "$SITE_FILE" ]; then
               sed -i 's|%cluster_domain%|{{ .Values.deployer.domain }}|g' "$SITE_FILE"
+              sed -i '/url: \.\s*$/s/url: \./url: ../' "$SITE_FILE"
+              sed -i 's/start_path: content$/start_path: showroom\/content/' "$SITE_FILE"
               echo "Injected cluster_domain={{ .Values.deployer.domain }} into $SITE_FILE"
             else
               echo "WARNING: $SITE_FILE not found"

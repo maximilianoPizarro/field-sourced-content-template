@@ -2,6 +2,7 @@ apiVersion: kafka.strimzi.io/v1beta1
 kind: KafkaTopic
 metadata:
   name: iot-sensor-sw-temperature
+  namespace: industrial-edge-tst-all
   labels:
     strimzi.io/cluster: dev-cluster
   annotations:

@@ -2,6 +2,7 @@ apiVersion: image.openshift.io/v1
 kind: ImageStream
 metadata:
   name: messaging
+  namespace: industrial-edge-tst-all
 spec:
   lookupPolicy:
     local: true

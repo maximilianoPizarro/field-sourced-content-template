@@ -4,6 +4,7 @@ metadata:
   labels:
     app: messaging
   name: messaging
+  namespace: industrial-edge-tst-all
 spec:
   ports:
   - name: 3000-tcp

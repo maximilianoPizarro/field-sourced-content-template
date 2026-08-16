@@ -43,3 +43,5 @@ ppe:
 persistence:
   enabled: true
   size: 1Gi
+  # Empty = cluster default. Do not pin ocs-external-* on RHDP.
+  storageClass: ""

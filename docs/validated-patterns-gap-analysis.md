@@ -34,7 +34,7 @@ Helm **replaces lists** and **merges maps**. `clusterGroup.applications` and `su
 
 | Profile | Fixed infra | Per user | 30 users |
 |---------|------------|----------|----------|
-| **Full** | ~66 vCPU / ~122 Gi | 3.5 vCPU / 4.5 Gi | 3 × 64 vCPU / 128 Gi or 4 × m5.8xlarge (32 vCPU) |
+| **Full** | ~66 vCPU / ~122 Gi | 3.5 vCPU / 4.5 Gi | RHDP: 4 × m5.8xlarge (32 vCPU / 128 Gi) |
 | **Lite** | 20–25 vCPU / 30–40 Gi | 1.5 vCPU / 1.5 Gi | 3 × 32 vCPU / 64 Gi |
 
 ## Recommendation

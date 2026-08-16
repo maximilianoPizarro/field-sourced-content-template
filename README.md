@@ -10,6 +10,17 @@ Create demos and labs for Red Hat Demo Platform without deep AgnosticD knowledge
 2. Push to your Git remote
 3. Order **Field Content CI** from RHDP with your repository URL and GitOps path **`examples/bootstrap`**
 
+### RHDP order (full lab, 30 users)
+
+| Field | Value |
+|-------|--------|
+| GitOps path | **`examples/bootstrap`** (plural `examples`, not `example/boostrap`) |
+| Branch | `main` |
+| Workers | **4 × m5.8xlarge** (32 vCPU / **128 Gi** each). Do not leave workers at 8 Gi. |
+| Masters | 3 × m5.2xlarge |
+| LLM | **`granite-3-2-8b-instruct`** (not Llama-Guard; catalog default `llama-scout-17b` is only a fallback) |
+| Users | 30 (from `values-global.yaml`; the form `num_users` does not shrink this) |
+
 RHDP already installs OpenShift GitOps. The bootstrap chart installs the Validated Patterns Operator and a hub-only Pattern CR. The operator deploys `clustergroup` 0.9.* against `values-global.yaml` + `values-hub.yaml` and reuses `openshift-gitops` (no ACM, Vault, or second Argo CD).
 
 ## Architecture
@@ -216,7 +227,7 @@ User in Developer Hub
 User count is controlled by a single parameter in `values.yaml`:
 
 ```yaml
-userCount: 30  # Default: 30. Adjust as needed (30, 50, 100, 200). RHDP loads values.yaml only.
+userCount: 30  # Default: 30. Adjust as needed. Pattern CR loads values-global.yaml.
 ```
 
 This parameter drives all user provisioning via Helm `range` loops:
@@ -318,12 +329,12 @@ Based on a real deployment running on RHDP with the full profile (all components
 | Users | Worker CPU needed | Worker MEM needed | Recommended Workers | Instance Type |
 |-------|-------------------|-------------------|---------------------|---------------|
 | **Demo (0 users)** | ~15 vCPU | ~87 Gi | **3 nodes** | **64 vCPU / 128 Gi** |
-| **30** (all DevSpaces) | ~120 vCPU | ~222 Gi | **3 nodes** | **64 vCPU / 128 Gi** (or 4 × m5.8xlarge 32/128) |
+| **30** (all DevSpaces) | ~120 vCPU | ~222 Gi | **4 nodes** | **m5.8xlarge (32 vCPU / 128 Gi)** |
 | **50** | ~90 vCPU | ~175 Gi | **3 nodes** | **64 vCPU / 128 Gi** |
 | **100** (30% DevSpaces) | ~120 vCPU | ~222 Gi | **3–4 nodes** | **64 vCPU / 128 Gi** |
 | **200** (30% DevSpaces) | ~225 vCPU | ~357 Gi | **5–6 nodes** | **64 vCPU / 128 Gi** |
 
-> **Instance types:** AWS **m5.8xlarge is 32 vCPU / 128 Gi**, not 64 vCPU. The measured workshop cluster used **64 vCPU / 128 Gi** workers. If RHDP only offers m5.8xlarge, order **4 workers** for a 30-person full lab with concurrent DevSpaces.
+> **RHDP Field Content CI:** order **4 × m5.8xlarge** (32 vCPU / 128 Gi). That instance is **not** 64 vCPU. A dedicated cluster with 3 × 64 vCPU / 128 Gi workers also fits; RHDP typically only offers m5.8xlarge.
 
 > **Key finding**: Theoretical estimates of 12 workers for 200 users were oversized. Measurements show 3 workers with 64 vCPU / 128 Gi each run the full platform at 7.9% CPU and 22.6% memory idle. At 200 users with 30% DevSpaces concurrency, 5–6 of those workers suffice.
 
@@ -361,7 +372,7 @@ helm template platform charts/all/platform --set userCount=30 --set clusterDomai
 | Industrial Edge stack alone | ~16 vCPU, ~34 Gi RAM, ~102 GB disk |
 | Per user (with DevSpaces) | ~3.5 vCPU, ~4.5 Gi RAM |
 | Per user (no DevSpaces) | ~1.5 vCPU, ~1.5 Gi RAM |
-| Recommended for 30 users (Pages/Showroom lab) | **3 workers × 64 vCPU / 128 Gi** (or 4 × m5.8xlarge 32/128) |
+| Recommended for 30 users (RHDP) | **4 × m5.8xlarge** (32 vCPU / 128 Gi) |
 | Recommended for 200 users | 5–6 workers × 64 vCPU / 128 Gi |
 
 ### Lite Profile (~60% fewer resources)
@@ -485,7 +496,7 @@ All services use the cluster domain pattern `apps.<cluster-domain>`:
 | **Gitea** | `https://gitea-gitea.apps.<domain>` |
 | **ArgoCD** | `https://openshift-gitops-server-openshift-gitops.apps.<domain>` |
 | **DevSpaces** | `https://devspaces.apps.<domain>` |
-| **Showroom** | `https://showroom.apps.<domain>` |
+| **Showroom** | `https://showroom-showroom.apps.<domain>` |
 | **Registration Portal** | `https://workshop-registration.apps.<domain>` |
 | **Keycloak** | `https://rhbk.apps.<domain>` |
 | **Mailpit** | `https://n8n-mailpit-openshift-lightspeed.apps.<domain>` |

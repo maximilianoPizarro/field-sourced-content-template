@@ -1,7 +1,10 @@
 # RHDP Field Content CI points GitOps at this chart (path: examples/bootstrap).
-# Injected by the AgnosticD role: deployer.domain, deployer.apiUrl, gitops.repoUrl.
+# Injected by agnosticd.core_workloads ocp4_workload_field_content:
+#   deployer.domain, deployer.apiUrl, gitops.repoURL, gitops.revision, gitops.path
+# repoURL (capital URL) is what production injects; repoUrl is kept as a fallback.
 
 gitops:
+  repoURL: ""
   repoUrl: "https://github.com/maximilianoPizarro/field-sourced-content-template.git"
   revision: "main"
 

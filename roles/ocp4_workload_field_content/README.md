@@ -47,6 +47,11 @@ The role automatically injects these values:
 deployer:
   domain: "apps.cluster-guid.sandbox.opentlc.com"
   apiUrl: "https://api.cluster-guid.sandbox.opentlc.com:6443"
+gitops:
+  repoURL: "<catalog git URL>"
+  repoUrl: "<catalog git URL>"
+  revision: "main"
+  path: "examples/bootstrap"
 ```
 
 Use in your templates:

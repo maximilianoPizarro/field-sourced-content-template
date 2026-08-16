@@ -1,7 +1,8 @@
 clusterDomain: ""
 
 global:
-  storageClass: "ocs-external-storagecluster-ceph-rbd-immediate"
+  # Empty = cluster default StorageClass (RHDP / gp3 / thin).
+  storageClass: ""
 
 ppe:
   enabled: false

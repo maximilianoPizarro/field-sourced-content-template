@@ -11,8 +11,12 @@ Do not install ACM, Vault, ESO, or a second Argo CD (`vp-gitops`).
 
 | Key | Source |
 |-----|--------|
-| `deployer.domain` / `deployer.apiUrl` | AgnosticD role |
-| `gitops.repoUrl` / `gitops.revision` | Same role (fork URL + branch) |
+| `deployer.domain` / `deployer.apiUrl` | AgnosticD role (`ocp4_workload_field_content`) |
+| `gitops.repoURL` / `gitops.revision` / `gitops.path` | Same role (fork URL + branch + chart path) |
+| `gitops.repoUrl` | Fallback if only the camelCase key is set |
+| `litemaas.apiUrl` / `apiKey` / `model` | Injected when the catalog provisions MaaS |
+
+The Pattern CR prefers `gitops.repoURL` over `gitops.repoUrl` so a fork URL from RHDP wins over the chart default.
 
 Lite profile: set `pattern.extraValueFiles: ["/values-lite.yaml"]` in Helm values (Helm replaces lists; that overlay must repeat any `clusterGroup.applications` entries it changes).
 

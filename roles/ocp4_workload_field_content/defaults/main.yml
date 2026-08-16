@@ -11,8 +11,10 @@
 # Automatically injected Helm values:
 #   deployer.domain  - Cluster ingress domain (e.g., apps.cluster.example.com)
 #   deployer.apiUrl  - Cluster API URL
-#   gitops.repoUrl   - Same URL as ocp4_workload_field_content_gitops_repo_url
+#   gitops.repoURL   - Same URL as ocp4_workload_field_content_gitops_repo_url (production key)
+#   gitops.repoUrl   - Same value, camelCase fallback used by older chart templates
 #   gitops.revision  - Same as ocp4_workload_field_content_gitops_repo_revision
+#   gitops.path      - Same as ocp4_workload_field_content_gitops_repo_path
 # =============================================================================
 
 # -----------------------------------------------------------------------------

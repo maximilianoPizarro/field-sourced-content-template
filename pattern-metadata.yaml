@@ -68,6 +68,8 @@ extra_features:
   hypershift_support: false
 external_requirements:
   cluster_sizing_note: >
-    Full lab (30 users): 3 workers × 64 vCPU / 128 Gi, or 4 × m5.8xlarge
-    (32 vCPU / 128 Gi). Do not treat m5.8xlarge as 64 vCPU.
+    RHDP full lab (30 users): 4 × m5.8xlarge workers (32 vCPU / 128 Gi)
+    plus 3 × m5.2xlarge masters. Do not treat m5.8xlarge as 64 vCPU
+    and do not leave worker memory at 8 Gi. Dedicated 3 × 64 vCPU / 128 Gi
+    workers also fit; NeuroFace PVCs use the cluster default StorageClass.
   pattern_cr_examples: examples/pattern-cr/

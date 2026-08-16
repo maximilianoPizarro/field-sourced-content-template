@@ -6,6 +6,8 @@ global:
     llmApiKey: "sk-no-key"
     llmEndpoint: ""
     model: "qwen25-7b-instruct"
+  # Empty = cluster default StorageClass. Do not pin ocs-external-* (RHDP clusters often lack it).
+  storageClass: ""
 
 userCount: 30
 clusterDomain: ""
@@ -27,9 +29,6 @@ clusterDomain: ""
 
 # --- from neuroface-cv ---
 clusterDomain: ""
-
-global:
-  storageClass: "ocs-external-storagecluster-ceph-rbd-immediate"
 
 ppe:
   enabled: false

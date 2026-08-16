@@ -28,6 +28,7 @@ showroom:
   enabled: true
   namespace: showroom
   name: showroom
+  url: ""
 
   # Lab guide Git repository
   content:
@@ -53,7 +54,13 @@ showroom:
         cpu: "500m"
         memory: "1Gi"
 
-# Injected by parent chart
+# RHDP order page (AgnosticD scans for demo.redhat.com/userinfo)
+userInfo:
+  enabled: true
+  title: "Event-Driven Architecture Workshop"
+  instructions: "Open Showroom first. OpenShift / Gitea / Developer Hub: user1…userN / Welcome123!. Registration, Kafka Console, and Argo CD URLs are listed on this page."
+
+# Injected by parent chart / Pattern extraLocalClusterDomainFields
 deployer:
   domain: ""
 
@@ -70,12 +77,6 @@ keycloak:
   realm: "backstage"
   adminUser: "admin"
   adminPassword: ""
-
-showroom:
-  url: ""
-
-deployer:
-  domain: ""
 
 # --- from devspaces ---
 # Vendored from https://gitlab.com/maximilianoPizarro/connectivity-link (devspaces)

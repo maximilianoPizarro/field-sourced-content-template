@@ -1,6 +1,8 @@
 {{- $g := .Values.global | default dict }}
-{{- $repo := coalesce .Values.gitops.repoUrl $g.repoURL "https://github.com/maximilianoPizarro/field-sourced-content-template.git" }}
-{{- $rev := coalesce .Values.gitops.revision $g.targetRevision "main" }}
+{{- $gitops := .Values.gitops | default dict }}
+{{- /* core_workloads injects gitops.repoURL; this chart historically used repoUrl. Prefer the injected key. */}}
+{{- $repo := coalesce (index $gitops "repoURL") (index $gitops "repoUrl") $g.repoURL "https://github.com/maximilianoPizarro/field-sourced-content-template.git" }}
+{{- $rev := coalesce (index $gitops "revision") $g.targetRevision "main" }}
 apiVersion: gitops.hybrid-cloud-patterns.io/v1alpha1
 kind: Pattern
 metadata:

@@ -1,0 +1,43 @@
+{{- if .Values.userInfo.enabled }}
+{{- $g := .Values.global | default dict }}
+{{- $d := .Values.deployer | default dict }}
+{{- $domain := coalesce $d.domain .Values.clusterDomain $g.localClusterDomain "" }}
+{{- $profile := $g.profile | default "full" }}
+{{- $userCount := .Values.userCount | default 30 }}
+{{- $ns := .Values.showroom.namespace | default "showroom" }}
+{{- if $domain }}
+---
+# Picked up by AgnosticD / RHDP (label demo.redhat.com/userinfo).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: workshop-userinfo
+  namespace: {{ $ns }}
+  labels:
+    demo.redhat.com/application: "event-driven-architecture"
+    demo.redhat.com/userinfo: ""
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+data:
+  demo_title: {{ .Values.userInfo.title | quote }}
+  access_instructions: {{ .Values.userInfo.instructions | quote }}
+  deployment_type: "helm"
+  cluster_domain: {{ $domain | quote }}
+  user_count: {{ $userCount | quote }}
+  workshop_user: "user1"
+  workshop_password: "Welcome123!"
+  openshift_users: {{ printf "user1 … user%s / Welcome123! (also platformadmin)" ($userCount | toString) | quote }}
+  showroom_url: {{ printf "https://showroom-showroom.%s" $domain | quote }}
+  registration_url: {{ printf "https://workshop-registration.%s" $domain | quote }}
+  developer_hub_url: {{ printf "https://backstage-developer-hub-developer-hub.%s" $domain | quote }}
+  gitea_url: {{ printf "https://gitea-gitea.%s" $domain | quote }}
+  argocd_url: {{ printf "https://openshift-gitops-server-openshift-gitops.%s" $domain | quote }}
+  keycloak_url: {{ printf "https://rhbk.%s" $domain | quote }}
+  kafka_console_url: {{ printf "https://kafka-console-kafka-cdc.%s" $domain | quote }}
+  apicurio_url: {{ printf "https://apicurio-registry-kafka-cdc.%s" $domain | quote }}
+  {{- if eq $profile "full" }}
+  grafana_url: {{ printf "https://grafana-observability.%s" $domain | quote }}
+  mailpit_url: {{ printf "https://n8n-mailpit-openshift-lightspeed.%s" $domain | quote }}
+  {{- end }}
+{{- end }}
+{{- end }}

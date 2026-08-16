@@ -5,7 +5,9 @@ site:
 
 content:
   sources:
-    - url: .
+    - url: ./..
+      start_path: docs
+      branches: HEAD
 
 asciidoc:
   extensions:

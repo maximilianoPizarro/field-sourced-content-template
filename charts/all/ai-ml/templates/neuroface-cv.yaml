@@ -1273,7 +1273,7 @@ spec:
               memory: 64Mi
             limits:
               cpu: 200m
-              memory: 256Mi
+              memory: 512Mi
 ---
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaTopic

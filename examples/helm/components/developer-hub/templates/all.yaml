@@ -814,7 +814,7 @@ data:
     platformadmin: full platform engineer permissions\ng, user:default/platformadmin,
     role:default/platformengineer\ng, user:default/platformadmin, role:default/api-admin\ng,
     user:default/platformadmin, role:default/api-owner\ng, user:default/platformadmin,
-    role:default/rhdhpai-users\ng, user:default/platformadmin, role:default/template-executers\n{{ range $i := until (.Values.userCount | default 200 | int) }}g, user:default/user{{ add1 $i }}, role:default/authenticated\n{{ end }}\n#
+    role:default/rhdhpai-users\ng, user:default/platformadmin, role:default/template-executers\n{{ range $i := until (.Values.userCount | default 30 | int) }}g, user:default/user{{ add1 $i }}, role:default/authenticated\n{{ end }}\n#
     Group assignments (Keycloak groups)\n# Assign rhdh group to platformengineer role
     (has all permissions including Adoption Insights)\ng, group:default/rhdh, role:default/platformengineer\n\n#
     ==========================================================\n# 4. KUADRANT PLUGIN

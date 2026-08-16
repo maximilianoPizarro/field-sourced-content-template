@@ -1,5 +1,5 @@
 title: "Event-Driven Architecture Live"
-description: "CDC Pipeline Demo — Streams for Apache Kafka on Red Hat OpenShift"
+description: "CDC Pipeline Demo — Streams for Apache Kafka on Red Hat OpenShift. GitHub Pages publishes Antora (docs/antora-playbook.yml), not this Jekyll config."
 baseurl: "/field-sourced-content-template"
 url: "https://maximilianopizarro.github.io"
 remote_theme: just-the-docs/just-the-docs@v0.10.0

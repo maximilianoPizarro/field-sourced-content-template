@@ -35,7 +35,7 @@
 
 == Partition Design
 
-Each CDC pipeline topic is configured with *3 partitions* and *3 replicas*:
+The Helm chart configures each CDC pipeline topic with *3 partitions* and *3 replicas*:
 
 [source,yaml]
 ----
@@ -64,13 +64,13 @@ spec:
 | 3 partitions allow up to 3 concurrent consumers in a consumer group
 
 | *Replication*
-| With RF=3 and `min.insync.replicas=2`, the loss of 1 broker is tolerated without data loss
+| With RF=3 and `min.insync.replicas=2`, Kafka tolerates the loss of 1 broker without data loss
 
 | *Ordering*
 | Debezium uses the primary key as the partition key, preserving per-record ordering
 
 | *Scalability*
-| Partitions can be increased without downtime (only added, never removed)
+| You can increase partitions without downtime (only added, never removed)
 |===
 
 === Partition Key in CDC
@@ -204,8 +204,8 @@ oc exec -it deploy/cdc-postgresql -n kafka-cdc -- psql -U cdcuser -d cdcdb -c \
 
 With `compact`, Kafka retains only the latest value for each key, removing older versions. For CDC:
 
-* The current state of each record is preserved
-* Intermediate updates are removed after compaction
+* Compaction preserves the current state of each record
+* Compaction removes intermediate updates
 * You can reconstruct the full table state by consuming the topic from the beginning
 
 === Reprocessing
@@ -238,8 +238,8 @@ config:
   min.insync.replicas: 2
 ----
 
-* `min.insync.replicas: 2` — a write is acknowledged only if 2 of the 3 replicas persist it
-* `default.replication.factor: 3` — all new topics are created with RF=3
+* `min.insync.replicas: 2` — Kafka acknowledges a write only if 2 of the 3 replicas persist it
+* `default.replication.factor: 3` — Kafka creates all new topics with RF=3
 
 This means the cluster can tolerate the loss of *1 broker* without losing data or availability.
 
@@ -251,7 +251,7 @@ When Debezium (or any producer) sends a message to Kafka, the following happens 
 
 . The producer serializes the key and value, computes `hash(key) % numPartitions` to choose the target partition.
 . The producer batches messages per partition (configurable via `batch.size` and `linger.ms`) to optimize I/O.
-. The batch is sent to the partition *leader* broker over TCP.
+. The producer sends the batch to the partition *leader* broker over TCP.
 . The leader writes the batch to a *segment file* on disk — an append-only log. Segments rotate when they reach 1GB (configurable).
 . Each message gets a sequential *offset*: a 64-bit integer, monotonically increasing, unique within the partition.
 . *Followers* fetch the batch from the leader, write it to their own segments, and send an ACK to the leader.
@@ -263,7 +263,7 @@ When Debezium (or any producer) sends a message to Kafka, the following happens 
 . The coordinator runs a *partition assignment protocol* (range or round-robin), distributing partitions across consumers.
 . Each consumer periodically `poll()`s the leader of its assigned partitions, receiving message batches from its last offset.
 . The consumer processes messages and then *commits* the offset to the internal topic `__consumer_offsets`.
-. If a consumer disconnects (no heartbeat within `session.timeout.ms`), the coordinator triggers a *rebalance*: orphaned partitions are reassigned to the remaining consumers.
+. If a consumer disconnects (no heartbeat within `session.timeout.ms`), the coordinator triggers a *rebalance* and reassigns orphaned partitions to the remaining consumers.
 
 === Compaction: cleanup.policy=compact
 
@@ -271,13 +271,13 @@ For CDC topics with `cleanup.policy: compact`:
 
 . Kafka periodically runs a *log cleaner* that scans closed segments.
 . For each key, it retains only the message with the *highest offset* (the most recent).
-. Messages with duplicate keys and lower offsets are physically removed from disk.
+. The log cleaner physically removes messages with duplicate keys and lower offsets from disk.
 . A message with a `null` value (tombstone) marks the key for full removal after the `delete.retention.ms` period.
 . Result: the topic contains exactly *one message per key* — the current state of each database record.
 
 == Network Policies
 
-The `kafka-cdc` namespace is protected with `NetworkPolicy` rules that restrict ingress traffic:
+`NetworkPolicy` rules protect the `kafka-cdc` namespace and restrict ingress traffic:
 
 [source,yaml]
 ----
@@ -347,4 +347,4 @@ spec:
 * https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka/2.9/html/deploying_and_managing_amq_streams_on_openshift/config-topics-str[Configuring Kafka Topics^] — Topic management with Strimzi
 * https://strimzi.io/docs/operators/latest/configuring.html[Strimzi Configuration Guide^] — Advanced operator and CR configuration
 * https://kafka.apache.org/documentation/#consumerconfigs[Kafka Consumer Configurations^] — Consumer group and offset parameters
-* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/nodes/controlling-pod-placement-onto-nodes-scheduling[Pod Scheduling and Disruption Budgets^] — PDBs and scheduling on OpenShift
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/nodes/controlling-pod-placement-onto-nodes-scheduling[Pod Scheduling and Disruption Budgets^] — PDBs and scheduling on OpenShift

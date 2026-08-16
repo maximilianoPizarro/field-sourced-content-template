@@ -108,7 +108,7 @@ MCP is an open protocol that connects AI models to external tools:
 . Lightspeed receives the user's prompt in the OpenShift console.
 . The model analyzes intent and selects the relevant *MCP tools* from the 55+ available.
 . For each selected tool, MCP runs a *function call* against the OpenShift API server (or Argo CD, etc.) with parameters inferred from the prompt.
-. The results (resource YAML, logs, events) are injected back into the model context.
+. MCP injects the results (resource YAML, logs, events) back into the model context.
 . The model synthesizes a response that combines the retrieved information with its platform knowledge.
 
 === Troubleshooting prompt flow
@@ -166,6 +166,6 @@ MCP tools registered in `mcp-system` that are relevant to the CDC pipeline:
 == Official Documentation
 
 * https://docs.redhat.com/en/documentation/red_hat_openshift_lightspeed[Red Hat OpenShift Lightspeed^] — AI assistant for OpenShift
-* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cli_tools/oc-cli-getting-started[OpenShift CLI (oc)^] — Command-line tool for OpenShift
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/cli_tools/oc-cli-getting-started[OpenShift CLI (oc)^] — Command-line tool for OpenShift
 * https://spec.modelcontextprotocol.io/[Model Context Protocol (MCP) Specification^] — Open standard for connecting AI models to tools
 * https://docs.redhat.com/en/documentation/red_hat_openshift_gitops[Red Hat OpenShift GitOps^] — Argo CD for OpenShift

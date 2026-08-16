@@ -136,7 +136,7 @@ spec:
     {{- if eq .path "namespaces" }}
     helm:
       valuesObject:
-        userCount: {{ $.Values.userCount | default 200 }}
+        userCount: {{ $.Values.userCount | default 30 }}
     {{- else if eq .path "devspaces" }}
     helm:
       valuesObject:
@@ -161,7 +161,7 @@ spec:
     helm:
       valuesObject:
         clusterDomain: {{ $domain }}
-        userCount: {{ $.Values.userCount | default 200 }}
+        userCount: {{ $.Values.userCount | default 30 }}
     {{- else if eq .path "mcp-gateway" }}
     helm:
       valuesObject:
@@ -169,22 +169,22 @@ spec:
     {{- else if eq .path "oauth-users" }}
     helm:
       valuesObject:
-        userCount: {{ $.Values.userCount | default 200 }}
+        userCount: {{ $.Values.userCount | default 30 }}
     {{- else if eq .path "applicationsets" }}
     helm:
       valuesObject:
         clusterDomain: {{ $domain }}
-        userCount: {{ $.Values.userCount | default 200 }}
+        userCount: {{ $.Values.userCount | default 30 }}
     {{- else if eq .path "gitea" }}
     helm:
       valuesObject:
         clusterDomain: {{ $domain }}
-        userCount: {{ $.Values.userCount | default 200 }}
+        userCount: {{ $.Values.userCount | default 30 }}
     {{- else if eq .path "developer-hub" }}
     helm:
       valuesObject:
         clusterDomain: {{ $domain }}
-        userCount: {{ $.Values.userCount | default 200 }}
+        userCount: {{ $.Values.userCount | default 30 }}
     {{- else if eq .path "workshop-registration" }}
     helm:
       valuesObject:
@@ -192,7 +192,7 @@ spec:
           domain: {{ $domain }}
         registration:
           enabled: true
-          maxUsers: {{ $.Values.userCount | default 200 }}
+          maxUsers: {{ $.Values.userCount | default 30 }}
           adminToken: {{ $.Values.workshopRegistration.adminToken | default "workshop-admin-2024" | quote }}
         keycloak:
           url: {{ printf "https://rhbk.%s" $domain | quote }}
@@ -321,7 +321,14 @@ spec:
     helm:
       releaseName: {{ .chart }}
       valuesObject:
+        {{- if eq .id "gitea" }}
+        {{- $giteaVals := .values | deepCopy }}
+        {{- $domain := $.Values.deployer.domain | default "apps.cluster.example.com" }}
+        {{- $_ := set $giteaVals.gitea.config.server "ROOT_URL" (printf "https://gitea-gitea.%s" $domain) }}
+        {{- toYaml $giteaVals | nindent 8 }}
+        {{- else }}
         {{- toYaml .values | nindent 8 }}
+        {{- end }}
   destination:
     server: https://kubernetes.default.svc
     namespace: {{ .destinationNamespace }}

@@ -5,9 +5,7 @@ site:
 
 content:
   sources:
-    - url: https://github.com/maximilianoPizarro/field-sourced-content-template.git
-      start_path: docs
-      branches: main
+    - url: .
 
 asciidoc:
   extensions:
@@ -109,15 +107,15 @@ ui:
             <div style="display:flex;flex-wrap:wrap;gap:32px;margin-bottom:20px">
               <div style="flex:1;min-width:200px">
                 <div style="color:#fff;font-weight:700;font-size:13px;margin-bottom:10px;font-family:RedHatDisplay,sans-serif">Data Streaming</div>
-                <div style="color:#aaa;font-size:11px;line-height:1.6"><b style="color:#e0e0e0">Streams for Apache Kafka</b> — Cluster Kafka en modo KRaft para streaming distribuido<br><b style="color:#e0e0e0">Debezium</b> — Change Data Capture desde PostgreSQL en tiempo real<br><b style="color:#e0e0e0">Apicurio Registry</b> — Schema Registry para gobierno de esquemas Avro/JSON/Protobuf</div>
+                <div style="color:#aaa;font-size:11px;line-height:1.6"><b style="color:#e0e0e0">Streams for Apache Kafka</b> — runs a KRaft cluster for distributed streaming<br><b style="color:#e0e0e0">Debezium</b> — captures PostgreSQL changes in real time<br><b style="color:#e0e0e0">Apicurio Registry</b> — versions and validates Avro/JSON/Protobuf schemas</div>
               </div>
               <div style="flex:1;min-width:200px">
                 <div style="color:#fff;font-weight:700;font-size:13px;margin-bottom:10px;font-family:RedHatDisplay,sans-serif">Integration &amp; BPM</div>
-                <div style="color:#aaa;font-size:11px;line-height:1.6"><b style="color:#e0e0e0">Apache Camel</b> — Framework de integracion con Enterprise Integration Patterns<br><b style="color:#e0e0e0">Kaoto</b> — Disenador visual low-code de rutas Camel en DevSpaces<br><b style="color:#e0e0e0">SonataFlow</b> — Motor de workflows serverless para procesos de negocio (BPM)</div>
+                <div style="color:#aaa;font-size:11px;line-height:1.6"><b style="color:#e0e0e0">Apache Camel</b> — implements Enterprise Integration Patterns<br><b style="color:#e0e0e0">Kaoto</b> — lets you design Camel routes visually in DevSpaces<br><b style="color:#e0e0e0">SonataFlow</b> — runs serverless business workflows (BPM)</div>
               </div>
               <div style="flex:1;min-width:200px">
                 <div style="color:#fff;font-weight:700;font-size:13px;margin-bottom:10px;font-family:RedHatDisplay,sans-serif">Industrial Edge &amp; Platform</div>
-                <div style="color:#aaa;font-size:11px;line-height:1.6"><b style="color:#e0e0e0">IoT Sensors + AMQ Broker</b> — MQTT data ingestion from 20K devices<br><b style="color:#e0e0e0">OpenShift AI</b> — ModelMesh, JupyterLab, DS Pipelines<br><b style="color:#e0e0e0">KafkaMirrorMaker2</b> — Cross-cluster replication for external queries<br><b style="color:#e0e0e0">Developer Hub</b> — Self-service portal with Kafka plugin &amp; TechDocs</div>
+                <div style="color:#aaa;font-size:11px;line-height:1.6"><b style="color:#e0e0e0">IoT Sensors + AMQ Broker</b> — ingest MQTT data from 20K devices<br><b style="color:#e0e0e0">OpenShift AI</b> — runs ModelMesh, JupyterLab, and DS Pipelines<br><b style="color:#e0e0e0">KafkaMirrorMaker2</b> — replicates topics across clusters<br><b style="color:#e0e0e0">Developer Hub</b> — exposes a Kafka plugin and TechDocs for self-service</div>
               </div>
             </div>
             <div style="border-top:1px solid #333;padding-top:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">

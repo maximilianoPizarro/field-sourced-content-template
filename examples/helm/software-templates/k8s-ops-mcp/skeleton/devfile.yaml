@@ -58,7 +58,7 @@ commands:
           sed -i "s|CONTINUE_API_KEY_PLACEHOLDER|$CONTINUE_API_KEY|g" /home/user/.continue/config.json
         fi
         if [ -n "$CONTINUE_API_BASE" ]; then
-          sed -i "s|https://litellm-prod.apps.maas.redhatworkshops.io/v1|$CONTINUE_API_BASE|g" /home/user/.continue/config.json
+          sed -i "s|https://CHANGE_ME_LITELLM/v1|$CONTINUE_API_BASE|g" /home/user/.continue/config.json
         fi
         if [ -n "$CONTINUE_MODEL" ]; then
           sed -i "s|deepseek-r1-distill-qwen-14b|$CONTINUE_MODEL|g" /home/user/.continue/config.json

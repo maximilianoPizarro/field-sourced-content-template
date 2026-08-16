@@ -5,9 +5,10 @@
 # Reference: https://validatedpatterns.io/learn/clustergroup-in-values-files/
 #
 # This file maps the existing connectivityLink.apps[] structure to the VP
-# naming convention. The app-of-apps templates in templates/ consume these
-# values identically to values.yaml — this file is a VP-compatible alias.
+# naming convention. Keep in sync with values.yaml (same apps, helmApps, flags).
 # =============================================================================
+
+userCount: 30
 
 # Operator channels and subscriptions managed by the hub
 connectivityLink:
@@ -128,10 +129,10 @@ connectivityLink:
       skipDryRunOnMissingResource: true
     # --- AI / ML ---
     - id: litemaas
-      enabled: true
+      enabled: false
       path: litemaas
       destinationNamespace: litemaas
-      syncWave: "6"
+      syncWave: "7"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -139,7 +140,7 @@ connectivityLink:
       enabled: true
       path: openshift-ai
       destinationNamespace: openshift-ai
-      syncWave: "6"
+      syncWave: "7"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -149,7 +150,7 @@ connectivityLink:
       enabled: true
       path: devspaces
       destinationNamespace: devspaces
-      syncWave: "7"
+      syncWave: "8"
       prune: false
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -158,7 +159,7 @@ connectivityLink:
       enabled: true
       path: openshift-lightspeed
       destinationNamespace: openshift-lightspeed
-      syncWave: "8"
+      syncWave: "9"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -166,7 +167,7 @@ connectivityLink:
       enabled: true
       path: mcp-gateway
       destinationNamespace: mcp-system
-      syncWave: "9"
+      syncWave: "10"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -198,7 +199,7 @@ connectivityLink:
       enabled: true
       path: workshop-registration
       destinationNamespace: showroom
-      syncWave: "10"
+      syncWave: "11"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: false
@@ -231,7 +232,7 @@ connectivityLink:
       enabled: true
       path: cdc-demo
       destinationNamespace: kafka-cdc
-      syncWave: "6"
+      syncWave: "7"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -239,7 +240,7 @@ connectivityLink:
       enabled: true
       path: camel-cdc
       destinationNamespace: kafka-cdc
-      syncWave: "7"
+      syncWave: "8"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -248,16 +249,31 @@ connectivityLink:
       enabled: true
       path: kogito-bpm
       destinationNamespace: kogito-bpm
-      syncWave: "8"
+      syncWave: "9"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
     # --- UI and utilities ---
+    - id: mailpit
+      enabled: true
+      path: mailpit
+      destinationNamespace: openshift-lightspeed
+      syncWave: "7"
+      prune: true
+      selfHeal: true
+    - id: neuroface-cv
+      enabled: true
+      path: neuroface-cv
+      destinationNamespace: neuroface
+      syncWave: "11"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
     - id: console-links
       enabled: true
       path: console-links
       destinationNamespace: openshift-gitops
-      syncWave: "10"
+      syncWave: "11"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: false
@@ -265,7 +281,7 @@ connectivityLink:
       enabled: true
       path: cleanup
       destinationNamespace: kafka-cdc
-      syncWave: "9"
+      syncWave: "10"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: false
@@ -290,7 +306,7 @@ connectivityLink:
       enabled: true
       path: industrial-edge-data-science-project
       destinationNamespace: ml-development
-      syncWave: "7"
+      syncWave: "8"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -298,7 +314,7 @@ connectivityLink:
       enabled: true
       path: industrial-edge-data-lake
       destinationNamespace: industrial-edge-data-lake
-      syncWave: "6"
+      syncWave: "7"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -306,7 +322,7 @@ connectivityLink:
       enabled: true
       path: industrial-edge-tst
       destinationNamespace: industrial-edge-tst-all
-      syncWave: "7"
+      syncWave: "8"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -314,7 +330,7 @@ connectivityLink:
       enabled: true
       path: industrial-edge-stormshift
       destinationNamespace: industrial-edge-stormshift-messaging
-      syncWave: "8"
+      syncWave: "9"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -322,7 +338,7 @@ connectivityLink:
       enabled: true
       path: industrial-edge-pipelines
       destinationNamespace: industrial-edge-ci
-      syncWave: "7"
+      syncWave: "8"
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
@@ -385,6 +401,40 @@ connectivityLink:
           http:
             type: ClusterIP
             port: 3000
+    - id: neuroface
+      enabled: true
+      repoURL: "https://maximilianopizarro.github.io/neuroface/"
+      chart: neuroface
+      targetRevision: "1.3.0"
+      destinationNamespace: neuroface
+      syncWave: "10"
+      values:
+        ovms:
+          enabled: true
+          externalUrl: "http://neuroface-ovms.neuroface.svc:8000"
+          modelmesh:
+            enabled: false
+        litellm:
+          enabled: false
+        chat:
+          enabled: true
+          modelEndpoint: "http://granite-llm-metrics.neuroface.svc:8080"
+          modelName: "granite-3.1-2b-instruct"
+        ppe:
+          enabled: true
+          endpoint: "http://yolo-ppe-serving.neuroface.svc:8000"
+          classes: "hardhat,safety-vest,goggles"
+          confidence: "0.5"
+          kafka:
+            enabled: true
+            bootstrap: "cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093"
+            user: "cdc-user"
+            topic: "cv.ppe.detections"
+            secretName: "cdc-user"
+            caCertSecret: "cdc-cluster-cluster-ca-cert"
+        persistence:
+          enabled: true
+          size: 1Gi
 
 # LLM configuration (injected at deploy time, not in git)
 lightspeed:

@@ -2439,7 +2439,7 @@ spec:
       requiredActions: []
       totp: false
       username: maximilianopizarro
-    {{- $userCount := .Values.userCount | default 200 | int }}
+    {{- $userCount := .Values.userCount | default 30 | int }}
     {{- range $i := until $userCount }}
     {{- $n := add1 $i }}
     - credentials:

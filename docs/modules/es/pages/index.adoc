@@ -39,11 +39,13 @@
 </script>
 ++++
 
-== Welcome
+== Bienvenida
 
-Explore a complete *Change Data Capture (CDC)* pipeline running on Red Hat OpenShift with *Streams for Apache Kafka*, Debezium, Apache Camel, SonataFlow, and Apicurio Registry.
+Explorá un pipeline completo de *Change Data Capture (CDC)* sobre Red Hat OpenShift con *Streams for Apache Kafka*, Debezium, Apache Camel, SonataFlow y Apicurio Registry.
 
-=== What You'll Learn
+Esta guía publicada sigue el perfil Helm *completo* (`examples/helm/values.yaml`, `userCount: 30`). No apliques `values-lite.yaml` para este lab: ese overlay apaga DevSpaces, Grafana, Lightspeed, BPM, Industrial Edge y NeuroFace.
+
+=== Qué vas a aprender
 
 * Desplegar un cluster *Kafka en modo KRaft* (sin Zookeeper) usando AMQ Streams
 * Configurar *Debezium* para capturar cambios en PostgreSQL en tiempo real
@@ -131,7 +133,7 @@ Explore a complete *Change Data Capture (CDC)* pipeline running on Red Hat OpenS
 | Producto / Suscripción | Documentación
 
 | *Red Hat OpenShift Container Platform*
-| https://docs.redhat.com/en/documentation/openshift_container_platform/4.20[OpenShift Container Platform 4.20^]
+| https://docs.redhat.com/en/documentation/openshift_container_platform/4.21[OpenShift Container Platform 4.21^]
 
 | *Red Hat Streams for Apache Kafka*
 | https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka[Streams for Apache Kafka^]
@@ -173,14 +175,14 @@ Explore a complete *Change Data Capture (CDC)* pipeline running on Red Hat OpenS
 | https://docs.redhat.com/en/documentation/red_hat_openshift_serverless[OpenShift Serverless (Knative)^]
 
 | *Cluster Observability Operator*
-| https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cluster_observability_operator/index[Cluster Observability Operator^]
+| https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/cluster_observability_operator/index[Cluster Observability Operator^]
 
 | *Red Hat OpenShift distributed tracing*
 | https://docs.redhat.com/en/documentation/red_hat_openshift_distributed_tracing_platform[OpenShift distributed tracing (OpenTelemetry)^]
 
 | *Grafana Operator*
-| https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cluster_observability_operator/index[Grafana via Cluster Observability^]
+| https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/cluster_observability_operator/index[Grafana via Cluster Observability^]
 
 | *Red Hat OpenShift AI*
-| https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed[OpenShift AI^]
+| https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self_managed[OpenShift AI^]
 |===

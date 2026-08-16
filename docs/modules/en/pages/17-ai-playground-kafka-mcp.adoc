@@ -3,7 +3,7 @@
 :toclevels: 3
 
 [.lead]
-OpenShift AI 3.3 includes the *Gen AI Studio* (Playground) for interacting with deployed LLMs. Combined with the *Kafka MCP Server* registered through Kuadrant's MCP Gateway, the Playground becomes an AI agent capable of querying live Kafka data.
+OpenShift AI 3.3 includes *Gen AI Studio* (Playground) so you can chat with deployed LLMs. Combined with the *Kafka MCP Server* that Kuadrant's MCP Gateway registers, the Playground becomes an AI agent that can query live Kafka data.
 
 == Architecture
 
@@ -22,7 +22,7 @@ OpenShift AI 3.3 includes the *Gen AI Studio* (Playground) for interacting with 
 
 [source,text]
 ----
-URL:  https://mcp-gateway.apps.<CLUSTER_DOMAIN>/mcp
+URL:  https://mcp-gateway.{cluster_domain}/mcp
 ----
 
 == Available Kafka Tools
@@ -182,5 +182,5 @@ Provide a timeline visualization in text format.
 == References
 
 * xref:08-mcp-lightspeed.adoc[MCP + Lightspeed]
-* xref:17-neuroface-cv.adoc[NeuroFace CV Pipeline]
+* xref:16-neuroface-cv.adoc[NeuroFace CV Pipeline]
 * xref:02-kafka-setup.adoc[Streams for Apache Kafka]

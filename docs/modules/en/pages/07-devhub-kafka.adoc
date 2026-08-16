@@ -14,7 +14,7 @@ The `@backstage-community/plugin-kafka` plugin lets you view Kafka information d
 
 === Configuration
 
-The plugin is enabled as a dynamic plugin in Developer Hub:
+Developer Hub loads the plugin as a dynamic plugin:
 
 [source,yaml]
 ----
@@ -71,7 +71,7 @@ The Kafka plugin in Developer Hub does not use third-party REST APIs — it conn
 
 === Plugin frontend: entity-driven UI
 
-The frontend is mounted conditionally on entity pages:
+Developer Hub mounts the frontend conditionally on entity pages:
 
 . When a user navigates to a component in Developer Hub, the router checks whether the entity has the `kafka.apache.org/consumer-groups` annotation.
 . If the annotation exists, the `EntityKafkaContent` card renders at the configured `mountPoint` (`entity.page.overview/cards`).
@@ -86,7 +86,7 @@ Developer Hub Software Templates can automatically inject the Kafka annotation i
 
 In addition to the Developer Hub plugin, the *Streams Console* (StreamsHub) provides a dedicated UI for Kafka management:
 
-Access: `https://kafka-console-kafka-cdc.{cluster_domain}`
+Open: `https://kafka-console-kafka-cdc.{cluster_domain}`
 
 === Streams Console features
 

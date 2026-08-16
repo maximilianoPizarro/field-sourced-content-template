@@ -17,7 +17,7 @@ spec:
     providers:
       - name: litellm
         type: openai
-        url: {{ .Values.llmEndpoint | default "https://litellm-prod.apps.maas.redhatworkshops.io/v1" | quote }}
+        url: {{ .Values.llmEndpoint | default "" | quote }}
         credentialsSecretRef:
           name: llm-credentials
         models:

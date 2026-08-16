@@ -94,9 +94,9 @@ The integration route consumes CDC events from Kafka and sends email notificatio
 
 . Open DevSpaces: `https://devspaces.{cluster_domain}`
 . Create a new workspace or open an existing one
-. The *Kaoto* extension is pre-installed automatically
+. DevSpaces pre-installs the *Kaoto* extension
 . Open any `.camel.yaml` file — Kaoto shows the visual view
-. You can drag components, change parameters, and save — the YAML updates automatically
+. Drag components, change parameters, and save — Kaoto updates the YAML automatically
 
 === Camel components used in this pipeline
 
@@ -126,21 +126,21 @@ The integration route consumes CDC events from Kafka and sends email notificatio
 
 When a new CDC event arrives on the topic `cdc.public.customers`, the Camel route runs the following internal steps:
 
-. **Poll** — The `camel-kafka` component calls `poll()` on the leader broker for the partitions assigned to the consumer group `camel-cdc-consumer`. Kafka returns a batch of records. Each record is processed individually as a Camel _Exchange_.
+. **Poll** — The `camel-kafka` component calls `poll()` on the leader broker for the partitions assigned to the consumer group `camel-cdc-consumer`. Kafka returns a batch of records. Camel processes each record individually as a Camel _Exchange_.
 
-. **Unmarshal** — The Exchange body (JSON string of the Debezium event) is deserialized to a `Map<String,Object>` using Jackson. This lets you access fields such as `payload.op`, `payload.after.first_name`, etc.
+. **Unmarshal** — Camel deserializes the Exchange body (JSON string of the Debezium event) to a `Map<String,Object>` using Jackson. That lets you access fields such as `payload.op`, `payload.after.first_name`, etc.
 
 . **Content-Based Routing** — The `choice()` evaluates `$.payload.op` via JSONPath:
 ** If `op == 'c'` (INSERT): generates a "New Customer Created" email
 ** For any other operation (UPDATE, DELETE): generates a generic change email
 
-. **Marshal + HTTP POST** — The transformed body is serialized back to JSON and sent via HTTP POST to the Mailpit API (`/api/v1/send`). The `camel-http` component handles connection pooling, retries, and timeouts.
+. **Marshal + HTTP POST** — Camel serializes the transformed body back to JSON and posts it to the Mailpit API (`/api/v1/send`). The `camel-http` component handles connection pooling, retries, and timeouts.
 
 . **Error Handling** — If any step fails, `onException` catches the exception:
 ** Marks the error as `handled` (does not propagate the failure upstream)
 ** Sends the original message to the DLQ topic `dlq.cdc-camel-errors`
 ** Logs the error for diagnosis
-** The Kafka offset is committed — the message is not reprocessed
+** Camel commits the Kafka offset and does not reprocess the message
 
 === Camel Exchange Model
 
@@ -161,7 +161,7 @@ The Camel processor exposes Prometheus metrics at `/q/metrics`:
 curl -s http://camel-cdc-processor.kafka-cdc.svc:8080/q/metrics | grep camel
 ----
 
-These metrics are collected by the PodMonitor and displayed in the Grafana dashboard "Kafka CDC Pipeline".
+The PodMonitor collects these metrics and Grafana displays them on the "Kafka CDC Pipeline" dashboard.
 
 == Screenshots
 

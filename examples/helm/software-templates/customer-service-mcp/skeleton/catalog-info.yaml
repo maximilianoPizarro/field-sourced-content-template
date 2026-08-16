@@ -21,7 +21,7 @@ metadata:
     - java
     - quarkus
     - mcp
-    - neuralbank
+    - customer-service
 spec:
   type: service
   lifecycle: experimental
@@ -29,8 +29,6 @@ spec:
   system: ${{values.owner}}-apps
   providesApis:
     - ${{values.uniqueName}}-api
-  dependsOn:
-    - component:default/${{values.owner}}-apps-backend
 ---
 apiVersion: backstage.io/v1alpha1
 kind: API

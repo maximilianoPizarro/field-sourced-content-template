@@ -14,7 +14,7 @@ El plugin `@backstage-community/plugin-kafka` permite ver información de Kafka 
 
 === Configuración
 
-El plugin está habilitado como dynamic plugin en Developer Hub:
+Developer Hub carga el plugin como dynamic plugin:
 
 [source,yaml]
 ----
@@ -58,11 +58,11 @@ metadata:
 
 Esto hace que Developer Hub muestre los offsets y lag del consumer group `camel-cdc-consumer` directamente en la vista del componente.
 
-== How it Works
+== Cómo funciona
 
 === Plugin backend: conexión al cluster Kafka
 
-El plugin de Kafka en Developer Hub no usa APIs REST de terceros — se conecta *directamente* al cluster Kafka:
+El plugin de Kafka en Developer Hub no usa APIs REST de terceros — conecta *directamente* al cluster Kafka:
 
 . El backend del plugin (`plugin-kafka-backend-dynamic`) establece una conexión `AdminClient` al cluster usando los brokers configurados (`cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092`).
 . Usa la API `AdminClient.describeConsumerGroups()` para obtener el estado de los consumer groups.
@@ -71,10 +71,10 @@ El plugin de Kafka en Developer Hub no usa APIs REST de terceros — se conecta 
 
 === Plugin frontend: entity-driven UI
 
-El frontend se monta condicionalmente en las entity pages:
+Developer Hub monta el frontend de forma condicional en las entity pages:
 
 . Cuando un usuario navega a un componente en Developer Hub, el router verifica si la entity tiene la anotación `kafka.apache.org/consumer-groups`.
-. Si la anotación existe, el card `EntityKafkaContent` se renderiza en el `mountPoint` configurado (`entity.page.overview/cards`).
+. Si la anotación existe, Developer Hub renderiza el card `EntityKafkaContent` en el `mountPoint` configurado (`entity.page.overview/cards`).
 . El card hace un fetch al backend del plugin, que devuelve los datos del consumer group en JSON.
 . El frontend muestra una tabla con: topic, partición, offset actual, high watermark, lag, y el estado del consumidor (active/idle).
 
@@ -86,7 +86,7 @@ Los Software Templates de Developer Hub pueden inyectar automáticamente la anot
 
 Además del plugin de Developer Hub, la *Streams Console* (StreamsHub) proporciona una UI dedicada para gestión de Kafka:
 
-Acceso: `https://kafka-console-kafka-cdc.{cluster_domain}`
+Abrí: `https://kafka-console-kafka-cdc.{cluster_domain}`
 
 === Features de la Streams Console
 

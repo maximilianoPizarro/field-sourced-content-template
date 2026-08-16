@@ -160,7 +160,7 @@ spec:
                   ADMIN_USER="gitea_admin"
                   ADMIN_PASS="openshift"
                   DOMAIN="{{ $.Values.clusterDomain }}"
-                  USER_COUNT={{ $.Values.userCount | default 200 }}
+                  USER_COUNT={{ $.Values.userCount | default 30 }}
 
                   for i in $(seq 1 $USER_COUNT); do
                     USER="user${i}"
@@ -192,7 +192,7 @@ spec:
                   echo "Webhook sync complete."
       backoffLimit: 1
 ---
-{{- $userCount := .Values.userCount | default 200 | int }}
+{{- $userCount := .Values.userCount | default 30 | int }}
 {{- range $i := until $userCount }}
 {{- $user := printf "user%d" (add1 $i) }}
 {{- $org := printf "ws-%s" $user }}

@@ -7,7 +7,7 @@
 
 ==== Kafka
 
-Los datos de Kafka se respaldan mediante dos mecanismos:
+Dos mecanismos respaldan los datos de Kafka:
 
 * *Storage persistente* (`persistent-claim`) — los PVCs sobreviven a reinicios de pods
 * *MirrorMaker 2* — replicación cross-cluster para disaster recovery
@@ -56,7 +56,7 @@ spec:
 
 ==== Apicurio Registry
 
-Los schemas se almacenan en Kafka (`kafkasql` mode), por lo que se replican junto con el cluster Kafka.
+Apicurio almacena los schemas en Kafka (`kafkasql` mode), y Kafka los replica junto con el cluster.
 
 Para exportar schemas manualmente:
 
@@ -138,7 +138,7 @@ spec:
 . Redirigir consumidores al cluster target
 . Actualizar DNS/Routes para apuntar al cluster target
 
-== How it Works
+== Cómo funciona
 
 === MirrorMaker 2: replicación interna
 
@@ -146,7 +146,7 @@ MirrorMaker 2 opera como un cluster de KafkaConnect dedicado a la replicación:
 
 . Se conecta al cluster *source* como consumer y al cluster *target* como producer.
 . Usa 3 connectors internos:
-** **MirrorSourceConnector** — consume mensajes del source y los produce al target. Los topics se renombran con el alias del source como prefijo (ej: `source.cdc.public.customers`).
+** **MirrorSourceConnector** — consume mensajes del source y los produce al target. MirrorMaker2 renombra los topics con el alias del source como prefijo (ej: `source.cdc.public.customers`).
 ** **MirrorCheckpointConnector** — sincroniza los offsets de consumer groups entre clusters, permitiendo que un consumer pueda cambiar de cluster sin reprocesar mensajes.
 ** **MirrorHeartbeatConnector** — produce heartbeats periódicos para monitorear la latencia de replicación.
 . El patrón `cdc\..*` filtra qué topics replicar — solo los topics CDC, excluyendo topics internos de Kafka y DLQs.
@@ -166,7 +166,7 @@ Para cumplir con "right to be forgotten":
 . Un DELETE en PostgreSQL genera un evento Debezium con `op: d` y `after: null`.
 . En topics con `cleanup.policy: compact`, Kafka genera un *tombstone* (key con value `null`).
 . Después de `delete.retention.ms` (default 24h), el log cleaner elimina físicamente el tombstone y cualquier registro anterior con el mismo key.
-. Resultado: el dato se elimina completamente de Kafka sin necesidad de recrear el topic.
+. Resultado: Kafka elimina el dato por completo, sin recrear el topic.
 
 == Business Continuity Plan (BCP)
 
@@ -239,9 +239,9 @@ curl -X PUT https://apicurio-registry-kafka-cdc.apps.<domain>/apis/registry/v2/g
 
 Con `BACKWARD` compatibility:
 
-* Se pueden agregar campos opcionales
-* No se pueden eliminar campos requeridos
-* No se pueden cambiar tipos de datos
+* Podés agregar campos opcionales
+* No podés eliminar campos requeridos
+* No podés cambiar tipos de datos
 
 Esto protege a los consumidores existentes de cambios incompatibles.
 
@@ -272,7 +272,7 @@ Esto protege a los consumidores existentes de cambios incompatibles.
 
 === Retención y eliminación de datos
 
-Para cumplir con regulaciones como GDPR, se puede configurar eliminación automática:
+Para cumplir con regulaciones como GDPR, configurá eliminación automática:
 
 [source,yaml]
 ----
@@ -282,12 +282,12 @@ config:
   retention.bytes: -1
 ----
 
-Para topics con `compact`, los tombstone records (key + null value) permiten eliminar registros específicos cuando se necesita "right to be forgotten".
+Para topics con `compact`, los tombstone records (key + null value) permiten eliminar registros específicos cuando GDPR exige el "right to be forgotten".
 
 == Documentación Oficial
 
 * https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka/2.9/html/deploying_and_managing_amq_streams_on_openshift/assembly-mirrormaker-str[MirrorMaker 2 — Cross-cluster Replication^] — Replicación para DR
 * https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka[Red Hat Streams for Apache Kafka^] — Backup, retención y políticas de datos
 * https://docs.redhat.com/en/documentation/red_hat_build_of_apicurio_registry[Apicurio Registry^] — Gobierno de esquemas y compatibilidad
-* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/backup_and_restore/index[OpenShift Backup and Restore^] — Estrategias de backup para OpenShift
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/backup_and_restore/index[OpenShift Backup and Restore^] — Estrategias de backup para OpenShift
 * https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/configuring_and_using_database_servers/using-postgresql_configuring-and-using-database-servers[PostgreSQL on RHEL^] — Backup y recuperación de PostgreSQL

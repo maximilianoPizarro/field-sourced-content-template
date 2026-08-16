@@ -43,7 +43,7 @@ The **OpenShift Serverless Logic** operator (`logic-operator-rhel8`) manages the
 |===
 | Without BPM | With BPM (SonataFlow)
 
-| CDC events are processed linearly
+| Camel processes CDC events linearly
 | CDC events trigger business processes with conditional logic
 
 | No approvals or SLAs
@@ -132,7 +132,7 @@ spec:
 
 == Workflow: Customer Onboarding
 
-The customer onboarding process is defined as a `SonataFlow` CR using the Serverless Workflow specification:
+You define the customer onboarding process as a `SonataFlow` CR using the Serverless Workflow specification:
 
 === Process Diagram
 
@@ -380,7 +380,7 @@ SonataFlow runs workflows defined with the https://serverlessworkflow.io/[Server
 . The operator receives the `SonataFlow` CR and generates a *Quarkus application* with the workflow runtime embedded.
 . When a CDC event arrives (CloudEvent via Kafka or HTTP), the engine creates a *workflow instance* with a unique ID.
 . Each instance maintains its own *state* (state data) — a JSON document that transforms on each transition.
-. The engine runs the transitions defined in the workflow in an *event-driven* way: each state is evaluated and executed in order, using the previous result as input.
+. The engine runs the transitions defined in the workflow in an *event-driven* way: it evaluates and executes each state in order, using the previous result as input.
 
 === Callback pattern: asynchronous approvals
 
@@ -388,7 +388,7 @@ The `RequestManagerApproval` state uses the specification's *callback pattern*:
 
 . The workflow runs the *action* (send approval request to topic `bpm.approval.requests` via Kafka Bridge).
 . The engine *suspends* the workflow instance — it does not consume CPU or memory while waiting.
-. The instance is persisted in the Data Index with status `WAITING`.
+. The Data Index persists the instance with status `WAITING`.
 . When the `approvalCompleted` event arrives (a message on the topic with the correct `workflowInstanceId`), the engine *resumes* the instance from the exact point where it suspended.
 . If the event does not arrive within `PT24H` (24 hours), the timeout fires and the workflow transitions to the next state with a timeout flag.
 
@@ -399,7 +399,7 @@ The `ProvisionAccount` state runs *branches* in parallel:
 . The engine launches both branches (`CreateAccount` and `SendWelcome`) at the same time as coroutines.
 . `completionType: allOf` means the workflow waits until *both* branches finish before transitioning.
 . If a branch fails, the workflow can retry or handle the error according to the defined policy.
-. The results of both branches are merged into the instance state data.
+. The engine merges the results of both branches into the instance state data.
 
 === Data Index: state queries
 
@@ -440,14 +440,14 @@ VALUES ('Maria', 'Premium', 'maria.premium@neuralbank.io');
 
 == Visual Development with Kaoto
 
-SonataFlow workflows can be designed visually using the **Kaoto** extension in **Red Hat OpenShift Dev Spaces**:
+Design SonataFlow workflows visually with the **Kaoto** extension in **Red Hat OpenShift Dev Spaces**:
 
 1. Open Dev Spaces with the workspace that contains the project
 2. Install the Kaoto extension from the VS Code marketplace
 3. Open the workflow `.sw.yaml` file
 4. The visual editor shows the interactive BPMN diagram
 5. Drag and drop states, events, and functions
-6. YAML is generated automatically
+6. Kaoto generates the YAML automatically
 
 This integration lets business analysts and developers collaborate on process definitions using the same tool.
 

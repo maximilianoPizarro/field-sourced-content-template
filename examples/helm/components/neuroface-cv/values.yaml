@@ -27,4 +27,4 @@ ppe:
 
 workbench:
   seedNotebooks: true
-  notebooksRepoUrl: "https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/one/examples/helm/components/neuroface-cv/notebooks"
+  notebooksRepoUrl: "https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/main/examples/helm/components/neuroface-cv/notebooks"

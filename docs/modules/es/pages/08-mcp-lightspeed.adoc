@@ -21,7 +21,7 @@ En este cluster, Lightspeed tiene acceso a *55+ herramientas MCP* que cubren Kub
 | Brokers no arrancan
 | _"Get pods in namespace kafka-cdc with label strimzi.io/kind=Kafka and show their status"_
 
-| Topics no se crean
+| Debezium no crea los topics
 | _"List KafkaTopics in namespace kafka-cdc"_
 |===
 
@@ -40,7 +40,7 @@ En este cluster, Lightspeed tiene acceso a *55+ herramientas MCP* que cubren Kub
 | Connector en estado FAILED
 | _"Get events in namespace kafka-cdc related to KafkaConnect"_
 
-| Replication slot no se crea
+| PostgreSQL no crea el replication slot
 | _"Get the logs from deployment cdc-postgresql in namespace kafka-cdc"_
 |===
 
@@ -99,7 +99,7 @@ En este cluster, Lightspeed tiene acceso a *55+ herramientas MCP* que cubren Kub
 | _"Get events in namespace kafka-cdc related to Console"_
 |===
 
-== How it Works
+== Cómo funciona
 
 === Model Context Protocol (MCP)
 
@@ -108,7 +108,7 @@ MCP es un protocolo abierto que conecta modelos de IA con herramientas externas:
 . Lightspeed recibe el prompt del usuario en la consola de OpenShift.
 . El modelo analiza la intención y selecciona las *herramientas MCP* relevantes de las 55+ disponibles.
 . Para cada herramienta seleccionada, MCP ejecuta una *function call* contra el API server de OpenShift (o ArgoCD, etc.) con los parámetros inferidos del prompt.
-. Los resultados (YAML de recursos, logs, eventos) se inyectan de vuelta en el contexto del modelo.
+. MCP inyecta los resultados (YAML de recursos, logs, eventos) de vuelta en el contexto del modelo.
 . El modelo sintetiza una respuesta que combina la información obtenida con su conocimiento sobre la plataforma.
 
 === Flujo de un prompt de troubleshooting
@@ -123,7 +123,7 @@ Cuando un usuario pregunta _"Get the KafkaConnectors in namespace kafka-cdc and 
 
 === Seguridad y permisos
 
-Las herramientas MCP se ejecutan con los permisos del ServiceAccount configurado en el namespace `mcp-system`. El RBAC de OpenShift controla qué recursos puede leer o modificar — Lightspeed no tiene acceso irrestricto al cluster.
+Las herramientas MCP corren con los permisos del ServiceAccount configurado en el namespace `mcp-system`. El RBAC de OpenShift controla qué recursos puede leer o modificar — Lightspeed no tiene acceso irrestricto al cluster.
 
 == Workflow de diagnóstico rápido
 
@@ -166,6 +166,6 @@ Las herramientas MCP registradas en `mcp-system` que son relevantes para el pipe
 == Documentación Oficial
 
 * https://docs.redhat.com/en/documentation/red_hat_openshift_lightspeed[Red Hat OpenShift Lightspeed^] — Asistente IA para OpenShift
-* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cli_tools/oc-cli-getting-started[OpenShift CLI (oc)^] — Herramienta de línea de comandos para OpenShift
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/cli_tools/oc-cli-getting-started[OpenShift CLI (oc)^] — Herramienta de línea de comandos para OpenShift
 * https://spec.modelcontextprotocol.io/[Model Context Protocol (MCP) Specification^] — Estándar abierto para conectar modelos de IA con herramientas
 * https://docs.redhat.com/en/documentation/red_hat_openshift_gitops[Red Hat OpenShift GitOps^] — Argo CD para OpenShift

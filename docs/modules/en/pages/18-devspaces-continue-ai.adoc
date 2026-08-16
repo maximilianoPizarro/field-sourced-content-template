@@ -57,7 +57,7 @@ Red Hat OpenShift Dev Spaces provides cloud-native workspaces with *Continue AI*
 
 === Devfile
 
-Each workspace is defined by a `devfile.yaml` that configures the container, extensions, and startup tasks:
+A `devfile.yaml` defines each workspace: container, extensions, and startup tasks:
 
 [source,yaml]
 ----
@@ -293,7 +293,7 @@ The software template in Developer Hub creates new Camel CDC projects with:
 * Sample CDC route (`cdc-to-mail.camel.yaml`)
 * Correct DevSpaces factory URL for one-click workspace creation
 
-Access Developer Hub: `https://developer-hub.{cluster_domain}`
+Access Developer Hub: `https://backstage-developer-hub-developer-hub.{cluster_domain}`
 
 == Troubleshooting
 
@@ -317,7 +317,7 @@ Access Developer Hub: `https://developer-hub.{cluster_domain}`
 == References
 
 * xref:05-kaoto-camel.adoc[Kaoto + Apache Camel]
-* xref:18-ai-playground-kafka-mcp.adoc[AI Playground + Kafka MCP]
+* xref:17-ai-playground-kafka-mcp.adoc[AI Playground + Kafka MCP]
 * https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces[Red Hat OpenShift Dev Spaces^]
 * https://docs.continue.dev/[Continue AI Documentation^]
 * https://github.com/ibm-granite[IBM Granite Models^]

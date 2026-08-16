@@ -3,7 +3,7 @@
     {
       "title": "DeepSeek R1 (LiteLLM)",
       "model": "deepseek-r1-distill-qwen-14b",
-      "apiBase": "https://litellm-prod.apps.maas.redhatworkshops.io/v1",
+      "apiBase": "https://CHANGE_ME_LITELLM/v1",
       "provider": "openai",
       "apiKey": "CONTINUE_API_KEY_PLACEHOLDER",
       "contextLength": 32768,
@@ -15,7 +15,7 @@
   "tabAutocompleteModel": {
     "title": "DeepSeek R1 Autocomplete",
     "model": "deepseek-r1-distill-qwen-14b",
-    "apiBase": "https://litellm-prod.apps.maas.redhatworkshops.io/v1",
+    "apiBase": "https://CHANGE_ME_LITELLM/v1",
     "provider": "openai",
     "apiKey": "CONTINUE_API_KEY_PLACEHOLDER",
     "contextLength": 32768,

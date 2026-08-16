@@ -87,7 +87,7 @@ Esta solución:
 Los distintos roles de una organización tienen preocupaciones y focos distintos al trabajar con esta arquitectura distribuida de AI/ML en dos tipos lógicos de sitios:
 
 * *El centro de datos principal.* Aquí científicos de datos, desarrolladores y operaciones aplican cambios a sus modelos, código de aplicación y configuraciones.
-* *Las fábricas.* Aquí se despliegan aplicaciones nuevas, actualizaciones y cambios operativos para mejorar la calidad y la eficiencia en planta.
+* *Las fábricas.* GitOps despliega aplicaciones nuevas, actualizaciones y cambios operativos para mejorar la calidad y la eficiencia en planta.
 
 == Diagramas lógicos
 
@@ -105,7 +105,7 @@ Dos corrientes principales de flujo de datos:
 
 . *Norte (borde → núcleo):* Los datos de sensores y los eventos fluyen desde el borde operativo hacia el núcleo para su procesamiento centralizado. Volúmenes altos (decenas de miles de eventos por segundo) pueden hacer poco práctica la transferencia a la nube.
 
-. *Sur (núcleo → borde):* Código, configuraciones, datos maestros y modelos de ML se envían desde el núcleo al borde. Con cientos de plantas y miles de líneas de producción posibles, la automatización y la coherencia son esenciales.
+. *Sur (núcleo → borde):* GitOps envía código, configuraciones, datos maestros y modelos de ML desde el núcleo al borde. Con cientos de plantas y miles de líneas de producción posibles, la automatización y la coherencia son esenciales.
 
 == La tecnología
 
@@ -146,7 +146,7 @@ image::ROOT:edge-mfg-messaging-ml.png[Fabricación en el borde con mensajería y
 
 _Figura 4. Solución Industrial Edge con componentes de mensajería y ML de forma esquemática._
 
-Los datos de sensores se transmiten por *MQTT* a Red Hat AMQ, que los enruta con dos fines:
+Los sensores transmiten datos por *MQTT* a Red Hat AMQ, que los enruta con dos fines:
 
 * *Desarrollo de modelos* en el centro de datos principal (data lake → JupyterLab → entrenamiento)
 * *Inferencia en vivo* en los centros de datos de fábrica (IoT Consumer → ModelMesh → alertas de anomalías)
@@ -159,7 +159,7 @@ image::ROOT:edge-mfg-gitops.png[Flujos de trabajo GitOps,width=100%,align=center
 
 _Figura 5. Solución Industrial Edge con una vista esquemática de los flujos GitOps._
 
-*GitOps* ofrece un enfoque coherente y declarativo para gestionar cambios y actualizaciones del clúster entre sitios centralizados y del borde. Los cambios en configuración y aplicaciones se incorporan automáticamente a los sistemas operativos de la fábrica mediante *ArgoCD*.
+*GitOps* ofrece un enfoque coherente y declarativo para gestionar cambios y actualizaciones del clúster entre sitios centralizados y del borde. *ArgoCD* incorpora automáticamente los cambios de configuración y aplicaciones a los sistemas operativos de la fábrica.
 
 === Change Data Capture (CDC)
 

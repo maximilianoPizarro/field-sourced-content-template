@@ -50,7 +50,7 @@ En un pipeline CDC, los eventos que Debezium produce tienen una estructura defin
 
 Con Apicurio Registry:
 
-* Los schemas se registran y versionan centralmente
+* Apicurio registra y versiona los schemas centralmente
 * Los productores validan contra el schema antes de enviar
 * Los consumidores obtienen el schema automáticamente
 * Evolución de schemas compatible (forward, backward, full)
@@ -90,7 +90,7 @@ Desde ahí podes:
 
 == Integración con Debezium
 
-Para usar Apicurio como serializer en Debezium, se configura el converter en KafkaConnect:
+Para usar Apicurio como serializer en Debezium, configurá el converter en KafkaConnect:
 
 [source,yaml]
 ----
@@ -105,7 +105,7 @@ config:
 
 NOTE: En este demo usamos JSON converter por simplicidad, pero la integración con Avro via Apicurio está lista para habilitarse.
 
-== How it Works
+== Cómo funciona
 
 === Ciclo de validación de schemas
 
@@ -141,7 +141,7 @@ El Schema Registry actúa como un *contrato vivo* entre productores y consumidor
 
 === Persistencia KafkaSQL
 
-En esta demo, Apicurio usa `kafkasql` como backend: los schemas se almacenan como mensajes en topics internos de Kafka. Esto elimina la necesidad de una base de datos adicional y hereda la replicación y durabilidad de Kafka (RF=3).
+En esta demo, Apicurio usa `kafkasql` como backend: Apicurio almacena los schemas como mensajes en topics internos de Kafka. Ese diseño elimina una base de datos extra y hereda la replicación y durabilidad de Kafka (RF=3).
 
 == API REST del Registry
 

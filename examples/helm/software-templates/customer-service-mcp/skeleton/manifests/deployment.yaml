@@ -5,7 +5,7 @@ metadata:
   namespace: ${{values.namespace}}
   labels:
     app.kubernetes.io/name: ${{values.name}}
-    app.kubernetes.io/part-of: neuralbank
+    app.kubernetes.io/part-of: customer-service
     backstage.io/kubernetes-id: ${{values.uniqueName}}
 spec:
   replicas: 1

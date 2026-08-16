@@ -31,7 +31,7 @@
 
 == Real-Time Data Streaming
 
-Real-time streaming is the continuous flow of data as it is generated, enabling immediate analysis and processing to extract meaningful insights.
+Real-time streaming moves data as sources generate it, so you can analyze and process events immediately.
 
 *Common data sources:*
 
@@ -43,7 +43,7 @@ Real-time streaming is the continuous flow of data as it is generated, enabling 
 
 == Change Data Capture (CDC)
 
-CDC is an integration pattern that identifies and captures changes made to a database (INSERT, UPDATE, DELETE) and propagates them as events to other systems in real time.
+CDC identifies INSERT, UPDATE, and DELETE operations in a database and publishes them as events to other systems in real time.
 
 === Why CDC?
 
@@ -95,10 +95,10 @@ graph LR
 . PostgreSQL writes the change to the Write-Ahead Log (WAL) with `wal_level=logical`
 . Debezium (running as a KafkaConnect plugin) reads the WAL via a replication slot
 . Debezium serializes the event as JSON (optionally Avro via Apicurio Registry)
-. The event is published to the corresponding Kafka topic (`cdc.public.customers`)
+. Debezium publishes the event to the Kafka topic `cdc.public.customers`
 . Apache Camel consumes the event from the topic
 . Camel transforms the event and sends an email notification via Mailpit
-. The entire pipeline is monitored in Grafana and visible in Kiali (Service Mesh)
+. Grafana monitors the pipeline and Kiali shows the Service Mesh traffic
 
 == How it Works
 
@@ -108,9 +108,9 @@ The CDC pipeline operates as a reactive chain of five stages, where each compone
 
 . **Serialize** — Debezium turns each change into a structured JSON event that includes: the `before` value (previous row state), `after` (new state), `op` (operation type: `c`reate, `u`pdate, `d`elete, `r`ead), and `source` (metadata: table, schema, WAL LSN, WAL timestamp).
 
-. **Stream** — The event is published to the corresponding Kafka topic (`cdc.public.<table>`). Kafka persists it to disk, replicates it to 3 brokers (RF=3), and acknowledges the write only when at least 2 replicas have persisted the data (`min.insync.replicas=2`).
+. **Stream** — Debezium publishes the event to the Kafka topic (`cdc.public.<table>`). Kafka persists it to disk, replicates it to 3 brokers (RF=3), and acknowledges the write only when at least 2 replicas persist the data (`min.insync.replicas=2`).
 
-. **Process** — Apache Camel consumes from the topic using a _consumer group_. Each partition is assigned to a single consumer (partition affinity), preserving order by primary key. Camel deserializes the JSON, applies content-based routing (`$.payload.op`), and transforms the payload.
+. **Process** — Apache Camel consumes from the topic using a _consumer group_. Kafka assigns each partition to a single consumer (partition affinity), preserving order by primary key. Camel deserializes the JSON, applies content-based routing (`$.payload.op`), and transforms the payload.
 
 . **React** — The Camel processor runs the appropriate action: HTTP POST to Mailpit for notifications, production to DLQ topics for errors, or Prometheus metric emission. Everything is non-blocking — if a destination fails, the message goes to the Dead Letter Queue.
 
@@ -121,7 +121,7 @@ Typical end-to-end pipeline latency is *sub-second* from the PostgreSQL commit t
 
 == Namespace and resources
 
-All CDC pipeline components are deployed in the `kafka-cdc` namespace:
+Argo CD deploys all CDC pipeline components in the `kafka-cdc` namespace:
 
 [source,yaml]
 ----
@@ -134,11 +134,11 @@ metadata:
     istio-discovery: enabled
 ----
 
-The `istio.io/dataplane-mode: ambient` label automatically enrolls the namespace in the Service Mesh, making all traffic visible in Kiali without sidecars.
+The `istio.io/dataplane-mode: ambient` label enrolls the namespace in the Service Mesh, so Kiali shows all traffic without sidecars.
 
 == High Availability
 
-The pipeline is configured with multiple replicas and persistent storage for fault tolerance.
+The Helm chart runs Kafka, KafkaConnect, and Camel with multiple replicas and persistent storage for fault tolerance.
 
 === Kafka Brokers — Persistent Storage
 
@@ -156,11 +156,11 @@ spec:
 ----
 
 * `size: 10Gi` — capacity per broker (adjust based on data volume)
-* `deleteClaim: false` — PVCs are preserved when scaling or deleting the cluster
+* `deleteClaim: false` — OpenShift keeps the PVCs when you scale or delete the cluster
 
 === KafkaConnect — 2 replicas
 
-KafkaConnect is deployed with 2 replicas for load balancing and connector failover:
+Argo CD deploys KafkaConnect with 2 replicas for load balancing and connector failover:
 
 [source,yaml]
 ----
@@ -172,7 +172,7 @@ Kafka Connect automatically distributes tasks across available replicas. If one 
 
 === Camel CDC Processor — 2 replicas
 
-The Camel processor is scaled to 2 replicas. Kafka balances partitions across consumers in the same group:
+The Helm chart runs 2 Camel processor replicas. Kafka balances partitions across consumers in the same group:
 
 [source,yaml]
 ----
@@ -187,5 +187,5 @@ With 3 partitions per topic and 2 consumers, each replica processes ~1.5 partiti
 * https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka[Red Hat Streams for Apache Kafka^] — Deploying and configuring Kafka clusters on OpenShift
 * https://docs.redhat.com/en/documentation/red_hat_build_of_debezium[Red Hat build of Debezium^] — CDC connector configuration
 * https://docs.redhat.com/en/documentation/red_hat_build_of_apache_camel[Red Hat build of Apache Camel^] — Integration and processing routes
-* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/networking/service-mesh[OpenShift Service Mesh^] — mTLS and traffic observability
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/networking/service-mesh[OpenShift Service Mesh^] — mTLS and traffic observability
 * https://strimzi.io/documentation/[Strimzi Documentation^] — Upstream project for Streams for Apache Kafka

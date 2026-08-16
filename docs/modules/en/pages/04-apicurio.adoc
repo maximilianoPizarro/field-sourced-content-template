@@ -50,7 +50,7 @@ In a CDC pipeline, events produced by Debezium have a defined structure. Without
 
 With Apicurio Registry:
 
-* Schemas are registered and versioned centrally
+* Apicurio registers and versions schemas centrally
 * Producers validate against the schema before sending
 * Consumers obtain the schema automatically
 * Compatible schema evolution (forward, backward, full)
@@ -73,7 +73,7 @@ spec:
     replicas: 1
 ----
 
-The `kafkasql` storage uses Kafka as the persistence backend — no separate database is required.
+The `kafkasql` storage uses Kafka as the persistence backend — you do not need a separate database.
 
 == UI access
 
@@ -141,7 +141,7 @@ The Schema Registry acts as a *living contract* between producers and consumers:
 
 === KafkaSQL persistence
 
-In this demo, Apicurio uses `kafkasql` as the backend: schemas are stored as messages in internal Kafka topics. This removes the need for an additional database and inherits Kafka's replication and durability (RF=3).
+In this demo, Apicurio uses `kafkasql` as the backend: Apicurio stores schemas as messages in internal Kafka topics. That design removes an extra database and inherits Kafka's replication and durability (RF=3).
 
 == Registry REST API
 

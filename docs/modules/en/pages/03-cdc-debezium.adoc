@@ -34,7 +34,7 @@ https://debezium.io/[Debezium] is a distributed open source Change Data Capture 
 
 == PostgreSQL — CDC configuration
 
-To enable CDC, PostgreSQL must be configured with `wal_level=logical`:
+To enable CDC, configure PostgreSQL with `wal_level=logical`:
 
 [source,yaml]
 ----
@@ -84,7 +84,7 @@ CREATE PUBLICATION cdc_publication FOR TABLE customers, orders;
 
 == KafkaConnect with Debezium
 
-The Debezium connector is deployed inside KafkaConnect using Strimzi's *build* feature, which builds a custom image with the required plugins:
+Strimzi deploys the Debezium connector inside KafkaConnect using the *build* feature, which builds a custom image with the required plugins:
 
 [source,yaml]
 ----
@@ -148,7 +148,7 @@ spec:
     slot.name: debezium_cdc
     snapshot.mode: initial
 ----
-<1> In the deployed Helm chart, credentials are injected from `values.yaml` via templates: `{{ .Values.postgresql.username }}` and `{{ .Values.postgresql.password }}`. The values shown here are the demo defaults.
+<1> In the deployed Helm chart, Helm injects credentials from `values.yaml` via templates: `{{ .Values.postgresql.username }}` and `{{ .Values.postgresql.password }}`. The values shown here are the demo defaults.
 
 == How it Works
 
@@ -159,7 +159,7 @@ Debezium does not run SQL queries to capture changes — it uses PostgreSQL's na
 . PostgreSQL writes *every transaction* to the Write-Ahead Log (WAL) before committing to disk. With `wal_level=logical`, the WAL contains enough information to decode row-level changes.
 . Debezium creates a *replication slot* (`debezium_cdc`) that acts as a persistent cursor in the WAL. PostgreSQL does not remove WAL segments the slot has not consumed yet — this guarantees zero event loss.
 . The `pgoutput` plugin decodes binary WAL changes into structured logical messages (table, columns, before/after values).
-. The `PUBLICATION` (`cdc_publication`) filters which tables are replicated — only `customers` and `orders` generate events.
+. The `PUBLICATION` (`cdc_publication`) filters which tables PostgreSQL replicates — only `customers` and `orders` generate events.
 
 === CDC event structure
 
@@ -200,7 +200,7 @@ KafkaConnect distributes work via *tasks*:
 . Each connector declares how many tasks it needs (`tasksMax`). The Debezium source connector always uses 1 task (PostgreSQL limitation: one replication slot per connector).
 . The HTTP sink can use multiple tasks — one per input topic partition.
 . If a Connect replica fails, the *group coordinator* reassigns tasks to the remaining replicas in ~30 seconds.
-. Each task's offsets are persisted in the `cdc-connect-offsets` topic (RF=3), so another replica can resume from the exact point.
+. Kafka Connect persists each task's offsets in the `cdc-connect-offsets` topic (RF=3), so another replica can resume from the exact point.
 
 == KafkaConnector — HTTP sink (Mailpit)
 
@@ -227,7 +227,7 @@ spec:
 
 == Dead Letter Queue (DLQ)
 
-Messages that fail processing are not lost — they are routed to DLQ topics for later analysis.
+Debezium does not drop failed messages — it routes them to DLQ topics for later analysis.
 
 === DLQ in KafkaConnectors
 
@@ -243,7 +243,7 @@ config:
 ----
 
 * `errors.tolerance: all` — the connector keeps running even if a record fails
-* `errors.deadletterqueue.topic.name` — topic where failed messages are sent
+* `errors.deadletterqueue.topic.name` — topic where Debezium sends failed messages
 * `errors.deadletterqueue.context.headers.enable` — adds headers with the original error for diagnostics
 
 === DLQ in Apache Camel

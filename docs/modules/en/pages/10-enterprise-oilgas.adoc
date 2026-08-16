@@ -3,7 +3,7 @@
 
 == Enterprise Architecture — IoT/SCADA in Oil and Gas
 
-The same CDC pattern implemented in this workshop applies directly to mission-critical scenarios in the oil and gas industry, where IoT sensors and SCADA systems generate continuous data that must be processed in real time.
+The same CDC pattern implemented in this workshop applies directly to mission-critical scenarios in the oil and gas industry, where IoT sensors and SCADA systems generate continuous data that Kafka and Camel process in real time.
 
 == Scenario: Well and Pipeline Monitoring
 
@@ -184,7 +184,7 @@ The data flow from a field sensor to an operational alert follows this chain:
 . *Debezium* captures the INSERT via the WAL and publishes to the corresponding topic (`oilgas.sensors.pressure`). With 12 partitions, the system supports thousands of concurrent sensors partitioned by `sensor_id`.
 . *Apache Camel* consumes the event, deserializes the JSON, and applies *content-based routing*: if `value > threshold`, it generates an alert event to the `oilgas.alerts.critical` topic. Otherwise it logs the normal reading.
 . Alert events trigger notifications via PagerDuty/OpsGenie for the on-call team.
-. In parallel, all events (normal and anomalous) are persisted in a *Data Lake* (S3/ODF) for historical analysis and ML model training.
+. In parallel, the pipeline persists all events (normal and anomalous) in a *Data Lake* (S3/ODF) for historical analysis and ML model training.
 
 === Key differences vs. the workshop
 
@@ -266,4 +266,4 @@ Extension of the workshop `PrometheusRule` for sensors:
 * https://docs.redhat.com/en/documentation/red_hat_build_of_debezium[Red Hat build of Debezium^] — CDC for change capture in SCADA systems
 * https://docs.redhat.com/en/documentation/red_hat_build_of_apache_camel[Red Hat build of Apache Camel^] — Integration with legacy and IoT systems
 * https://docs.redhat.com/en/documentation/red_hat_openshift_data_foundation[Red Hat OpenShift Data Foundation^] — Persistent storage for data lakes
-* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20[Red Hat OpenShift Container Platform^] — Edge and cloud deployment platform
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.21[Red Hat OpenShift Container Platform^] — Edge and cloud deployment platform

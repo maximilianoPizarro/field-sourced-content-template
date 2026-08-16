@@ -268,7 +268,7 @@ connectivityLink:
     - id: neuroface-cv
       enabled: true
       path: neuroface-cv
-      destinationNamespace: kafka-cdc
+      destinationNamespace: neuroface
       syncWave: "11"
       prune: true
       selfHeal: true
@@ -373,7 +373,7 @@ connectivityLink:
             email: admin@gitea.local
           config:
             server:
-              ROOT_URL: ""
+              ROOT_URL: ""  # injected at deploy as https://gitea-gitea.<deployer.domain>
         image:
           rootless: true
         podSecurityContext:
@@ -464,10 +464,11 @@ litemaas:
 # ============================================================
 # User Scaling — single parameter controls all user provisioning
 # Keycloak users, DevSpaces namespaces, RBAC policy, workshop registration
-# Recommended: 30 (small), 50 (medium), 100 (large), 200 (extra-large)
+# Recommended: 30 (workshop), 50 (medium), 100 (large), 200 (extra-large)
+# RHDP loads this file only — set the attendee count here before ordering.
 # See README.md "Cluster Sizing" for node/resource recommendations
 # ============================================================
-userCount: 200
+userCount: 30
 
 # ============================================================
 # Workshop Registration Portal
@@ -539,8 +540,8 @@ components:
 # Values injected by field content workload (do not modify)
 # ============================================================
 deployer:
-  domain: "apps.cluster-xtvzv.dynamic.redhatworkshops.io"
-  apiUrl: "https://api.cluster-xtvzv.dynamic.redhatworkshops.io:6443"
+  domain: ""
+  apiUrl: ""
 
 fieldContent:
   deploymentType: "helm"

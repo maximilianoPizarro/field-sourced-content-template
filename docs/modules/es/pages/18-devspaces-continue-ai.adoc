@@ -57,7 +57,7 @@ Red Hat OpenShift Dev Spaces provee espacios de trabajo cloud-native con *Contin
 
 === Devfile
 
-Cada workspace se define con un `devfile.yaml` que configura el contenedor, extensiones y tareas de inicio:
+Un `devfile.yaml` define cada workspace: contenedor, extensiones y tareas de inicio:
 
 [source,yaml]
 ----
@@ -293,7 +293,7 @@ El template de software en Developer Hub crea nuevos proyectos Camel CDC con:
 * Ruta CDC de ejemplo (`cdc-to-mail.camel.yaml`)
 * URL de factory de DevSpaces correcta para creación de workspace con un click
 
-Acceder a Developer Hub: `https://developer-hub.{cluster_domain}`
+Accedé a Developer Hub: `https://backstage-developer-hub-developer-hub.{cluster_domain}`
 
 == Resolución de Problemas
 
@@ -302,7 +302,7 @@ Acceder a Developer Hub: `https://developer-hub.{cluster_domain}`
 | Problema | Solución
 
 | Extensiones no visibles después del inicio del workspace
-| Recargar el navegador con F5 — las extensiones se instalan en `postStart` y requieren recarga
+| Recargá el navegador con F5 — `postStart` instala las extensiones y requieren recarga
 
 | `./mvnw: Permission denied`
 | Ejecutar `chmod +x mvnw` — el `postStart` del devfile hace esto automáticamente
@@ -317,7 +317,7 @@ Acceder a Developer Hub: `https://developer-hub.{cluster_domain}`
 == Referencias
 
 * xref:05-kaoto-camel.adoc[Kaoto + Apache Camel]
-* xref:18-ai-playground-kafka-mcp.adoc[AI Playground + Kafka MCP]
+* xref:17-ai-playground-kafka-mcp.adoc[AI Playground + Kafka MCP]
 * https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces[Red Hat OpenShift Dev Spaces^]
 * https://docs.continue.dev/[Continue AI Documentation^]
 * https://github.com/ibm-granite[IBM Granite Models^]

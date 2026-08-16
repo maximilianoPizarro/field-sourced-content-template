@@ -35,7 +35,7 @@
 
 == Diseño de Particiones
 
-Cada topic del pipeline CDC está configurado con *3 particiones* y *3 réplicas*:
+El chart Helm configura cada topic del pipeline CDC con *3 particiones* y *3 réplicas*:
 
 [source,yaml]
 ----
@@ -64,13 +64,13 @@ spec:
 | 3 particiones permiten hasta 3 consumidores simultáneos en un consumer group
 
 | *Replicación*
-| Con RF=3 y `min.insync.replicas=2`, se tolera la pérdida de 1 broker sin perder datos
+| Con RF=3 y `min.insync.replicas=2`, Kafka tolera la pérdida de 1 broker sin perder datos
 
 | *Orden*
 | Debezium usa la primary key como partition key, garantizando orden por registro
 
 | *Escalabilidad*
-| Se puede aumentar particiones sin downtime (solo se agregan, nunca se eliminan)
+| Podés aumentar particiones sin downtime (solo las agregás, nunca las eliminás)
 |===
 
 === Partition Key en CDC
@@ -204,13 +204,13 @@ oc exec -it deploy/cdc-postgresql -n kafka-cdc -- psql -U cdcuser -d cdcdb -c \
 
 Con `compact`, Kafka retiene solo el último valor para cada key, eliminando versiones anteriores. Para CDC:
 
-* Se preserva el estado actual de cada registro
-* Se eliminan updates intermedios después de la compactación
+* La compactación preserva el estado actual de cada registro
+* La compactación elimina updates intermedios
 * Permite reconstruir el estado completo de una tabla consumiendo el topic desde el inicio
 
 === Reprocesamiento
 
-Para reprocesar eventos, se puede resetear el offset del consumer group:
+Para reprocesar eventos, reseteá el offset del consumer group:
 
 [source,bash]
 ----
@@ -222,7 +222,7 @@ oc exec -it cdc-cluster-kafka-0 -n kafka-cdc -- bin/kafka-consumer-groups.sh \
   --execute
 ----
 
-WARNING: Esto causa que todos los mensajes del topic se reprocesen. Usar con precaución en producción.
+WARNING: Esto hace que el consumer reprocese todos los mensajes del topic. Usá con precaución en producción.
 
 == Configuración de Replicación
 
@@ -239,11 +239,11 @@ config:
 ----
 
 * `min.insync.replicas: 2` — un write es confirmado solo si 2 de las 3 réplicas lo persisten
-* `default.replication.factor: 3` — todos los topics nuevos se crean con RF=3
+* `default.replication.factor: 3` — Kafka crea todos los topics nuevos con RF=3
 
 Esto significa que el cluster puede tolerar la pérdida de *1 broker* sin perder datos ni disponibilidad.
 
-== How it Works
+== Cómo funciona
 
 === Escritura en Kafka: de producer a disco
 
@@ -251,8 +251,8 @@ Cuando Debezium (o cualquier producer) envía un mensaje a Kafka, internamente o
 
 . El producer serializa el key y value, calcula `hash(key) % numPartitions` para determinar la partición destino.
 . El producer agrupa mensajes en *batches* por partición (configurable via `batch.size` y `linger.ms`) para optimizar I/O.
-. El batch se envía al broker *leader* de la partición via TCP.
-. El leader escribe el batch en un *segment file* en disco — un append-only log. Los segments se rotan al llegar a 1GB (configurable).
+. El producer envía el batch al broker *leader* de la partición via TCP.
+. El leader escribe el batch en un *segment file* en disco — un append-only log. Kafka rota los segments al llegar a 1GB (configurable).
 . Cada mensaje recibe un *offset* secuencial: un entero de 64 bits, monotónicamente creciente, único dentro de la partición.
 . Los *followers* fetch el batch del leader, lo escriben en sus propios segments, y envían un ACK al leader.
 . Con `acks=all` (default en Strimzi) y `min.insync.replicas=2`, el leader solo confirma al producer cuando al menos 2 réplicas persisten el dato.
@@ -263,7 +263,7 @@ Cuando Debezium (o cualquier producer) envía un mensaje a Kafka, internamente o
 . El coordinator ejecuta un *partition assignment protocol* (range o round-robin) distribuyendo las particiones entre los consumers.
 . Cada consumer hace `poll()` periódicamente al leader de sus particiones asignadas, recibiendo batches de mensajes desde su último offset.
 . El consumer procesa los mensajes y luego *commitea* el offset al topic interno `__consumer_offsets`.
-. Si un consumer se desconecta (no envía heartbeat en `session.timeout.ms`), el coordinator dispara un *rebalance*: las particiones huérfanas se reasignan a los consumers restantes.
+. Si un consumer se desconecta (no envía heartbeat en `session.timeout.ms`), el coordinator dispara un *rebalance* y reasigna las particiones huérfanas a los consumers restantes.
 
 === Compactación: cleanup.policy=compact
 
@@ -271,13 +271,13 @@ Para topics CDC con `cleanup.policy: compact`:
 
 . Kafka ejecuta periódicamente un *log cleaner* que escanea los segments cerrados.
 . Para cada key, retiene solo el mensaje con el *mayor offset* (el más reciente).
-. Los mensajes con key duplicada y offset menor se eliminan físicamente del disco.
+. El log cleaner elimina físicamente del disco los mensajes con key duplicada y offset menor.
 . Un mensaje con value `null` (tombstone) marca el key para eliminación completa después del periodo `delete.retention.ms`.
 . Resultado: el topic contiene exactamente *un mensaje por key* — el estado actual de cada registro de la base de datos.
 
 == Network Policies
 
-El namespace `kafka-cdc` está protegido con `NetworkPolicy` que restringe el tráfico de ingress:
+Las reglas `NetworkPolicy` protegen el namespace `kafka-cdc` y restringen el tráfico de ingress:
 
 [source,yaml]
 ----
@@ -347,4 +347,4 @@ spec:
 * https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka/2.9/html/deploying_and_managing_amq_streams_on_openshift/config-topics-str[Configuring Kafka Topics^] — Gestión de topics con Strimzi
 * https://strimzi.io/docs/operators/latest/configuring.html[Strimzi Configuration Guide^] — Configuración avanzada de operadores y CRs
 * https://kafka.apache.org/documentation/#consumerconfigs[Kafka Consumer Configurations^] — Parámetros de consumer groups y offsets
-* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/nodes/controlling-pod-placement-onto-nodes-scheduling[Pod Scheduling and Disruption Budgets^] — PDBs y scheduling en OpenShift
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/nodes/controlling-pod-placement-onto-nodes-scheduling[Pod Scheduling and Disruption Budgets^] — PDBs y scheduling en OpenShift

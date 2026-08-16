@@ -151,11 +151,11 @@ You should see JSON payloads with vibration readings every few seconds. Press `C
 
 Each page below focuses on one observable slice of the running platform:
 
-. xref:12-ie-health-check.adoc[10. Observe IoT Sensors] — Watch sensor data flow in real-time
-. xref:13-ie-config-gitops.adoc[11. Explore Kafka Streams] — Inspect topics, partitions, and event flow
-. xref:14-ie-app-devops.adoc[12. Line Dashboard & Anomalies] — See ML anomaly detection live
-. xref:15-ie-mlops.adoc[13. GitOps Config Change] — Enable temperature sensors via Git
-. xref:16-ie-troubleshooting.adoc[14. Explore MinIO Data Lake] — Browse stored sensor data in S3
+. xref:12-ie-health-check.adoc[Step 10: Observe IoT Sensors] — Watch sensor data flow in real-time
+. xref:13-ie-config-gitops.adoc[Step 11: Explore Kafka Streams] — Inspect topics, partitions, and event flow
+. xref:14-ie-app-devops.adoc[Step 12: Line Dashboard & Anomaly Detection] — See ML anomaly detection live
+. xref:15-ie-mlops.adoc[Step 13: Enable Temperature Sensors via GitOps] — Enable temperature sensors via Git
+. xref:16-ie-troubleshooting.adoc[Step 14: Explore MinIO Data Lake] — Browse stored sensor data in S3
 
 == Architecture
 

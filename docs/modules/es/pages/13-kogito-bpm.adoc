@@ -43,7 +43,7 @@ El operador **OpenShift Serverless Logic** (`logic-operator-rhel8`) gestiona el 
 |===
 | Sin BPM | Con BPM (SonataFlow)
 
-| Los eventos CDC se procesan linealmente
+| Camel procesa los eventos CDC de forma lineal
 | Los eventos CDC disparan procesos de negocio con lógica condicional
 
 | No hay aprobaciones ni SLAs
@@ -85,7 +85,7 @@ graph LR
 
 == Operador: OpenShift Serverless Logic
 
-El operador se instala desde Red Hat Operators:
+Instalá el operador desde Red Hat Operators:
 
 .Subscription del operador
 [source,yaml]
@@ -112,7 +112,7 @@ El operador proporciona los siguientes CRDs:
 
 == SonataFlow Platform
 
-La plataforma se configura en el namespace `kogito-bpm`:
+El chart Helm configura la plataforma en el namespace `kogito-bpm`:
 
 [source,yaml]
 ----
@@ -132,7 +132,7 @@ spec:
 
 == Workflow: Customer Onboarding
 
-El proceso de onboarding de clientes se define como un `SonataFlow` CR usando la especificación Serverless Workflow:
+Definís el proceso de onboarding de clientes como un `SonataFlow` CR usando la especificación Serverless Workflow:
 
 === Diagrama del Proceso
 
@@ -344,7 +344,7 @@ spec:
 
 == Integración con el Pipeline CDC
 
-El workflow SonataFlow se integra con los componentes existentes del pipeline CDC:
+El workflow SonataFlow integra los componentes existentes del pipeline CDC:
 
 [cols="2,2,2",options="header"]
 |===
@@ -371,7 +371,7 @@ El workflow SonataFlow se integra con los componentes existentes del pipeline CD
 |Prometheus scraping
 |===
 
-== How it Works
+== Cómo funciona
 
 === Motor de ejecución SonataFlow
 
@@ -379,8 +379,8 @@ SonataFlow ejecuta workflows definidos en la https://serverlessworkflow.io/[Serv
 
 . El operador recibe el CR `SonataFlow` y genera un *Quarkus application* con el runtime del workflow embebido.
 . Al recibir un evento CDC (CloudEvent via Kafka o HTTP), el motor crea una *instancia del workflow* con un ID único.
-. Cada instancia mantiene su propio *estado* (state data) — un JSON document que se transforma en cada transición.
-. El motor ejecuta las transiciones definidas en el workflow de forma *event-driven*: cada estado se evalúa y ejecuta en orden, usando el resultado del anterior como input.
+. Cada instancia mantiene su propio *estado* (state data) — un JSON document que el motor transforma en cada transición.
+. El motor ejecuta las transiciones definidas en el workflow de forma *event-driven*: evalúa y ejecuta cada estado en orden, usando el resultado del anterior como input.
 
 === Callback pattern: aprobaciones asíncronas
 
@@ -399,7 +399,7 @@ El estado `ProvisionAccount` ejecuta *branches* en paralelo:
 . El motor lanza ambas ramas (`CreateAccount` y `SendWelcome`) simultáneamente como coroutines.
 . `completionType: allOf` indica que el workflow espera a que *ambas* ramas terminen antes de transicionar.
 . Si una rama falla, el workflow puede reintentar o manejar el error según la política definida.
-. Los resultados de ambas ramas se fusionan en el state data de la instancia.
+. El motor fusiona los resultados de ambas ramas en el state data de la instancia.
 
 === Data Index: consultas de estado
 
@@ -407,7 +407,7 @@ El *Data Index Service* escucha eventos de estado del motor via CloudEvents e in
 
 * Instancias activas, completadas y con error
 * El state data actual de cada instancia
-* Historial de transiciones (qué estados se ejecutaron y cuándo)
+* Historial de transiciones (qué estados ejecutó el motor y cuándo)
 * Variables del proceso (customer data, tier, approval status)
 
 La *Management Console* consume este GraphQL para mostrar dashboards operacionales.
@@ -440,14 +440,14 @@ VALUES ('Maria', 'Premium', 'maria.premium@neuralbank.io');
 
 == Desarrollo Visual con Kaoto
 
-Los workflows SonataFlow se pueden diseñar visualmente usando la extensión **Kaoto** en **Red Hat OpenShift DevSpaces**:
+Diseñá workflows SonataFlow visualmente con la extensión **Kaoto** en **Red Hat OpenShift DevSpaces**:
 
 1. Abrir DevSpaces con el workspace que contiene el proyecto
 2. Instalar la extensión Kaoto desde el marketplace de VS Code
 3. Abrir el archivo `.sw.yaml` del workflow
 4. El editor visual muestra el diagrama BPMN interactivo
 5. Arrastrar y soltar estados, eventos y funciones
-6. El YAML se genera automáticamente
+6. Kaoto genera el YAML automáticamente
 
 Esta integración permite que analistas de negocio y desarrolladores colaboren en la definición de procesos usando la misma herramienta.
 

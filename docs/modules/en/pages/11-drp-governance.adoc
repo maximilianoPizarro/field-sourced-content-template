@@ -7,7 +7,7 @@
 
 ==== Kafka
 
-Kafka data is backed up using two mechanisms:
+Two mechanisms back up Kafka data:
 
 * *Persistent storage* (`persistent-claim`) — PVCs survive pod restarts
 * *MirrorMaker 2* — cross-cluster replication for disaster recovery
@@ -56,7 +56,7 @@ spec:
 
 ==== Apicurio Registry
 
-Schemas are stored in Kafka (`kafkasql` mode), so they are replicated together with the Kafka cluster.
+Apicurio stores schemas in Kafka (`kafkasql` mode), so Kafka replicates them with the cluster.
 
 To export schemas manually:
 
@@ -146,7 +146,7 @@ MirrorMaker 2 runs as a dedicated KafkaConnect cluster for replication:
 
 . It connects to the *source* cluster as a consumer and to the *target* cluster as a producer.
 . It uses 3 internal connectors:
-** **MirrorSourceConnector** — consumes messages from the source and produces them to the target. Topics are renamed with the source alias as a prefix (e.g. `source.cdc.public.customers`).
+** **MirrorSourceConnector** — consumes messages from the source and produces them to the target. MirrorMaker2 renames topics with the source alias as a prefix (e.g. `source.cdc.public.customers`).
 ** **MirrorCheckpointConnector** — synchronizes consumer group offsets between clusters so a consumer can switch clusters without reprocessing messages.
 ** **MirrorHeartbeatConnector** — produces periodic heartbeats to monitor replication latency.
 . The `cdc\..*` pattern filters which topics to replicate — only CDC topics, excluding internal Kafka topics and DLQs.
@@ -282,12 +282,12 @@ config:
   retention.bytes: -1
 ----
 
-For `compact` topics, tombstone records (key + null value) allow removing specific records when “right to be forgotten” is required.
+For `compact` topics, tombstone records (key + null value) let you remove specific records when GDPR requires the right to be forgotten.
 
 == Official Documentation
 
 * https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka/2.9/html/deploying_and_managing_amq_streams_on_openshift/assembly-mirrormaker-str[MirrorMaker 2 — Cross-cluster Replication^] — Replication for DR
 * https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka[Red Hat Streams for Apache Kafka^] — Backup, retention, and data policies
 * https://docs.redhat.com/en/documentation/red_hat_build_of_apicurio_registry[Apicurio Registry^] — Schema governance and compatibility
-* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/backup_and_restore/index[OpenShift Backup and Restore^] — OpenShift backup strategies
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/backup_and_restore/index[OpenShift Backup and Restore^] — OpenShift backup strategies
 * https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/configuring_and_using_database_servers/using-postgresql_configuring-and-using-database-servers[PostgreSQL on RHEL^] — PostgreSQL backup and recovery

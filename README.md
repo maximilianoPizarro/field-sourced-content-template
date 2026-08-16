@@ -16,7 +16,7 @@ ArgoCD deploys your content, and the platform handles health monitoring and data
 
 ## Architecture
 
-This deployment provisions a full Neuralbank developer workshop environment on OpenShift, including:
+This deployment provisions an Event-Driven Architecture workshop on OpenShift, including:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -34,14 +34,11 @@ This deployment provisions a full Neuralbank developer workshop environment on O
 │  └─────────────┘  └──────────────┘  └──────────┘  └─────────────────┘  │
 │                                                                         │
 │  ┌────────────────────────────────────────────────────────────────────┐  │
-│  │                    Per-User Namespaces (×200)                       │  │
+│  │                    Per-User Namespaces (×30 default)                │  │
 │  │  ┌─────────────────┐ ┌──────────────┐ ┌──────────────────────┐    │  │
-│  │  │ customer-service │ │  neuralbank  │ │  neuralbank-frontend │    │  │
-│  │  │    -mcp (MCP)    │ │   -backend   │ │     (SPA)            │    │  │
-│  │  └────────┬─────────┘ └──────┬───────┘ └──────────┬───────────┘    │  │
-│  │           │                  │                    │                │  │
-│  │           ▼                  ▼                    ▼                │  │
-│  │     Gateway + HTTPRoute + OIDCPolicy + RateLimitPolicy            │  │
+│  │  │ customer-service │ │  userN-apps  │ │  scaffolded apps     │    │  │
+│  │  │    -mcp (MCP)    │ │   (Helm)     │ │     (SPA / APIs)     │    │  │
+│  │  └─────────────────┘ └──────────────┘ └──────────────────────┘    │  │
 │  └────────────────────────────────────────────────────────────────────┘  │
 │                                                                         │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                  │
@@ -55,12 +52,12 @@ This deployment provisions a full Neuralbank developer workshop environment on O
 
 | Component | Purpose |
 |-----------|---------|
-| **Developer Hub** | Self-service developer portal (Backstage) with 3 Neuralbank software templates |
+| **Developer Hub** | Self-service developer portal (Backstage) with Kafka, industrial-edge, and MCP software templates |
 | **ArgoCD** | GitOps continuous delivery, auto-syncs scaffolded apps from Gitea |
 | **Tekton Pipelines** | CI/CD pipelines: git-clone → maven-build → buildah → deploy |
 | **DevSpaces** | Cloud-based developer workspaces with pre-configured devfiles |
-| **Gitea** | In-cluster Git server for scaffolded application repos (200 users) |
-| **Keycloak** | Identity provider for backstage and neuralbank realms (200 users) |
+| **Gitea** | In-cluster Git server for scaffolded application repos (30 users by default) |
+| **Keycloak** | Identity provider for the backstage realm (30 users by default). OpenShift also gets an htpasswd IdP `workshop-users` (`oauth-users`). |
 | **Istio / Gateway API** | Service mesh with Gateway, HTTPRoute per scaffolded service |
 | **Kuadrant** | API management: OIDCPolicy (auth) + RateLimitPolicy per service |
 | **Streams for Apache Kafka** | Kafka cluster (KRaft mode) with topics, bridge, and Kafka exporter |
@@ -70,7 +67,7 @@ This deployment provisions a full Neuralbank developer workshop environment on O
 | **Kafka Bridge** | HTTP REST proxy for producing/consuming Kafka messages via curl |
 | **Showroom** | Antora-based workshop lab guide (English) |
 | **OLS (Lightspeed)** | AI assistant with MCP Gateway integration |
-| **LiteMaaS** | LLM proxy for model access |
+| **LiteMaaS** | Optional LLM proxy. **Off by default** (`litemaas.enabled: false`) |
 
 ### Industrial Edge / Industrial Edge Stack
 
@@ -125,15 +122,22 @@ Integrated from the [Red Hat Validated Patterns Industrial Edge](https://github.
 
 **Additional resources**: ~16 vCPU, ~34 Gi RAM, ~102 GB disk (see [Deployment Profiles](#deployment-profiles)).
 
-### Software Templates (Neuralbank)
+### Software Templates
 
-Each template generates a full application with CI/CD pipeline, connectivity-link manifests (Gateway, HTTPRoute, OIDCPolicy, RateLimitPolicy), DevSpaces devfile, and catalog registration.
+Each template generates an application with CI/CD, DevSpaces devfile, and catalog registration. Scaffolded workloads deploy to **`userN-apps`**.
 
 | Template | Type | Description |
 |----------|------|-------------|
-| **customer-service-mcp** | Quarkus MCP Server | MCP server with `@Tool`/`@ToolArg` annotations, REST client to backend, SSE transport. Includes MCP Inspector in DevSpaces. |
-| **neuralbank-backend** | Quarkus REST API | Credit management API (`/api/customers`, `/api/credits`, `/api/credits/{id}/update`) |
-| **neuralbank-frontend** | Static HTML/CSS/JS | Credit visualization SPA with Neuralbank theme (Red Hat palette) |
+| **customer-service-mcp** | Quarkus MCP Server | MCP server with `@Tool`/`@ToolArg` annotations |
+| **camel-kaoto** | Camel + Kaoto | Visual Camel route in DevSpaces |
+| **sonataflow-bpm** | SonataFlow | Serverless workflow |
+| **kafka-cdc-mcp** | Quarkus MCP | Tools for the Kafka CDC pipeline |
+| **k8s-ops-mcp** | Quarkus MCP | Cluster operations tools |
+| **industrial-edge** | IoT factory instance | Isolated sensors + Kafka + dashboard |
+| **kafka-external-consumer** | Kafka consumer | Consume CDC / CV topics |
+| **remove-component** | Teardown | Cascade-delete a scaffolded app |
+
+> The older Neuralbank backend/frontend templates and NFL Wallet demo are **not** in this catalog. See [docs/archive/neuralbank-workshop](docs/archive/neuralbank-workshop/README.md).
 
 ### Scaffolding Flow (End-to-End CI/CD)
 
@@ -150,14 +154,14 @@ All scaffolder steps use only actions registered in this RHDH instance:
 
 ```
 User in Developer Hub
-  → Selects Software Template (neuralbank-backend / frontend / customer-service-mcp)
+  → Selects a Software Template (camel-kaoto, kafka-cdc-mcp, industrial-edge, …)
     → Step 1: fetch:template → generates skeleton with user values (uniqueName = owner-name)
     → Step 2: publish:gitea → pushes to Gitea ws-userN org
     → Step 3: catalog:register → registers Component + API + System in catalog (owner-prefixed)
     → Step 4: http:backstage:request → POST K8s API → creates ArgoCD Application (owner-name)
     → Step 5: http:backstage:request → POST Gitea API → creates push webhook
     → Step 6: http:backstage:request → POST /api/notifications → notifies owner (in-app + email)
-    → ArgoCD auto-syncs manifests/ → Deploys to userN-neuralbank namespace:
+    → ArgoCD auto-syncs manifests/ → Deploys to userN-apps namespace:
         Deployment + Service
         Gateway (Istio/Gateway API)
         HTTPRoute
@@ -213,7 +217,7 @@ User in Developer Hub
 User count is controlled by a single parameter in `values.yaml`:
 
 ```yaml
-userCount: 200  # Default: 200. Adjust as needed (30, 50, 100, 200).
+userCount: 30  # Default: 30. Adjust as needed (30, 50, 100, 200). RHDP loads values.yaml only.
 ```
 
 This parameter drives all user provisioning via Helm `range` loops:
@@ -222,15 +226,16 @@ This parameter drives all user provisioning via Helm `range` loops:
 |----------|----------|-----------------|
 | Keycloak users (`user1`…`userN`) | `rhbk` | 1 user in backstage realm |
 | DevSpaces namespaces (`userN-devspaces`) | `namespaces` | Namespace + 3 RoleBindings |
-| Neuralbank namespaces (`userN-neuralbank`) | `namespaces` | Namespace + 3 RoleBindings |
+| App namespaces (`userN-apps`) | `namespaces` | Namespace + 3 RoleBindings |
 | Gitea users + organizations (`ws-userN`) | `gitea` | 1 user + 1 org |
 | ArgoCD ApplicationSets | `applicationsets` | 1 ApplicationSet (SCM Provider) |
 | Backstage RBAC assignments | `developer-hub` | 1 policy line (`role:default/authenticated`) |
 | Workshop registration seats | `workshop-registration` | 1 seat (up to `maxUsers`) |
+| OpenShift htpasswd users | `oauth-users` | 1 line in IdP `workshop-users` |
 
-### Pre-deployed Components (Neuralbank Stack)
+### Pre-deployed Components
 
-The `neuralbank-stack` namespace contains a pre-deployed demo application (backend + frontend + PostgreSQL) visible to all users via the Developer Hub catalog. Components are registered with `backstage.io/kubernetes-id` annotations for topology visualization.
+Shared demo workloads (Kafka CDC, Industrial Edge, NeuroFace) live in platform namespaces (`kafka-cdc`, `industrial-edge-*`, `neuroface`). Each attendee scaffolds extra apps into **`userN-apps`**. There is no `neuralbank-stack` or `nfl-wallet-prod` namespace.
 
 ### Access Model: Developer Hub as Single Pane of Glass
 
@@ -262,7 +267,7 @@ auth:
 
 A `devspaces` OIDC client is registered in the Keycloak `backstage` realm. DevSpaces auto-provisions `<username>-devspaces` namespaces using its operator ServiceAccount.
 
-**Result**: Users only need a Keycloak account (`user1`…`userN`) to access Developer Hub AND DevSpaces. No OpenShift User objects or manual RBAC required.
+**Result**: Users sign in with Keycloak (`user1`…`userN`) for Developer Hub and DevSpaces. The chart also installs an OpenShift htpasswd IdP named `workshop-users` (same usernames, password `Welcome123!`) via `oauth-users`.
 
 ### Cluster Sizing (measured April 2026)
 
@@ -303,8 +308,8 @@ Based on a real deployment running on RHDP with the full profile (all components
 |-----------|------------|------------|
 | DevSpaces workspace (UDI + Maven cache) | 2 vCPU | 3 Gi |
 | customer-service-mcp (Quarkus) | 500m | 512 Mi |
-| neuralbank-backend (Quarkus) | 500m | 512 Mi |
-| neuralbank-frontend (httpd) | 200m | 128 Mi |
+| kafka-cdc-mcp / other Quarkus apps | 500m | 512 Mi |
+| camel-kaoto / httpd frontends | 200m | 128 Mi |
 | Istio sidecar gateways (×3) | 300m | 384 Mi |
 | **Total per user (all 3 apps + DevSpaces)** | **3.5 vCPU** | **4.5 Gi** |
 | **Total per user (all 3 apps, no DevSpaces)** | **1.5 vCPU** | **1.5 Gi** |
@@ -313,13 +318,15 @@ Based on a real deployment running on RHDP with the full profile (all components
 
 | Users | Worker CPU needed | Worker MEM needed | Recommended Workers | Instance Type |
 |-------|-------------------|-------------------|---------------------|---------------|
-| **Demo (0 users)** | 15 vCPU / 87 Gi | — | **3 nodes** | **64 vCPU, 128 Gi** |
-| **30** | 60 vCPU / 135 Gi | 120 vCPU / 222 Gi total | 3 nodes | 64 vCPU, 128 Gi |
-| **50** | 90 vCPU / 175 Gi | 150 vCPU / 262 Gi total | 3 nodes | 64 vCPU, 128 Gi |
-| **100** (30% DevSpaces) | 120 vCPU / 222 Gi | 180 vCPU / 309 Gi total | 3-4 nodes | 64 vCPU, 128 Gi |
-| **200** (30% DevSpaces) | 225 vCPU / 357 Gi | 285 vCPU / 444 Gi total | **5-6 nodes** | **64 vCPU, 128 Gi** |
+| **Demo (0 users)** | ~15 vCPU | ~87 Gi | **3 nodes** | **64 vCPU / 128 Gi** |
+| **30** (all DevSpaces) | ~120 vCPU | ~222 Gi | **3 nodes** | **64 vCPU / 128 Gi** (or 4 × m5.8xlarge 32/128) |
+| **50** | ~90 vCPU | ~175 Gi | **3 nodes** | **64 vCPU / 128 Gi** |
+| **100** (30% DevSpaces) | ~120 vCPU | ~222 Gi | **3–4 nodes** | **64 vCPU / 128 Gi** |
+| **200** (30% DevSpaces) | ~225 vCPU | ~357 Gi | **5–6 nodes** | **64 vCPU / 128 Gi** |
 
-> **Key finding**: The original theoretical estimates (12 workers for 200 users) were significantly oversized. Real measurements show 3 workers with 64 vCPU / 128 Gi each handle the full platform at 7.9% CPU and 22.6% memory. Even at 200 users with 30% DevSpaces concurrency, 5-6 workers suffice.
+> **Instance types:** AWS **m5.8xlarge is 32 vCPU / 128 Gi**, not 64 vCPU. The measured workshop cluster used **64 vCPU / 128 Gi** workers. If RHDP only offers m5.8xlarge, order **4 workers** for a 30-person full lab with concurrent DevSpaces.
+
+> **Key finding**: Theoretical estimates of 12 workers for 200 users were oversized. Measurements show 3 workers with 64 vCPU / 128 Gi each run the full platform at 7.9% CPU and 22.6% memory idle. At 200 users with 30% DevSpaces concurrency, 5–6 of those workers suffice.
 
 #### Known Blockers from Real Deployments
 
@@ -353,11 +360,14 @@ helm install field-content examples/helm -f examples/helm/values.yaml
 | Industrial Edge stack alone | ~16 vCPU, ~34 Gi RAM, ~102 GB disk |
 | Per user (with DevSpaces) | ~3.5 vCPU, ~4.5 Gi RAM |
 | Per user (no DevSpaces) | ~1.5 vCPU, ~1.5 Gi RAM |
-| Recommended for 200 users | 10–14 workers m5.8xlarge |
+| Recommended for 30 users (Pages/Showroom lab) | **3 workers × 64 vCPU / 128 Gi** (or 4 × m5.8xlarge 32/128) |
+| Recommended for 200 users | 5–6 workers × 64 vCPU / 128 Gi |
 
 ### Lite Profile (~60% fewer resources)
 
-Core EDA workshop only: Kafka CDC pipeline, Developer Hub, Keycloak, Gitea, Neuralbank demo, Showroom. Disables 12 optional components (OpenShift AI, DevSpaces, Service Mesh, Observability, LiteMaaS, Kuadrant, OLS, MCP Gateway, BPM, NFL Wallet).
+Core EDA workshop only: Kafka CDC pipeline, Developer Hub, Keycloak, Gitea, Mailpit, Showroom. Disables DevSpaces, Service Mesh, Observability, OpenShift AI, LiteMaaS, Kuadrant, OLS, MCP Gateway, BPM, NeuroFace, and Industrial Edge.
+
+**RHDP Field Content CI loads `values.yaml` only.** To use lite you must pass `-f values-lite.yaml` (or Argo CD `valueFiles`) yourself.
 
 ```bash
 helm install field-content examples/helm -f examples/helm/values.yaml -f examples/helm/values-lite.yaml
@@ -377,7 +387,9 @@ source:
 | Fixed infra | ~20–25 vCPU, ~30–40 Gi RAM, ~150 GB disk |
 | Per user | ~1.5 vCPU, ~1.5 Gi RAM |
 | Default users | 30 |
-| Recommended workers | 2–3 nodes m5.4xlarge |
+| Recommended workers | **3 nodes × 32 vCPU / 64 Gi** (2–3 × m5.4xlarge is short of ~65–70 vCPU) |
+
+GitHub Pages and in-cluster Showroom assume the **full** profile. Do not run the published lab on lite without skipping DevSpaces, Grafana, Lightspeed, BPM, Industrial Edge, and NeuroFace modules.
 
 ### Validated Patterns Compatibility
 
@@ -588,7 +600,8 @@ metadata:
 
 ## Documentation
 
-- [Workshop (GitHub Pages)](https://maximilianopizarro.github.io/field-sourced-content-template/) - Full workshop guide
+- [Workshop (GitHub Pages)](https://maximilianopizarro.github.io/field-sourced-content-template/) — Antora CDC / Industrial Edge guide (EN + ES)
+- [docs/archive/neuralbank-workshop](docs/archive/neuralbank-workshop/README.md) — archived Jekyll Neuralbank / NFL Wallet modules (not published)
 - [examples/helm/README.md](examples/helm/README.md) - Helm deployment guide
 - [examples/ansible/README.md](examples/ansible/README.md) - Ansible deployment guide
 - [docs/ansible-developer-guide.md](docs/ansible-developer-guide.md) - In-depth Ansible patterns
@@ -622,8 +635,9 @@ field-content/
 │   │   └── software-templates/            # Backstage scaffolder templates
 │   │       ├── templates-catalog.yaml     # Auto-import catalog
 │   │       ├── customer-service-mcp/      # Quarkus MCP server template
-│   │       ├── neuralbank-backend/        # REST API template
-│   │       └── neuralbank-frontend/       # SPA frontend template
+│   │       ├── camel-kaoto/               # Camel + Kaoto template
+│   │       ├── industrial-edge/           # Isolated IoT factory instance
+│   │       └── kafka-cdc-mcp/             # CDC MCP tools template
 │   └── ansible/                           # Ansible-based deployment example
 ├── roles/
 │   └── ocp4_workload_field_content/       # AgnosticD workload role

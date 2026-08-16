@@ -1,11 +1,11 @@
 = Operational Cluster Verification
 :page-layout: default
 
-This page documents the operational state of the full CDC pipeline deployed on the OpenShift cluster, including screenshots of each component and the YAML blocks that define the configuration.
+Use this page to verify the operational state of the full CDC pipeline on the OpenShift cluster. Each section includes screenshots and the YAML that defines the configuration.
 
 == General Status of the `kafka-cdc` Namespace
 
-All CDC pipeline components are operational in the `kafka-cdc` namespace:
+The cluster runs all CDC pipeline components in the `kafka-cdc` namespace:
 
 [cols="3,1,1,2",options="header"]
 |===
@@ -131,7 +131,7 @@ metadata:
   name: kafka-console
   namespace: kafka-cdc
 spec:
-  hostname: kafka-console-kafka-cdc.<CLUSTER_DOMAIN>
+  hostname: kafka-console-kafka-cdc.{cluster_domain}
   kafkaClusters:
     - name: cdc-cluster
       namespace: kafka-cdc
@@ -333,7 +333,7 @@ data:
     max_wal_senders = 4
 ----
 
-The volume is mounted at `/opt/app-root/src/postgresql-cfg` so the Red Hat PostgreSQL 16 image applies it automatically.
+OpenShift mounts the volume at `/opt/app-root/src/postgresql-cfg` so the Red Hat PostgreSQL 16 image applies it automatically.
 
 == NetworkPolicy
 
@@ -387,16 +387,16 @@ spec:
 |Service |URL
 
 |Kafka Console
-|https://kafka-console-kafka-cdc.<CLUSTER_DOMAIN>/
+|https://kafka-console-kafka-cdc.{cluster_domain}/
 
 |Apicurio Registry
-|https://apicurio-registry-kafka-cdc.<CLUSTER_DOMAIN>/
+|https://apicurio-registry-kafka-cdc.{cluster_domain}/
 
 |Kafka Bridge REST API
-|https://kafka-bridge-kafka-cdc.<CLUSTER_DOMAIN>/
+|https://kafka-bridge-kafka-cdc.{cluster_domain}/
 
 |Mailpit
-|https://n8n-mailpit-openshift-lightspeed.<CLUSTER_DOMAIN>/
+|https://n8n-mailpit-openshift-lightspeed.{cluster_domain}/
 |===
 
 == End-to-End Verification
@@ -419,7 +419,7 @@ The full flow is:
 
 == Official Documentation
 
-* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cli_tools/oc-cli-getting-started[OpenShift CLI (oc)^] — Commands for operational verification
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/cli_tools/oc-cli-getting-started[OpenShift CLI (oc)^] — Commands for operational verification
 * https://docs.redhat.com/en/documentation/red_hat_streams_for_apache_kafka[Red Hat Streams for Apache Kafka^] — Kafka cluster operation and monitoring
 * https://docs.redhat.com/en/documentation/red_hat_build_of_debezium[Red Hat build of Debezium^] — CDC connector troubleshooting
 * https://docs.redhat.com/en/documentation/red_hat_build_of_apicurio_registry[Apicurio Registry^] — Schema Registry verification

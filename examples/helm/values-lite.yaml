@@ -15,23 +15,22 @@
 # Estimated footprint:
 #   Infra fixed: ~20-25 vCPU, ~30-40 Gi RAM, ~150 GB disk
 #   Per user:    ~1.5 vCPU, ~1.5 Gi RAM (no DevSpaces)
-#   30 users:    2-3 workers m5.4xlarge (16 vCPU, 64 Gi)
+#   30 users:    3 workers x 32 vCPU / 64 Gi (2-3 x m5.4xlarge is short on CPU)
 #
 # What stays:  Kafka CDC pipeline, Developer Hub, Keycloak, Gitea,
-#              ApplicationSets, Showroom, Registration
+#              ApplicationSets, Showroom, Registration, Mailpit
 # What's off:  AI/ML, DevSpaces, Service Mesh, Observability stack,
-#              MCP Gateway, Kuadrant, BPM workflows
+#              MCP Gateway, Kuadrant, BPM, NeuroFace helm chart, Industrial Edge
+# RHDP does not load this file unless you pass it as a Helm valueFile.
 # =============================================================================
 
 userCount: 30
 
 connectivityLink:
   operators:
-    subscriptions:
-      - name: cluster-observability-operator
-        namespace: openshift-cluster-observability-operator
-        channel: stable
-        source: redhat-operators
+    # Observability, Camel K, RHOAI, and AMQ Broker stay off in lite.
+    # Hardcoded operator templates (AMQ Streams, RHDH, RHBK, Pipelines) still install.
+    subscriptions: []
 
   apps:
     # --- Core infrastructure (always on) ---
@@ -141,6 +140,16 @@ connectivityLink:
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
+    # Mailpit stays in openshift-lightspeed so Camel CDC DNS
+    # (n8n-mailpit.openshift-lightspeed.svc) keeps working when OLS is off.
+    # Argo CD CreateNamespace creates the namespace.
+    - id: mailpit
+      enabled: true
+      path: mailpit
+      destinationNamespace: openshift-lightspeed
+      syncWave: "7"
+      prune: true
+      selfHeal: true
 
     # --- Demo app + workshop ---
     - id: console-links
@@ -258,6 +267,14 @@ connectivityLink:
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
+    - id: neuroface-cv
+      enabled: false
+      path: neuroface-cv
+      destinationNamespace: neuroface
+      syncWave: "11"
+      prune: true
+      selfHeal: true
+      skipDryRunOnMissingResource: true
     # --- Industrial Edge / Industrial Edge (disabled in lite) ---
     - id: industrial-edge-minio
       enabled: false
@@ -315,3 +332,67 @@ connectivityLink:
       prune: true
       selfHeal: true
       skipDryRunOnMissingResource: true
+
+  # Helm list overlay replaces the whole array — keep Gitea, disable NeuroFace.
+  helmApps:
+    - id: gitea
+      enabled: true
+      repoURL: "https://dl.gitea.com/charts/"
+      chart: gitea
+      targetRevision: "12.5.0"
+      destinationNamespace: gitea
+      syncWave: "3"
+      values:
+        global:
+          compatibility:
+            openshift:
+              adaptSecurityContext: force
+        gitea:
+          admin:
+            username: gitea_admin
+            password: openshift
+            email: admin@gitea.local
+          config:
+            server:
+              ROOT_URL: ""
+        image:
+          rootless: true
+        podSecurityContext:
+          fsGroup: null
+        containerSecurityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+        initContainers:
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+        postgresql-ha:
+          enabled: false
+        postgresql:
+          enabled: true
+        redis-cluster:
+          enabled: false
+        redis:
+          enabled: true
+        persistence:
+          enabled: true
+          size: 10Gi
+        service:
+          http:
+            type: ClusterIP
+            port: 3000
+    - id: neuroface
+      enabled: false
+      repoURL: "https://maximilianopizarro.github.io/neuroface/"
+      chart: neuroface
+      targetRevision: "1.3.0"
+      destinationNamespace: neuroface
+      syncWave: "10"

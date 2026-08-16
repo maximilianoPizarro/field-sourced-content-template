@@ -3,59 +3,59 @@
 :toclevels: 3
 
 [.lead]
-OpenShift AI 3.3 incluye *Gen AI Studio* (Playground) para interactuar con LLM desplegados. Combinado con el *Kafka MCP Server* registrado a través del MCP Gateway de Kuadrant, el Playground se convierte en un agente de IA capaz de consultar datos Kafka en vivo.
+OpenShift AI 3.3 includes *Gen AI Studio* (Playground) so you can chat with deployed LLMs. Combined with the *Kafka MCP Server* that Kuadrant's MCP Gateway registers, the Playground becomes an AI agent that can query live Kafka data.
 
-== Arquitectura
+== Architecture
 
 [cols="1,2", options="header"]
 |===
-| Componente | Rol
+| Component | Role
 
-| *RHOAI Playground* | Interfaz de chat conectada al InferenceService Granite 3.1 2B (KServe)
-| *Granite 3.1 2B Instruct* | LLM de huella reducida ejecutándose con llama.cpp en KServe; realiza razonamiento en lenguaje natural
-| *MCP Gateway (Kuadrant)* | Proxy Streamable-HTTP que expone los servidores MCP registrados bajo un endpoint unificado
-| *Kafka MCP Server* | Servidor FastMCP en Python con 4 herramientas: `kafka_list_topics`, `kafka_describe_topic`, `kafka_read_messages`, `kafka_consumer_groups`
-| *Kafka Cluster* | Clúster CDC (`cdc-cluster`) en el namespace `kafka-cdc` con más de 12 topics
+| *RHOAI Playground* | Chat UI connected to the Granite 3.1 2B InferenceService (KServe)
+| *Granite 3.1 2B Instruct* | Small-footprint LLM running via llama.cpp on KServe — handles natural-language reasoning
+| *MCP Gateway (Kuadrant)* | Streamable-HTTP proxy that exposes registered MCP servers under a unified endpoint
+| *Kafka MCP Server* | Python FastMCP server with 4 tools: `kafka_list_topics`, `kafka_describe_topic`, `kafka_read_messages`, `kafka_consumer_groups`
+| *Kafka Cluster* | CDC cluster (`cdc-cluster`) in `kafka-cdc` namespace with 12+ topics
 |===
 
-== Endpoint del MCP Gateway
+== MCP Gateway Endpoint
 
 [source,text]
 ----
-URL:  https://mcp-gateway.apps.<CLUSTER_DOMAIN>/mcp
+URL:  https://mcp-gateway.{cluster_domain}/mcp
 ----
 
-== Herramientas Kafka disponibles
+== Available Kafka Tools
 
 [cols="1,2,1", options="header"]
 |===
-| Herramienta | Descripción | Parámetros
+| Tool | Description | Parameters
 
-| `kafka_list_topics` | Lista todos los topics Kafka no internos con el número de particiones | _ninguno_
-| `kafka_describe_topic` | Muestra offsets de partición, recuentos de mensajes y marcas de agua de un topic | `topic_name` (cadena)
-| `kafka_read_messages` | Lee los N mensajes más recientes de un topic (máx. 20) | `topic_name` (cadena), `count` (entero, predeterminado 5)
-| `kafka_consumer_groups` | Lista todos los grupos de consumidores con sus estados | _ninguno_
+| `kafka_list_topics` | Lists all non-internal Kafka topics with partition counts | _none_
+| `kafka_describe_topic` | Shows partition offsets, message counts, and watermarks for a topic | `topic_name` (string)
+| `kafka_read_messages` | Reads the latest N messages from a topic (max 20) | `topic_name` (string), `count` (int, default 5)
+| `kafka_consumer_groups` | Lists all consumer groups with their states | _none_
 |===
 
-== Topics Kafka disponibles
+== Available Kafka Topics
 
 [cols="1,2", options="header"]
 |===
-| Topic | Contenido
+| Topic | Content
 
-| `cv.face.detections` | Eventos NeuroFace CV: `person_registered`, `person_detected`, `ovms_model_status`
-| `cdc.public.customers` | Eventos de cambio CDC de la tabla `customers`
-| `cdc.public.orders` | Eventos de cambio CDC de la tabla `orders`
-| `bpm.approval.requests` | Eventos del flujo de aprobación BPM desde Kogito/SonataFlow
-| `bpm.onboarding.metrics` | Métricas de onboarding BPM y telemetría de procesos
-| `dlq.cdc-errors` | Cola de mensajes fallidos para eventos CDC erróneos
-| `dlq.cv-errors` | Cola de mensajes fallidos para eventos del pipeline CV erróneos
-| `dlq.cdc-camel-errors` | Cola de mensajes fallidos para integraciones Camel K erróneas
+| `cv.face.detections` | NeuroFace CV events: `person_registered`, `person_detected`, `ovms_model_status`
+| `cdc.public.customers` | CDC change events from the `customers` table
+| `cdc.public.orders` | CDC change events from the `orders` table
+| `bpm.approval.requests` | BPM approval workflow events from Kogito/SonataFlow
+| `bpm.onboarding.metrics` | BPM onboarding metrics and process telemetry
+| `dlq.cdc-errors` | Dead-letter queue for failed CDC events
+| `dlq.cv-errors` | Dead-letter queue for failed CV pipeline events
+| `dlq.cdc-camel-errors` | Dead-letter queue for failed Camel K integrations
 |===
 
-== Prompts del Playground
+== Playground Prompts
 
-=== Prompt 1 — Visión general del inventario
+=== Prompt 1 — Inventory Overview
 
 [source,text]
 ----
@@ -64,7 +64,7 @@ For each topic, show the name and number of partitions.
 Highlight any topics related to face detection or computer vision.
 ----
 
-=== Prompt 2 — Análisis del pipeline CV
+=== Prompt 2 — CV Pipeline Analysis
 
 [source,text]
 ----
@@ -76,7 +76,7 @@ Summarize:
 - Are there any OVMS model status events? If so, is the model healthy?
 ----
 
-=== Prompt 3 — Inspección de eventos CDC
+=== Prompt 3 — CDC Event Inspection
 
 [source,text]
 ----
@@ -87,7 +87,7 @@ Then read the last 5 messages and summarize the order data:
 - Show a brief table with customer_id, amount, and operation type.
 ----
 
-=== Prompt 4 — Estado de los grupos de consumidores
+=== Prompt 4 — Consumer Group Health
 
 [source,text]
 ----
@@ -97,7 +97,7 @@ Identify any consumer groups that might indicate a problem
 (e.g., Dead or with rebalancing state).
 ----
 
-=== Prompt 5 — Análisis de colas de mensajes fallidos
+=== Prompt 5 — Dead Letter Queue Analysis
 
 [source,text]
 ----
@@ -111,7 +111,7 @@ If there are messages, read the latest 3 and summarize
 what errors occurred and which components generated them.
 ----
 
-=== Prompt 6 — Informe de detección facial de seguridad
+=== Prompt 6 — Security Face Detection Report
 
 [source,text]
 ----
@@ -124,7 +124,7 @@ Generate a security report with:
 Format the report as a professional security briefing.
 ----
 
-=== Prompt 7 — Eventos de flujos BPM
+=== Prompt 7 — BPM Workflow Events
 
 [source,text]
 ----
@@ -135,7 +135,7 @@ Read the last 5 messages from each and explain:
 - Are there any onboarding metrics available?
 ----
 
-=== Prompt 8 — Estado de topics a nivel de clúster
+=== Prompt 8 — Cluster-wide Topic Health
 
 [source,text]
 ----
@@ -149,7 +149,7 @@ Flag any topic that looks unhealthy (e.g., too many DLQ messages
 relative to the source topic).
 ----
 
-=== Prompt 9 — Pipeline NeuroFace de extremo a extremo
+=== Prompt 9 — NeuroFace End-to-End Pipeline
 
 [source,text]
 ----
@@ -164,7 +164,7 @@ Based on this data, explain:
 - Are any detections failing?
 ----
 
-=== Prompt 10 — Correlación entre sistemas
+=== Prompt 10 — Cross-system Correlation
 
 [source,text]
 ----
@@ -179,8 +179,8 @@ Find any correlations:
 Provide a timeline visualization in text format.
 ----
 
-== Referencias
+== References
 
 * xref:08-mcp-lightspeed.adoc[MCP + Lightspeed]
-* xref:17-neuroface-cv.adoc[Pipeline CV NeuroFace]
+* xref:16-neuroface-cv.adoc[NeuroFace CV Pipeline]
 * xref:02-kafka-setup.adoc[Streams for Apache Kafka]

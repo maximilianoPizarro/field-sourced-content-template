@@ -20,7 +20,7 @@ spec:
     - api-key
     - kuadrant
     - mcp
-    - neuralbank
+    - customer-service
   contact:
     team: ${{values.owner}}
     email: "${{values.owner}}@redhat.local"

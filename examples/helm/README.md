@@ -18,11 +18,11 @@ examples/helm/
 ├── values.yaml
 ├── templates/
 │   ├── applications.yaml              # hello-world, showroom, optional single-operator
-│   └── applications.yaml   # connectivity-link Argo CD apps
+│   └── component-applications.yaml    # connectivity-link Argo CD apps
 └── components/
     ├── operator/                      # Optional single OLM subscription (template)
     ├── hello-world/
-    ├── showroom/                      # Lab guide (showroom-from-zero-to-hero by default)
+    ├── showroom/                      # Lab guide (showroom/site.yml)
     ├── operators/   # OLM operators (RHCL, mesh, Dev Spaces, RHBK, …)
     ├── namespaces/
     ├── rhcl-operator/
@@ -41,7 +41,7 @@ Connectivity-link manifests are **vendored** from [connectivity-link](https://gi
 | `connectivityLink.apps[]` | Toggle each connectivity-link app, destination namespace, prune, sync-wave |
 | `connectivityLink.operators` | `channel`, `version`, `subscriptions` passed to `operators` |
 | `litemaas.*` | Optional RHDP injection for LLM model serving |
-| `components.showroom` | Showroom content repo, nookbag, terminal (default: showroom-from-zero-to-hero) |
+| `components.showroom` | Showroom content repo, nookbag, terminal (`showroom/site.yml`) |
 
 **Note:** LiteMaaS-related YAML in `litemaas` still contains cluster-specific URLs from the upstream snapshot. For a new cluster, adjust `cluster-config` / domain handling in that chart or maintain a fork.
 

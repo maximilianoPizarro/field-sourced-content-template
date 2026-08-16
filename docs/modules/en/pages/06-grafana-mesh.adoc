@@ -30,7 +30,7 @@
 
 == CDC Pipeline Observability
 
-The full pipeline is instrumented with Prometheus metrics, Grafana dashboards, and tracing via the Service Mesh.
+Prometheus, Grafana, and the Service Mesh instrument the full pipeline with metrics, dashboards, and tracing.
 
 === Observability stack
 
@@ -53,7 +53,7 @@ The full pipeline is instrumented with Prometheus metrics, Grafana dashboards, a
 
 == Grafana Dashboard — Kafka CDC Pipeline
 
-Access: `https://grafana-observability.{cluster_domain}`
+Open: `https://grafana-observability.{cluster_domain}`
 
 The dashboard is bound to the Grafana instance via `instanceSelector`. The label must match the `Grafana` CR instance label:
 
@@ -101,7 +101,7 @@ The *"Kafka CDC Pipeline"* dashboard includes the following panels:
 
 == PodMonitors for metrics
 
-PodMonitors are configured for each pipeline component:
+The Helm chart creates a PodMonitor for each pipeline component:
 
 [source,yaml]
 ----
@@ -135,7 +135,7 @@ CDC pipeline metrics pass through four layers before visualization:
 
 . **Query (PromQL → panels)** — Each Grafana dashboard panel runs a PromQL query. For example, `sum(rate(kafka_server_brokertopicmetrics_messagesin_total[5m])) by (topic)` computes message throughput per second grouped by topic, using a 5-minute window to smooth spikes.
 
-. **Alerts (PrometheusRule → Alertmanager)** — Alert rules are evaluated continuously by Prometheus. When an expression holds for the defined `for` period (e.g. `kafka_consumergroup_lag > 1000` for 5 minutes), Prometheus fires an alert to Alertmanager, which can notify via email, Slack, PagerDuty, etc.
+. **Alerts (PrometheusRule → Alertmanager)** — Prometheus evaluates alert rules continuously. When an expression holds for the defined `for` period (e.g. `kafka_consumergroup_lag > 1000` for 5 minutes), Prometheus fires an alert to Alertmanager, which can notify via email, Slack, PagerDuty, etc.
 
 === Kafka Exporter: consumer lag metrics
 
@@ -148,7 +148,7 @@ The `kafkaExporter` deployed by Strimzi is a dedicated process that:
 
 == Service Mesh — Istio Ambient Mode
 
-The `kafka-cdc` namespace is enrolled in the Service Mesh using *Istio ambient mode* (no sidecars):
+The Helm chart enrolls the `kafka-cdc` namespace in the Service Mesh using *Istio ambient mode* (no sidecars):
 
 [source,yaml]
 ----
@@ -160,7 +160,7 @@ metadata:
 
 === Traffic visible in Kiali
 
-Access: `https://kiali-openshift-cluster-observability-operator.{cluster_domain}`
+Open: `https://kiali-openshift-cluster-observability-operator.{cluster_domain}`
 
 In Kiali you can see the service graph for the `kafka-cdc` namespace:
 
@@ -177,7 +177,7 @@ Ambient mode provides:
 
 == Alerts — PrometheusRule
 
-Alerts are deployed as a `PrometheusRule` resource that Prometheus evaluates automatically:
+Argo CD deploys alerts as a `PrometheusRule` resource that Prometheus evaluates automatically:
 
 [source,yaml]
 ----
@@ -224,8 +224,8 @@ oc get prometheusrule kafka-cdc-alerts -n openshift-cluster-observability-operat
 
 == Official Documentation
 
-* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/monitoring/index[OpenShift Monitoring^] — Integrated monitoring with Prometheus and Alertmanager
-* https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cluster_observability_operator/index[Cluster Observability Operator^] — Multi-signal observability on OpenShift
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/monitoring/index[OpenShift Monitoring^] — Integrated monitoring with Prometheus and Alertmanager
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/cluster_observability_operator/index[Cluster Observability Operator^] — Multi-signal observability on OpenShift
 * https://docs.redhat.com/en/documentation/openshift_service_mesh[Red Hat OpenShift Service Mesh^] — Service Mesh with Istio, including ambient mode
 * https://grafana.com/docs/grafana/latest/[Grafana Documentation^] — Dashboards and metric visualization
 * https://kiali.io/docs/[Kiali Documentation^] — Service Mesh observability console

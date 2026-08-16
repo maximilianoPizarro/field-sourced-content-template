@@ -86,8 +86,8 @@ This solution:
 
 Different roles within an organization have different concerns and areas of focus when working with this distributed AI/ML architecture across two logical types of sites:
 
-* *The core datacenter.* This is where data scientists, developers, and operations personnel apply the changes to their models, application code, and configurations.
-* *The factories.* This is where new applications, updates and operational changes are deployed to improve quality and efficiency in the factory.
+* *The core datacenter.* Data scientists, developers, and operations personnel apply changes to models, application code, and configurations here.
+* *The factories.* GitOps deploys new applications, updates, and operational changes here to improve quality and efficiency in the factory.
 
 == Logical Diagrams
 
@@ -105,7 +105,7 @@ Two major data flow streams:
 
 . *Northbound (edge → core):* Sensor data and events flow from the operational edge to the core for centralized processing. High volumes (tens of thousands of events per second) may make cloud transfer impractical.
 
-. *Southbound (core → edge):* Code, configurations, master data, and ML models are pushed from the core to the edge. With potentially hundreds of plants and thousands of production lines, automation and consistency are essential.
+. *Southbound (core → edge):* GitOps pushes code, configurations, master data, and ML models from the core to the edge. With potentially hundreds of plants and thousands of production lines, automation and consistency are essential.
 
 == The Technology
 
@@ -146,7 +146,7 @@ image::ROOT:edge-mfg-messaging-ml.png[Edge manufacturing with messaging and ML,w
 
 _Figure 4. Industrial Edge solution showing messaging and ML components schematically._
 
-Sensor data is transmitted via *MQTT* to Red Hat AMQ, which routes it for two purposes:
+Sensors transmit data via *MQTT* to Red Hat AMQ, which routes it for two purposes:
 
 * *Model development* in the core data center (data lake → JupyterLab → training)
 * *Live inference* at the factory data centers (IoT Consumer → ModelMesh → anomaly alerts)

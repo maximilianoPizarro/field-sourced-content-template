@@ -201,7 +201,7 @@ metadata:
 #   - userN-apps       (application deployments)
 # Each namespace includes: admin RoleBinding + ArgoCD RoleBinding + pipeline RoleBinding
 # ============================================================
-{{- $userCount := .Values.userCount | default 200 | int }}
+{{- $userCount := .Values.userCount | default 30 | int }}
 {{- range $i := until $userCount }}
 {{- $user := printf "user%d" (add1 $i) }}
 {{- $devNs := printf "%s-devspaces" $user }}

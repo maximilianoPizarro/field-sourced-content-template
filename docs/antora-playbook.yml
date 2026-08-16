@@ -51,6 +51,9 @@ ui:
           </div>
         </header>
         <script>
+        (function(){
+          if (window.location.pathname.indexOf('/es/') !== -1) document.documentElement.classList.add('lang-es');
+        })();
         document.addEventListener('DOMContentLoaded', function(){
           var p = new URLSearchParams(window.location.search);
           var u = p.get('USER_NAME');
@@ -75,7 +78,7 @@ ui:
           var path = window.location.pathname;
           var enBtn = document.getElementById('lang-en');
           var esBtn = document.getElementById('lang-es');
-          var isEs = path.indexOf('/es/') !== -1;
+          var isEs = document.documentElement.classList.contains('lang-es');
           if (isEs) {
             esBtn.style.background = '#c00'; esBtn.style.color = '#fff';
             enBtn.style.background = '#333'; enBtn.style.color = '#ccc';
@@ -90,11 +93,6 @@ ui:
             if (path.indexOf('/en/') !== -1) window.location.href = path.replace('/en/', '/es/');
             else if (path.indexOf('/es/') === -1) window.location.href = path.replace(/\/[^\/]*$/, '/es/index.html');
           };
-          var roots = document.querySelectorAll('.nav-menu > .nav-list > .nav-item[data-depth="0"]');
-          if (roots.length >= 2) {
-            if (isEs) { roots[0].style.display = 'none'; roots[1].style.display = ''; }
-            else { roots[0].style.display = ''; roots[1].style.display = 'none'; }
-          }
         });
         </script>
     - path: partials/toolbar.hbs
@@ -174,6 +172,8 @@ ui:
         }
         .nav-panel-explore { display: none !important; }
         .nav-menu > .nav-list > .nav-item[data-depth="0"] ~ .nav-item[data-depth="0"] { display: none; }
+        html.lang-es .nav-menu > .nav-list > .nav-item[data-depth="0"]:first-child { display: none; }
+        html.lang-es .nav-menu > .nav-list > .nav-item[data-depth="0"] ~ .nav-item[data-depth="0"] { display: list-item; }
         .body .content {
           flex: 1;
           max-width: 1100px;

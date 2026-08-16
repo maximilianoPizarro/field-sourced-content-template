@@ -285,7 +285,7 @@ auth:
 
 A `devspaces` OIDC client is registered in the Keycloak `backstage` realm. DevSpaces auto-provisions `<username>-devspaces` namespaces using its operator ServiceAccount.
 
-**Result**: Users sign in with Keycloak (`user1`…`userN`) for Developer Hub and DevSpaces. The chart also installs an OpenShift htpasswd IdP named `workshop-users` (same usernames, password `Welcome123!`) via `oauth-users`.
+**Result**: Developer Hub and DevSpaces use Keycloak (`user1`…`userN`). The OpenShift Console uses htpasswd IdP `workshop-users` (same names, password `Welcome123!`): `platformadmin` is `cluster-admin`; attendees are console viewers on the whole cluster and `admin` only in their own namespaces.
 
 ### Cluster Sizing (measured April 2026)
 

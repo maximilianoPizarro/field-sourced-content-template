@@ -161,23 +161,23 @@ spec:
         method: DELETE
         path: "/catalog/entities/by-uid/${{ steps['fetch-ie-kafka'].output.body.metadata.uid }}"
 
-    - id: fetch-ie-camel-k
-      name: Fetch camel-k Component
+    - id: fetch-ie-camel
+      name: Fetch camel Component
       if: ${{ parameters.templateType === 'industrial-edge' }}
       action: http:backstage:request
       continueOnError: true
       input:
         method: GET
-        path: "/catalog/entities/by-name/component/default/${{ parameters.owner }}-${{ parameters.name }}-camel-k"
+        path: "/catalog/entities/by-name/component/default/${{ parameters.owner }}-${{ parameters.name }}-camel"
 
-    - id: delete-ie-camel-k
-      name: Delete camel-k Component
-      if: ${{ parameters.templateType === 'industrial-edge' and steps['fetch-ie-camel-k'].output.body.metadata.uid }}
+    - id: delete-ie-camel
+      name: Delete camel Component
+      if: ${{ parameters.templateType === 'industrial-edge' and steps['fetch-ie-camel'].output.body.metadata.uid }}
       action: http:backstage:request
       continueOnError: true
       input:
         method: DELETE
-        path: "/catalog/entities/by-uid/${{ steps['fetch-ie-camel-k'].output.body.metadata.uid }}"
+        path: "/catalog/entities/by-uid/${{ steps['fetch-ie-camel'].output.body.metadata.uid }}"
 
     - id: fetch-ie-dashboard
       name: Fetch dashboard Component

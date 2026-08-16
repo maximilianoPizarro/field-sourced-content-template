@@ -1,16 +1,5 @@
-# =============================================================================
-# Lite Profile — Event-Driven Architecture workshop with minimal resources
-# =============================================================================
-#
-# Usage:
-#   helm install field-content . -f values.yaml -f values-lite.yaml
-#
-# Or override in ArgoCD Application valuesFiles:
-#   source:
-#     helm:
-#       valueFiles:
-#         - values.yaml
-#         - values-lite.yaml
+# DEPRECATED — lite overlay for the old App-of-Apps. Use /values-lite.yaml at the repo root
+# (Pattern spec.extraValueFiles: ["/values-lite.yaml"]).
 #
 # Estimated footprint:
 #   Infra fixed: ~20-25 vCPU, ~30-40 Gi RAM, ~150 GB disk
@@ -28,7 +17,7 @@ userCount: 30
 
 connectivityLink:
   operators:
-    # Observability, Camel K, RHOAI, and AMQ Broker stay off in lite.
+    # Observability, RHOAI, and AMQ Broker stay off in lite. Camel Quarkus lives in Industrial Edge (also off).
     # Hardcoded operator templates (AMQ Streams, RHDH, RHBK, Pipelines) still install.
     subscriptions: []
 
@@ -393,6 +382,6 @@ connectivityLink:
       enabled: false
       repoURL: "https://maximilianopizarro.github.io/neuroface/"
       chart: neuroface
-      targetRevision: "1.3.0"
+      targetRevision: "1.4.2"
       destinationNamespace: neuroface
       syncWave: "10"

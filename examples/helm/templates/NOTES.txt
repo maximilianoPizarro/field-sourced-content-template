@@ -1,0 +1,7 @@
+This chart (examples/helm) is no longer the GitOps source of truth.
+
+RHDP Field Content CI must use path examples/bootstrap. That chart installs the
+Validated Patterns Operator and a Pattern CR. Workloads come from clustergroup
+reading values-global.yaml + values-hub.yaml and charts/all/*.
+
+Software templates and catalog-info.yaml files under examples/helm/ remain in use.

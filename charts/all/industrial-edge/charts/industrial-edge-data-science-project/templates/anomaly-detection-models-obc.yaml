@@ -1,0 +1,11 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: anomaly-detection-bucket-config
+  namespace: ml-development
+data:
+  BUCKET_HOST: minio.industrial-edge-ml-workspace.svc
+  BUCKET_PORT: "9000"
+  BUCKET_NAME: anomaly-detection
+  BUCKET_REGION: us-east-1

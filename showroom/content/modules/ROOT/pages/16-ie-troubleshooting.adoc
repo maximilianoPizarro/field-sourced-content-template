@@ -10,7 +10,7 @@
   var ctx = ThreeHelper.initScene('scene-ie-datalake', {height:380, camX:0, camY:12, camZ:24, rotateSpeed:0.4});
   if(!ctx) return;
   var kafka    = ThreeHelper.createNode(ctx.scene,'Kafka\nProd Cluster',0x231F20,-12,0,0);
-  var camelS3  = ThreeHelper.createNode(ctx.scene,'Camel K\nKafka\u2192S3',0xF57C00,-4,0,0);
+  var camelS3  = ThreeHelper.createNode(ctx.scene,'Camel\nKafka\u2192S3',0xF57C00,-4,0,0);
   var minio    = ThreeHelper.createNode(ctx.scene,'MinIO S3\nData Lake',0x00BCD4,4,0,0);
   var jupyter  = ThreeHelper.createNode(ctx.scene,'JupyterLab',0xF57F17,12,0,-3);
   var model    = ThreeHelper.createNode(ctx.scene,'ModelMesh',0xEE0000,12,0,3);
@@ -57,7 +57,7 @@ After logging in, you should see these buckets:
 | Trained anomaly detection model artifacts
 |===
 
-Click into each bucket to explore its contents. If the Camel K Kafka→S3 integration is running, you will see sensor data files accumulating.
+Click into each bucket to explore its contents. If the Camel Quarkus Kafka→S3 route is running, you will see sensor data files accumulating.
 
 == Check MinIO from the CLI
 
@@ -96,19 +96,19 @@ image::edge-mfg-data-flow.png[End-to-end data flow into the data lake,align=cent
 The data flow into MinIO:
 
 . *Sensors* -> publish MQTT -> *AMQ Broker*
-. *Camel K* bridges MQTT -> *Kafka*
-. *Camel K* integration reads from Kafka topics and writes to *MinIO S3* buckets
+. *Camel Quarkus* bridges MQTT -> *Kafka*
+. *Camel Quarkus* reads from Kafka topics and writes to *MinIO S3* buckets
 . *OpenShift AI* notebooks read training data from S3 and write trained models back
 
-Check the Camel K integration status:
+Check the Camel Quarkus Deployment status:
 
 [source,bash]
 ----
-oc get integration -n industrial-edge-tst-all --no-headers 2>/dev/null
-oc get integration -n industrial-edge-data-lake --no-headers 2>/dev/null
+oc get deploy -l app.openshift.io/runtime=camel -n industrial-edge-tst-all --no-headers 2>/dev/null
+oc get deploy -l app.openshift.io/runtime=camel -n industrial-edge-data-lake --no-headers 2>/dev/null
 ----
 
-If `kafka-to-s3-integration` shows `Running`, data is actively flowing to S3.
+If `kafka-to-s3` shows Ready, data is actively flowing to S3.
 
 == ArgoCD view
 
@@ -119,7 +119,7 @@ See all Industrial Edge applications and their health:
 oc get applications -n openshift-gitops --no-headers | grep industrial-edge
 ----
 
-All should show `Synced`. Components in `Progressing` are still initializing (Camel K builds take a few minutes on first deploy).
+All should show `Synced`. Components in `Progressing` are still initializing (Camel Quarkus first start downloads Maven deps).
 
 == Architecture reference
 

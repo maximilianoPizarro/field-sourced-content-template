@@ -2,12 +2,17 @@
 # =============================================================================
 # Field Content Workload - Variable Defaults
 # =============================================================================
-# This role creates an ArgoCD Application pointing to a developer's GitOps
-# repository. The repository must be a Helm chart.
+# This role creates an Argo CD Application pointing at the bootstrap Helm
+# chart. That chart installs the Validated Patterns Operator and a Pattern CR.
+# The operator then deploys clustergroup against the repo root
+# (values-global.yaml + values-hub.yaml) using the existing openshift-gitops
+# instance. Do not point this role at examples/helm (legacy App-of-Apps).
 #
-# Automatically injected values available in your Helm chart:
+# Automatically injected Helm values:
 #   deployer.domain  - Cluster ingress domain (e.g., apps.cluster.example.com)
-#   deployer.apiUrl  - Cluster API URL (e.g., https://api.cluster.example.com:6443)
+#   deployer.apiUrl  - Cluster API URL
+#   gitops.repoUrl   - Same URL as ocp4_workload_field_content_gitops_repo_url
+#   gitops.revision  - Same as ocp4_workload_field_content_gitops_repo_revision
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -21,8 +26,8 @@ ocp4_workload_field_content_gitops_repo_url: ""
 # Git branch, tag, or commit to deploy
 ocp4_workload_field_content_gitops_repo_revision: main
 
-# Path within the repository (empty = root of repo)
-ocp4_workload_field_content_gitops_repo_path: ""
+# Path within the repository — Validated Patterns bootstrap (operator + Pattern CR)
+ocp4_workload_field_content_gitops_repo_path: examples/bootstrap
 
 # -----------------------------------------------------------------------------
 # Optional: ArgoCD configuration
@@ -30,11 +35,12 @@ ocp4_workload_field_content_gitops_repo_path: ""
 # Namespace where the ArgoCD Application will be created
 ocp4_workload_field_content_namespace: openshift-gitops
 
-# Additional Helm values merged with auto-injected deployer values
-# Example:
+# Additional Helm values merged with auto-injected deployer + gitops values
+# Example (lite profile):
 #   ocp4_workload_field_content_helm_values:
-#     myApp:
-#       replicas: 3
+#     pattern:
+#       extraValueFiles:
+#         - /values-lite.yaml
 ocp4_workload_field_content_helm_values: {}
 
 # -----------------------------------------------------------------------------

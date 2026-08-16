@@ -8,8 +8,14 @@
 *.swo
 
 # Helm
-charts/*.tgz
+*.tgz
 Chart.lock
+
+# Antora site output
+docs/build/
+
+# Maven (software-template skeletons)
+**/skeleton/target/
 
 # Python
 __pycache__/

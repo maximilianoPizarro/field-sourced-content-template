@@ -111,7 +111,7 @@ ui:
               </div>
               <div style="flex:1;min-width:200px">
                 <div style="color:#fff;font-weight:700;font-size:13px;margin-bottom:10px;font-family:RedHatDisplay,sans-serif">Integration &amp; BPM</div>
-                <div style="color:#aaa;font-size:11px;line-height:1.6"><b style="color:#e0e0e0">Apache Camel</b> — implements Enterprise Integration Patterns<br><b style="color:#e0e0e0">Kaoto</b> — lets you design Camel routes visually in DevSpaces<br><b style="color:#e0e0e0">SonataFlow</b> — runs serverless business workflows (BPM)</div>
+                <div style="color:#aaa;font-size:11px;line-height:1.6"><b style="color:#e0e0e0">Apache Camel</b> — implements Enterprise Integration Patterns<br><b style="color:#e0e0e0">Kaoto</b> — lets you design Camel routes visually in DevSpaces<br><b style="color:#e0e0e0">OpenShift Integration Operator</b> — Kaoto in the console, Quick Try, GitOps promote (OperatorHub)<br><b style="color:#e0e0e0">SonataFlow</b> — runs serverless business workflows (BPM)</div>
               </div>
               <div style="flex:1;min-width:200px">
                 <div style="color:#fff;font-weight:700;font-size:13px;margin-bottom:10px;font-family:RedHatDisplay,sans-serif">Industrial Edge &amp; Platform</div>

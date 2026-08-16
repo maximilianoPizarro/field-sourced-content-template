@@ -109,7 +109,7 @@ URL:  https://mcp-gateway.{cluster_domain}/mcp
 | Dead-letter queue for failed CV pipeline events
 
 | `dlq.cdc-camel-errors`
-| Dead-letter queue for failed Camel K integrations
+| Dead-letter queue for failed Camel integrations
 |===
 
 == Playground prompts

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: cdc-pipeline
+description: Kafka CDC, Apicurio, Camel, Mailpit, Kogito, cleanup
+type: application
+version: 0.1.0
+appVersion: "1.0"

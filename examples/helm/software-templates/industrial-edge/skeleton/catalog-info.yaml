@@ -66,18 +66,18 @@ spec:
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
-  name: ${{values.uniqueName}}-camel-k
-  description: "Camel K — MQTT→Kafka integration with Kaoto visual designer"
+  name: ${{values.uniqueName}}-camel
+  description: "Camel Quarkus — MQTT→Kafka integration with Kaoto visual designer"
   annotations:
-    backstage.io/kubernetes-id: mqtt2kafka-integration
+    backstage.io/kubernetes-id: mqtt2kafka
     backstage.io/kubernetes-namespace: ${{values.namespace}}
     argocd/app-name: ${{values.uniqueName}}
     argocd/app-namespace: openshift-gitops
-    kafka.apache.org/consumer-groups: ${{values.uniqueName}}-cluster/mqtt2kafka-integration
+    kafka.apache.org/consumer-groups: ${{values.uniqueName}}-cluster/mqtt2kafka
     che.eclipse.org/che-server: https://devspaces.${{values.clusterDomain}}
     devspaces.io/factory: "https://devspaces.${{values.clusterDomain}}/#https://gitea-gitea.${{values.clusterDomain}}/ws-${{values.owner}}/${{values.name}}"
   tags:
-    - camel-k
+    - camel
     - kaoto
     - integration
     - industrial-edge
@@ -86,8 +86,8 @@ metadata:
       title: Open in DevSpaces (Kaoto)
       icon: catalog
       type: ide
-    - url: "https://console-openshift-console.${{values.clusterDomain}}/k8s/ns/${{values.namespace}}/camel.apache.org~v1~Integration"
-      title: Camel Integrations (Console)
+    - url: "https://console-openshift-console.${{values.clusterDomain}}/k8s/ns/${{values.namespace}}/deployments/mqtt2kafka"
+      title: Camel MQTT→Kafka (Console)
       icon: web
 spec:
   type: service
@@ -135,19 +135,19 @@ metadata:
   name: ${{values.uniqueName}}-kafka-to-s3
   description: "Kafka→S3 — Streams sensor data from Kafka topics to MinIO for ML training"
   annotations:
-    backstage.io/kubernetes-id: kafka-to-s3-integration
+    backstage.io/kubernetes-id: kafka-to-s3
     backstage.io/kubernetes-namespace: ${{values.namespace}}
     argocd/app-name: ${{values.uniqueName}}
     argocd/app-namespace: openshift-gitops
-    kafka.apache.org/consumer-groups: ${{values.uniqueName}}-cluster/kafka-to-s3-integration
+    kafka.apache.org/consumer-groups: ${{values.uniqueName}}-cluster/kafka-to-s3
   tags:
-    - camel-k
+    - camel
     - s3
     - data-lake
     - industrial-edge
   links:
-    - url: "https://console-openshift-console.${{values.clusterDomain}}/k8s/ns/${{values.namespace}}/camel.apache.org~v1~Integration/kafka-to-s3-integration"
-      title: Kafka→S3 Integration (Console)
+    - url: "https://console-openshift-console.${{values.clusterDomain}}/k8s/ns/${{values.namespace}}/deployments/kafka-to-s3"
+      title: Kafka→S3 Camel route (Console)
       icon: web
 spec:
   type: service

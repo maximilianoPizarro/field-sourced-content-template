@@ -1,0 +1,23 @@
+# RHDP Field Content CI points GitOps at this chart (path: examples/bootstrap).
+# Injected by the AgnosticD role: deployer.domain, deployer.apiUrl, gitops.repoUrl.
+
+gitops:
+  repoUrl: "https://github.com/maximilianoPizarro/field-sourced-content-template.git"
+  revision: "main"
+
+pattern:
+  name: event-driven-architecture
+  clusterGroupName: hub
+  # Set to ["/values-lite.yaml"] for the lite profile (Helm list replace — full overlay).
+  extraValueFiles: []
+
+patternsOperator:
+  channel: fast
+  source: community-operators
+  sourceNamespace: openshift-marketplace
+  namespace: openshift-operators
+
+# RHDP injects these; Pattern operator maps the ingress domain to global.localClusterDomain.
+deployer:
+  domain: ""
+  apiUrl: ""

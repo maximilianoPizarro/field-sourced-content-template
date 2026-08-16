@@ -43,7 +43,7 @@
 
 Explore a complete *Change Data Capture (CDC)* pipeline running on Red Hat OpenShift with *Streams for Apache Kafka*, Debezium, Apache Camel, SonataFlow, and Apicurio Registry.
 
-This published guide follows the *full* Helm profile (`examples/helm/values.yaml`, `userCount: 30`). Do not apply `values-lite.yaml` for this lab — that overlay turns off DevSpaces, Grafana, Lightspeed, BPM, Industrial Edge, and NeuroFace.
+This published guide follows the *full* Validated Pattern (`values-global.yaml` + `values-hub.yaml`, `userCount: 30`). Do not apply `values-lite.yaml` for this lab — that overlay turns off DevSpaces, Grafana, Lightspeed, BPM, Industrial Edge, and NeuroFace.
 
 === What You'll Learn
 
@@ -51,6 +51,7 @@ This published guide follows the *full* Helm profile (`examples/helm/values.yaml
 * Configure *Debezium* to capture changes in PostgreSQL in real time
 * Use *Apicurio Registry* as a Schema Registry for event validation
 * Design integration routes visually with *Kaoto* inside *DevSpaces*
+* Try Camel routes in the OpenShift console with *OpenShift Integration Operator* (`IntegrationFlow`, Quick Try)
 * Monitor the pipeline with *Grafana dashboards* and *Service Mesh (Kiali)*
 * Manage Kafka from *Developer Hub* with the Kafka plugin
 * Use *Lightspeed (MCP)* for pipeline troubleshooting
@@ -76,6 +77,10 @@ This published guide follows the *full* Helm profile (`examples/helm/values.yaml
 | *Apache Camel + Kaoto*
 | Integration framework implementing Enterprise Integration Patterns, with a low-code visual designer
 | Consumes CDC events from Kafka, applies content-based routing, and sends email notifications via Mailpit
+
+| *OpenShift Integration Operator*
+| Community OperatorHub operator: Kaoto in the OpenShift console, ephemeral Quick Try, GitOps promote, MCP/AI
+| Installs in `openshift-integration` and adds *Integration Platform* so you create `IntegrationFlow` CRs without replacing the CDC Camel Deployment
 
 | *SonataFlow*
 | Serverless workflow engine (evolution of Kogito/jBPM) that runs cloud-native business processes
@@ -185,4 +190,14 @@ This published guide follows the *full* Helm profile (`examples/helm/values.yaml
 
 | *Red Hat OpenShift AI*
 | https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self_managed[OpenShift AI^]
+|===
+
+== Community operators in this lab
+
+[cols="1,2",options="header"]
+|===
+| Operator | Why it is here
+
+| *OpenShift Integration Operator*
+| https://operatorhub.io/operator/openshift-integration-operator[OperatorHub community catalog^] (`community-operators`, channel `alpha`). Lifecycle and Kaoto console plugin for Apache Camel. Not a Red Hat supported product. See xref:19-openshift-integration-operator.adoc[module 19].
 |===

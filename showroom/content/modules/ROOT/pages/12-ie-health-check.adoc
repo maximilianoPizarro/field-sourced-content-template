@@ -13,7 +13,7 @@
   var s2 = ThreeHelper.createNode(ctx.scene,'Sensor 2\n(pump-2)',0x4CAF50,-12,0,3);
   var broker = ThreeHelper.createNode(ctx.scene,'AMQ Broker\n(MQTT)',0xE53935,-4,0,0);
   var consumer = ThreeHelper.createNode(ctx.scene,'IoT Consumer',0x9C27B0,4,0,3);
-  var camel = ThreeHelper.createNode(ctx.scene,'Camel K\nMQTT\u2192Kafka',0xF57C00,4,0,-3);
+  var camel = ThreeHelper.createNode(ctx.scene,'Camel\nMQTT\u2192Kafka',0xF57C00,4,0,-3);
   var kafka = ThreeHelper.createNode(ctx.scene,'Kafka',0x231F20,12,0,-3);
   var dash = ThreeHelper.createNode(ctx.scene,'Dashboard',0x1A73E8,12,0,3);
   var edges = [

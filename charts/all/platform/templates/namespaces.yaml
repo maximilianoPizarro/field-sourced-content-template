@@ -1,0 +1,131 @@
+# Dynamic per-user namespaces (static namespaces live in clusterGroup.namespaces)
+# Per-User Namespaces (dynamic, driven by .Values.userCount)
+# Each user gets two namespaces:
+#   - userN-devspaces  (developer workspace)
+#   - userN-apps       (application deployments)
+# Each namespace includes: admin RoleBinding + ArgoCD RoleBinding + pipeline RoleBinding
+# ============================================================
+{{- $userCount := .Values.userCount | default 30 | int }}
+{{- range $i := until $userCount }}
+{{- $user := printf "user%d" (add1 $i) }}
+{{- $devNs := printf "%s-devspaces" $user }}
+{{- $appNs := printf "%s-apps" $user }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $devNs }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/managed-by: openshift-gitops
+  labels:
+    purpose: developer-workspace
+    user: {{ $user }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $user }}-admin
+  namespace: {{ $devNs }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: {{ $user }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-admin
+  namespace: {{ $devNs }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+subjects:
+- kind: ServiceAccount
+  name: openshift-gitops-argocd-application-controller
+  namespace: openshift-gitops
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pipeline-image-pusher
+  namespace: {{ $devNs }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:image-builder
+subjects:
+- kind: ServiceAccount
+  name: pipeline
+  namespace: {{ $devNs }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $appNs }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/managed-by: openshift-gitops
+  labels:
+    purpose: application-deployment
+    user: {{ $user }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $user }}-admin
+  namespace: {{ $appNs }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: {{ $user }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-admin
+  namespace: {{ $appNs }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+subjects:
+- kind: ServiceAccount
+  name: openshift-gitops-argocd-application-controller
+  namespace: openshift-gitops
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pipeline-image-pusher
+  namespace: {{ $appNs }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:image-builder
+subjects:
+- kind: ServiceAccount
+  name: pipeline
+  namespace: {{ $appNs }}
+{{- end }}

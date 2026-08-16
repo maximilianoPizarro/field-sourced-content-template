@@ -7,12 +7,10 @@ Self-service platform for developing RHDP Catalog Items using GitOps patterns.
 Create demos and labs for Red Hat Demo Platform without deep AgnosticD knowledge:
 
 1. Clone this template repository
-2. Choose an example (`helm/` or `ansible/`) as your starting point
-3. Customize the deployment for your use case
-4. Push to your Git repository
-5. Order the **Field Content CI** from RHDP with your repository URL
+2. Push to your Git remote
+3. Order **Field Content CI** from RHDP with your repository URL and GitOps path **`examples/bootstrap`**
 
-ArgoCD deploys your content, and the platform handles health monitoring and data flow back to AgnosticD.
+RHDP already installs OpenShift GitOps. The bootstrap chart installs the Validated Patterns Operator and a hub-only Pattern CR. The operator deploys `clustergroup` 0.9.* against `values-global.yaml` + `values-hub.yaml` and reuses `openshift-gitops` (no ACM, Vault, or second Argo CD).
 
 ## Architecture
 
@@ -64,6 +62,7 @@ This deployment provisions an Event-Driven Architecture workshop on OpenShift, i
 | **Streams Console** | StreamsHub web console for monitoring Kafka clusters and topics |
 | **Apicurio Registry** | Schema Registry (Avro/JSON/Protobuf) for CDC event validation |
 | **CDC Demo (Debezium)** | Change Data Capture pipeline: PostgreSQL → Debezium → Kafka → Mailpit |
+| **OpenShift Integration Operator** | OperatorHub community operator: Kaoto in the OpenShift console, ephemeral Quick Try, GitOps promote (`openshift-integration`) |
 | **Kafka Bridge** | HTTP REST proxy for producing/consuming Kafka messages via curl |
 | **Showroom** | Antora-based workshop lab guide (English) |
 | **OLS (Lightspeed)** | AI assistant with MCP Gateway integration |
@@ -85,8 +84,8 @@ Integrated from the [Red Hat Validated Patterns Industrial Edge](https://github.
 │  │  └────────┬───────────┘  │  │  └────────────┬───────────┘  │    │
 │  │           │              │  │               │              │    │
 │  │  ┌────────▼───────────┐  │  │  ┌────────────▼───────────┐  │    │
-│  │  │ AMQ Broker (MQTT)  │  │  │  │ Camel K (S3 store)     │  │    │
-│  │  │ + Kafka + Camel K  │  │  │  └────────────┬───────────┘  │    │
+│  │  │ AMQ Broker (MQTT)  │  │  │  │ Camel Quarkus (S3)     │  │    │
+│  │  │ + Kafka + Camel    │  │  │  └────────────┬───────────┘  │    │
 │  │  └────────┬───────────┘  │  │               │              │    │
 │  │           │              │  │  ┌────────────▼───────────┐  │    │
 │  │  ┌────────▼───────────┐  │  │  │ MinIO (S3 storage)     │  │    │
@@ -113,7 +112,7 @@ Integrated from the [Red Hat Validated Patterns Industrial Edge](https://github.
 | **AMQ Broker + Kafka** | `industrial-edge-stormshift` | MQTT broker + Kafka cluster for factory-side event streaming |
 | **Line Dashboard** | `industrial-edge-stormshift` | Real-time IoT data visualization web app |
 | **Kafka MirrorMaker2** | `industrial-edge-stormshift` | Replicates factory Kafka topics to datacenter data lake |
-| **Kafka Data Lake** | `industrial-edge-data-lake` | Central Kafka cluster + Camel K S3 integration |
+| **Kafka Data Lake** | `industrial-edge-data-lake` | Central Kafka cluster + Camel Quarkus S3 route |
 | **MinIO** | `industrial-edge-minio` | S3-compatible object storage (replaces ODF) for ML models and data |
 | **OpenShift AI** | `industrial-edge-data-science-cluster` | DataScienceCluster CR, custom notebooks, serving runtimes |
 | **ML Workspace** | `industrial-edge-data-science-project` | ML pipelines, model serving, S3 data connections |
@@ -348,10 +347,12 @@ Two deployment profiles are available to match different resource budgets:
 
 ### Full Profile (default)
 
-All components enabled — AI/ML, Service Mesh, Observability, DevSpaces, BPM workflows.
+All components enabled — AI/ML, Service Mesh, Observability, DevSpaces, BPM workflows. This is what the Pattern CR loads by default (`values-global.yaml` + `values-hub.yaml`).
 
 ```bash
-helm install field-content examples/helm -f examples/helm/values.yaml
+# RHDP: GitOps path examples/bootstrap (installs operator + Pattern CR)
+# Local render of grouped charts:
+helm template platform charts/all/platform --set userCount=30 --set clusterDomain=apps.example.com
 ```
 
 | Metric | Value |
@@ -367,20 +368,15 @@ helm install field-content examples/helm -f examples/helm/values.yaml
 
 Core EDA workshop only: Kafka CDC pipeline, Developer Hub, Keycloak, Gitea, Mailpit, Showroom. Disables DevSpaces, Service Mesh, Observability, OpenShift AI, LiteMaaS, Kuadrant, OLS, MCP Gateway, BPM, NeuroFace, and Industrial Edge.
 
-**RHDP Field Content CI loads `values.yaml` only.** To use lite you must pass `-f values-lite.yaml` (or Argo CD `valueFiles`) yourself.
+**RHDP Field Content CI uses `examples/bootstrap`.** For lite, set Pattern `extraValueFiles` to `/values-lite.yaml` (Helm replaces lists; that overlay disables whole groups and subscriptions by map key).
 
 ```bash
-helm install field-content examples/helm -f examples/helm/values.yaml -f examples/helm/values-lite.yaml
+helm template bootstrap examples/bootstrap \
+  --set gitops.repoUrl=https://github.com/YOU/field-sourced-content-template.git \
+  --set pattern.extraValueFiles[0]=/values-lite.yaml
 ```
 
-Or in ArgoCD:
-```yaml
-source:
-  helm:
-    valueFiles:
-      - values.yaml
-      - values-lite.yaml
-```
+Or apply [`examples/pattern-cr/hub-lite.yaml`](examples/pattern-cr/hub-lite.yaml) after the operator is installed.
 
 | Metric | Value |
 |--------|-------|
@@ -391,20 +387,22 @@ source:
 
 GitHub Pages and in-cluster Showroom assume the **full** profile. Do not run the published lab on lite without skipping DevSpaces, Grafana, Lightspeed, BPM, Industrial Edge, and NeuroFace modules.
 
-### Validated Patterns Compatibility
+### Validated Patterns (operator + clustergroup)
 
-The repository also ships VP-convention files for teams adopting the [Red Hat Validated Patterns](https://validatedpatterns.io/) framework:
+This workshop **is** a hub-only Validated Pattern. It does **not** install ACM, Vault, or ESO.
 
 | File | Purpose |
 |------|---------|
-| `pattern.json` | Pattern metadata (name, version, profiles, estimated resources) |
-| `examples/helm/values-global.yaml` | Cluster-independent settings (repo URL, ArgoCD config, userCount) |
-| `examples/helm/values-hub.yaml` | Hub cluster config (operators, apps, secrets, components) |
-| `examples/helm/values-lite.yaml` | Lite overlay that disables heavy components |
+| `Chart.yaml` | Depends on `clustergroup` `0.9.*` from charts.validatedpatterns.io |
+| `values-global.yaml` | `global.pattern`, `singleArgoCD`, `vpArgoNamespace: openshift-gitops`, LLM + `userCount` |
+| `values-hub.yaml` | `clusterGroup` namespaces, subscriptions, `argoProjects`, grouped `applications` |
+| `values-lite.yaml` | Disables mesh/AI/edge Applications and heavy subscriptions |
+| `pattern-metadata.yaml` / `pattern.json` | Pattern identity and sizing |
+| `examples/bootstrap/` | RHDP entry: patterns-operator Subscription + Pattern CR |
+| `examples/pattern-cr/hub.yaml` | Same Pattern CR for a cluster that already has the operator |
+| `charts/all/` | One Helm chart per domain (≈8 Applications instead of ≈40) |
 
-The existing `values.yaml` remains the primary source of truth. The VP-convention files are optional and provided for compatibility — the app-of-apps templates consume the same schema regardless of which file supplies the values.
-
-> **Note**: This repo intentionally does not adopt the VP `clusterGroup` chart, HashiCorp Vault, or ACM multi-cluster. These layers add significant complexity and resource overhead without benefit for single-cluster workshops. See the [gap analysis plan](docs/validated-patterns-gap-analysis.md) for details.
+See [docs/validated-patterns-gap-analysis.md](docs/validated-patterns-gap-analysis.md).
 
 ## Getting Started
 
@@ -412,19 +410,18 @@ The existing `values.yaml` remains the primary source of truth. The VP-conventio
 
 | Pattern | Use When |
 |---------|----------|
-| [examples/helm/](examples/helm/) | Deployment can be expressed as Kubernetes manifests with Helm templating |
+| [examples/bootstrap/](examples/bootstrap/) | RHDP GitOps path — operator + Pattern CR (default) |
 | [examples/ansible/](examples/ansible/) | You need wait-for-ready, secret generation, API calls, or conditional logic |
+
+`examples/helm/` still holds software templates and component YAML; it is **not** the GitOps entrypoint.
 
 ### Quick Start
 
 ```bash
-# Clone this template
 git clone https://github.com/maximilianoPizarro/field-sourced-content-template.git my-content
 cd my-content
-
-# Choose an example and start customizing
-cd examples/helm      # or examples/ansible
-# Edit values.yaml and templates as documented in each example's README
+# Edit values-global.yaml (userCount, LLM placeholders) and values-hub.yaml as needed.
+# Order Field Content CI with GitOps path examples/bootstrap and this repository URL.
 ```
 
 ### Setting the Cluster Domain
@@ -465,70 +462,18 @@ curl -sk "$KEYCLOAK_URL/admin/realms/backstage/users" \
 
 Platform Engineer permissions include: full catalog CRUD, scaffolder execution, RBAC administration, Lightspeed chat, Kuadrant API product management (create/update/delete/approve), and Adoption Insights.
 
-### Manual Credentials (not stored in Git)
+### LLM credentials (GitOps)
 
-After deploying to a new cluster, the following secrets must be updated **manually** via `oc` commands. These credentials are intentionally excluded from Git to avoid exposing sensitive data.
+OpenShift Lightspeed and Continue AI read the same coalesced values: `litemaas.*` (when RHDP injects LiteMaaS/MaaS on the order), then `maas.*`, then `lightspeed.*`. Defaults are `sk-no-key` and an empty endpoint — no post-deploy `oc create secret` is required.
 
-#### LiteLLM Virtual Key
+| Secret | Namespace | Created by | Used by |
+|--------|-----------|------------|---------|
+| `llm-credentials` (`apitoken`) | `openshift-lightspeed` | `charts/all/ai-ml` (OLS) | OLS → LiteLLM / MaaS |
+| `continue-ai-config` | `devspaces` | `charts/all/developer-experience` (DevSpaces) | Continue in every workspace |
 
-The LiteLLM Virtual Key authenticates clients (OLS, LiteMaaS backend) against the LiteLLM proxy. Obtain it from the LiteLLM admin UI or API, then update:
+Override at order time with Helm `--set` / RHDP `helm_values` (`litemaas.apiKey`, `litemaas.apiUrl`, `litemaas.model`). LiteMaaS (`litemaas.enabled`) stays off unless you enable that application.
 
-```bash
-# 1. OLS → LiteLLM (OpenShift Lightspeed uses this to call the LLM)
-oc create secret generic llm-credentials \
-  --from-literal=apitoken='<LITELLM_VIRTUAL_KEY>' \
-  -n openshift-lightspeed \
-  --dry-run=client -o yaml | oc apply -f -
-
-# 2. LiteMaaS backend → LiteLLM
-oc patch secret backend-secret -n litemaas \
-  --type merge -p '{"stringData":{"litellm-api-key":"<LITELLM_VIRTUAL_KEY>"}}'
-
-# 3. Restart affected pods to pick up the new key
-oc rollout restart deployment/lightspeed-app-server -n openshift-lightspeed
-```
-
-| Secret | Namespace | Key | Used by |
-|--------|-----------|-----|---------|
-| `llm-credentials` | `openshift-lightspeed` | `apitoken` | OLS (Lightspeed) → LiteLLM |
-| `backend-secret` | `litemaas` | `litellm-api-key` | LiteMaaS backend → LiteLLM |
-
-> **Note**: The `litellm-secret` in `litemaas` (master-key, ui-password) and `postgres-secret` (db password) ship with default values in Git. Change them in production clusters via the same `oc patch secret` approach.
-
-#### Continue AI — LLM for DevSpaces Workspaces
-
-All software templates include [Continue AI](https://continue.dev/) pre-configured with an external LLM via LiteLLM proxy. The API key is injected at workspace startup from a Kubernetes Secret that auto-mounts into every DevSpaces workspace.
-
-A template file is provided at `examples/helm/components/devspaces/secret-continue-ai-template.yaml`. To configure:
-
-```bash
-# Create the secret with your LLM credentials (auto-mounts to all DevSpaces workspaces)
-oc apply -f - <<'EOF'
-apiVersion: v1
-kind: Secret
-metadata:
-  name: continue-ai-config
-  namespace: devspaces
-  labels:
-    controller.devfile.io/mount-to-devworkspace: "true"
-    controller.devfile.io/watch-secret: "true"
-  annotations:
-    controller.devfile.io/mount-as: env
-type: Opaque
-stringData:
-  CONTINUE_API_KEY: "<YOUR_LITELLM_API_KEY>"
-  CONTINUE_API_BASE: "<YOUR_LITELLM_URL>/v1"
-  CONTINUE_MODEL: "<YOUR_MODEL_NAME>"
-EOF
-```
-
-The `controller.devfile.io/mount-to-devworkspace: "true"` label causes DevSpaces to auto-inject these environment variables into every new workspace. The devfile `postStart` event reads them to patch `~/.continue/config.json` with the real credentials.
-
-| Secret | Namespace | Keys | Used by |
-|--------|-----------|------|---------|
-| `continue-ai-config` | `devspaces` | `CONTINUE_API_KEY`, `CONTINUE_API_BASE`, `CONTINUE_MODEL` | All DevSpaces workspaces → Continue AI extension |
-
-> **Important**: Do NOT commit this secret with real credentials to Git. The template file in the repo contains only placeholder values.
+Do not commit real API keys. Workshop defaults are placeholders.
 
 ### Service Access URLs
 
@@ -602,7 +547,9 @@ metadata:
 
 - [Workshop (GitHub Pages)](https://maximilianopizarro.github.io/field-sourced-content-template/) — Antora CDC / Industrial Edge guide (EN + ES)
 - [docs/archive/neuralbank-workshop](docs/archive/neuralbank-workshop/README.md) — archived Jekyll Neuralbank / NFL Wallet modules (not published)
-- [examples/helm/README.md](examples/helm/README.md) - Helm deployment guide
+- [examples/bootstrap/README.md](examples/bootstrap/README.md) — RHDP GitOps entrypoint
+- [charts/all/README.md](charts/all/README.md) — grouped Helm charts
+- [examples/helm/README.md](examples/helm/README.md) — deprecated App-of-Apps (templates + catalog still under `components/`)
 - [examples/ansible/README.md](examples/ansible/README.md) - Ansible deployment guide
 - [docs/ansible-developer-guide.md](docs/ansible-developer-guide.md) - In-depth Ansible patterns
 - [docs/SHOWROOM-UPDATE-SPEC.md](docs/SHOWROOM-UPDATE-SPEC.md) - Showroom maintenance guide
@@ -611,35 +558,21 @@ metadata:
 ## Repository Structure
 
 ```
-field-content/
-├── pattern.json                           # Validated Patterns metadata
+field-sourced-content-template/
+├── Chart.yaml                             # clustergroup 0.9.* dependency
+├── values-global.yaml                     # VP global (singleArgoCD → openshift-gitops)
+├── values-hub.yaml                        # clusterGroup namespaces, subscriptions, apps
+├── values-lite.yaml                       # lite overlay (disable mesh/AI/edge groups)
+├── values-gitea.yaml / values-neuroface.yaml
+├── pattern.json / pattern-metadata.yaml
+├── charts/all/                            # grouped Helm charts (one Application each)
 ├── examples/
+│   ├── bootstrap/                         # RHDP path: operator Subscription + Pattern CR
+│   ├── pattern-cr/hub.yaml                # Pattern CR for clusters that already have the operator
 │   ├── helm/
-│   │   ├── values.yaml                    # Parent chart values (full profile)
-│   │   ├── values-lite.yaml              # Lite overlay (~60% fewer resources)
-│   │   ├── values-global.yaml            # VP convention: cluster-independent settings
-│   │   ├── values-hub.yaml               # VP convention: hub cluster config
-│   │   ├── templates/                     # ArgoCD Application definitions
-│   │   ├── components/                    # Per-component Helm sub-charts
-│   │   │   ├── */       # Infrastructure components
-│   │   │   ├── workshop-registration/  # Self-service registration portal
-│   │   │   ├── industrial-edge-tst/              # IoT test env (sensors, messaging, dashboard)
-│   │   │   ├── industrial-edge-data-lake/        # Central Kafka + Camel K S3 integration
-│   │   │   ├── industrial-edge-stormshift/       # Factory edge (sensors, MirrorMaker2, dashboard)
-│   │   │   ├── industrial-edge-data-science-cluster/  # RHODS DataScienceCluster
-│   │   │   ├── industrial-edge-data-science-project/  # ML workspace + pipelines
-│   │   │   ├── industrial-edge-pipelines/        # Tekton CI/CD for IoT components
-│   │   │   ├── industrial-edge-minio/            # MinIO S3 storage (replaces ODF)
-│   │   │   ├── showroom/                  # Workshop lab guide
-│   │   │   └── ...
+│   │   ├── components/                    # vendor YAML + catalog-info (not the GitOps root)
 │   │   └── software-templates/            # Backstage scaffolder templates
-│   │       ├── templates-catalog.yaml     # Auto-import catalog
-│   │       ├── customer-service-mcp/      # Quarkus MCP server template
-│   │       ├── camel-kaoto/               # Camel + Kaoto template
-│   │       ├── industrial-edge/           # Isolated IoT factory instance
-│   │       └── kafka-cdc-mcp/             # CDC MCP tools template
-│   └── ansible/                           # Ansible-based deployment example
-├── roles/
-│   └── ocp4_workload_field_content/       # AgnosticD workload role
-└── docs/                                  # Developer guides and diagrams
+│   └── ansible/
+├── roles/ocp4_workload_field_content/     # AgnosticD role (path examples/bootstrap)
+└── docs/
 ```

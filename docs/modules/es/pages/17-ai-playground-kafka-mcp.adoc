@@ -50,7 +50,7 @@ URL:  https://mcp-gateway.{cluster_domain}/mcp
 | `bpm.onboarding.metrics` | Métricas de onboarding BPM y telemetría de procesos
 | `dlq.cdc-errors` | Cola de mensajes fallidos para eventos CDC erróneos
 | `dlq.cv-errors` | Cola de mensajes fallidos para eventos del pipeline CV erróneos
-| `dlq.cdc-camel-errors` | Cola de mensajes fallidos para integraciones Camel K erróneas
+| `dlq.cdc-camel-errors` | Cola de mensajes fallidos para integraciones Camel erróneas
 |===
 
 == Prompts del Playground

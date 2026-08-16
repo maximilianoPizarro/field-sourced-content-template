@@ -42,7 +42,7 @@ The system is deployed using the App of Apps pattern with two ArgoCD application
 
 | Application | Source | Namespace | Sync Wave | What It Deploys |
 |-------------|--------|-----------|-----------|-----------------|
-| `field-content-helm-neuroface` | Helm chart `neuroface` v1.3.0 from GitHub Pages | `neuroface` | 10 | Backend, Frontend, OVMS, Granite LLM, PVC |
+| `field-content-helm-neuroface` | Helm chart `neuroface` v1.4.2 from GitHub Pages | `neuroface` | 10 | Backend, Frontend, OVMS, Granite LLM, PVC |
 | `field-content-neuroface-cv` | Local chart `neuroface-cv` | `kafka-cdc` + `neuroface` | 11 | Kafka topics, Camel processor, YOLO serving, Jupyter workbench |
 
 ### Configuration Flow
@@ -51,7 +51,7 @@ The system is deployed using the App of Apps pattern with two ArgoCD application
 examples/helm/values.yaml (App of Apps)
   │
   ├─ field-content-helm-neuroface:
-  │    targetRevision: "1.3.0"
+  │    targetRevision: "1.4.2"
   │    values:
   │      ovms.enabled: true
   │      chat.enabled: true
@@ -168,7 +168,9 @@ The `cv-face-notification` route consumes from Kafka and sends emails via Mailpi
 
 ## Helm Chart Configuration
 
-### `neuroface` chart (v1.3.0) — Backend + Frontend + OVMS + LLM
+### `neuroface` chart (v1.4.2) — Backend + Frontend + OVMS + LLM
+
+Images default to `quay.io/maximilianopizarro/neuroface-{backend,frontend}:v1.4.1`. PPE still uses this lab's `yolo-ppe-serving` (`/health` + `/v1/predict`); the chart documents `ppe.serving.image` (`neuroface-ppe-serving:v1.4.1`) but does not deploy it.
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
@@ -180,8 +182,9 @@ The `cv-face-notification` route consumes from Kafka and sends emails via Mailpi
 | `ppe.kafka.bootstrap` | `""` | Kafka bootstrap servers |
 | `ppe.kafka.user` | `""` | SASL username |
 | `ppe.kafka.topic` | `cv.ppe.detections` | Target topic |
-| `ppe.kafka.secretName` | `cdc-user` | Secret with Kafka password |
-| `ppe.kafka.caCertSecret` | `cdc-cluster-cluster-ca-cert` | Secret with CA cert |
+| `ppe.kafka.secretName` | `""` | Secret with Kafka password |
+| `ppe.kafka.caCertSecret` | `""` | Secret with CA cert |
+| `ppe.dataPersistence.enabled` | `false` | Upload PPE frames to S3/MinIO |
 
 ### `neuroface-cv` chart — YOLO Serving + Topics + Camel + Jupyter
 

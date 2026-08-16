@@ -1,0 +1,32 @@
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: github-push
+spec:
+  workspaces:
+  - name: gitrepos
+    description: The git repo will be cloned onto the volume backing this workspace
+  params:
+  - name: subdirectory
+    description: subdirectory inside the "gitrepos" workspace to clone the git repo into
+    type: string
+    default: "dev"
+  - name: PUSH_FLAGS
+    description: additional flags for git push
+    type: string
+    default: ""
+  - name: sslVerify
+    default: "false"
+  steps:
+  - name: push
+    image: ghcr.io/tektoncd/github.com/tektoncd/pipeline/cmd/git-init:v0.44.5
+    script: |
+      set -x
+      git remote -v
+      git branch
+      git branch -r | grep -q origin/$(git rev-parse --abbrev-ref HEAD) && git -c http.sslVerify=$(params.sslVerify) pull --ff-only --no-edit
+      git log -n 2
+      git -c http.sslVerify=$(params.sslVerify) push -v $(params.PUSH_FLAGS)
+      echo "github push task completed"
+    workingDir: $(workspaces.gitrepos.path)/$(params.subdirectory)

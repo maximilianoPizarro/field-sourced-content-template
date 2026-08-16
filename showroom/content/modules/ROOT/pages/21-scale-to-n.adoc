@@ -22,7 +22,7 @@
   var i1Sensor1 = ThreeHelper.createNode(ctx.scene,'Sensor 1',0x4CAF50, -14, Y_I1, -8);
   var i1Sensor2 = ThreeHelper.createNode(ctx.scene,'Sensor 2',0x4CAF50, -14, Y_I1, -4);
   var i1Broker  = ThreeHelper.createNode(ctx.scene,'AMQ',0xE53935,       -8, Y_I1, -6);
-  var i1Camel   = ThreeHelper.createNode(ctx.scene,'Camel K',0xF57C00,   -2, Y_I1, -8);
+  var i1Camel   = ThreeHelper.createNode(ctx.scene,'Camel',0xF57C00,   -2, Y_I1, -8);
   var i1Kafka   = ThreeHelper.createNode(ctx.scene,'Kafka',0x231F20,      4, Y_I1, -8);
   var i1Dash    = ThreeHelper.createNode(ctx.scene,'Dashboard',0x1A73E8,  4, Y_I1, -4);
 
@@ -31,7 +31,7 @@
   var i2Sensor1 = ThreeHelper.createNode(ctx.scene,'Sensor 1',0x66BB6A, -14, Y_I2, -2);
   var i2Sensor2 = ThreeHelper.createNode(ctx.scene,'Sensor 2',0x66BB6A, -14, Y_I2, 2);
   var i2Broker  = ThreeHelper.createNode(ctx.scene,'AMQ',0xEF5350,       -8, Y_I2, 0);
-  var i2Camel   = ThreeHelper.createNode(ctx.scene,'Camel K',0xFFA726,   -2, Y_I2, -2);
+  var i2Camel   = ThreeHelper.createNode(ctx.scene,'Camel',0xFFA726,   -2, Y_I2, -2);
   var i2Kafka   = ThreeHelper.createNode(ctx.scene,'Kafka',0x424242,      4, Y_I2, -2);
   var i2Dash    = ThreeHelper.createNode(ctx.scene,'Dashboard',0x42A5F5,  4, Y_I2, 2);
 
@@ -40,7 +40,7 @@
   var iNSensor1 = ThreeHelper.createNode(ctx.scene,'Sensor 1',0x81C784, -14, Y_IN, 4);
   var iNSensor2 = ThreeHelper.createNode(ctx.scene,'Sensor 2',0x81C784, -14, Y_IN, 8);
   var iNBroker  = ThreeHelper.createNode(ctx.scene,'AMQ',0xEF9A9A,       -8, Y_IN, 6);
-  var iNCamel   = ThreeHelper.createNode(ctx.scene,'Camel K',0xFFCC80,   -2, Y_IN, 4);
+  var iNCamel   = ThreeHelper.createNode(ctx.scene,'Camel',0xFFCC80,   -2, Y_IN, 4);
   var iNKafka   = ThreeHelper.createNode(ctx.scene,'Kafka',0x757575,      4, Y_IN, 4);
   var iNDash    = ThreeHelper.createNode(ctx.scene,'Dashboard',0x90CAF9,  4, Y_IN, 8);
 
@@ -110,7 +110,7 @@ A single Industrial Edge deployment proves the architecture. But what happens wh
 
 * Multiple teams need their own isolated environments?
 * A partner demo requires a fresh instance per attendee?
-* You need to test a Camel K integration change without affecting production sensors?
+* You need to test a Camel Quarkus route change without affecting production sensors?
 
 Manually creating namespaces, Kafka clusters, and ArgoCD Applications does not scale.
 
@@ -134,7 +134,7 @@ The `industrial-edge` Software Template exposes the validated architecture as a 
 | Kafka Cluster (KRaft)
 | 1- or 3-node cluster in the instance namespace
 
-| Camel K Integration
+| Camel Quarkus route
 | MQTT -> Kafka bridge with `camel:kafka` + `camel:paho`
 
 | Line Dashboard
@@ -245,7 +245,7 @@ oc get pods -n user1-edge-factory-1
 # user1-edge-factory-1-cluster-broker-0        1/1     Running   0          90s
 # user1-edge-factory-1-cluster-broker-1        1/1     Running   0          90s
 # user1-edge-factory-1-cluster-broker-2        1/1     Running   0          90s
-# mqtt2kafka-integration-xxx                   1/1     Running   0          60s
+# mqtt2kafka-xxx                               1/1     Running   0          60s
 # line-dashboard-xxx                           1/1     Running   0          60s
 ----
 
@@ -256,8 +256,8 @@ oc get pods -n user1-edge-factory-1
 # 1. Sensors → MQTT
 oc logs -f deploy/user1-edge-factory-1-sensor-1 -n user1-edge-factory-1 --tail=3
 
-# 2. MQTT → Kafka (Camel K logs)
-oc logs -f -l camel.apache.org/integration=mqtt2kafka-integration -n user1-edge-factory-1 --tail=3
+# 2. MQTT → Kafka (Camel Quarkus logs)
+oc logs -f deploy/mqtt2kafka -n user1-edge-factory-1 --tail=3
 
 # 3. Kafka topics created
 oc get kafkatopics -n user1-edge-factory-1
@@ -303,7 +303,7 @@ Use the *Remove Component* template in Developer Hub:
                  │  └──────────────────┬─────────────────────┘    │
                  │                     │                          │
                  │            ┌────────▼────────┐                 │
-                 │            │  Camel K         │                │
+                 │            │  Camel Quarkus   │                │
                  │            │  MQTT → Kafka    │                │
                  │            └────────┬────────┘                 │
                  │                     │                          │
@@ -349,5 +349,5 @@ Use the *Remove Component* template in Developer Hub:
 
 * **K8s API proxy for ArgoCD** -- Applications are created via the Kubernetes API (`/proxy/k8s-api/apis/argoproj.io/v1alpha1/...`) using the Developer Hub ServiceAccount. No ArgoCD-specific tokens needed.
 * **ApplicationSet exclusion** -- Repos with `argocd/application.yaml` are excluded from the global ApplicationSet to prevent duplicate Application creation.
-* **S2I for Camel K** -- The `IntegrationPlatform` uses `publishStrategy: S2I` to leverage native OpenShift builds instead of Jib.
+* **Camel Quarkus** -- MQTT→Kafka and Kafka→S3 run as Deployments (`apache/camel-jbang --runtime=quarkus`), not Camel K Integrations.
 * **Probe tuning** -- Spring Boot sensors have `initialDelaySeconds: 60s` (liveness) to accommodate slow JVM startup.

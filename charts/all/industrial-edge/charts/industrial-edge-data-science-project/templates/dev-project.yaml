@@ -1,0 +1,268 @@
+{{- $giturl := coalesce .Values.global.git.hostname (printf "gitea-route-vp-gitea.%s" .Values.clusterDomain) }}
+{{- $full_giturl := printf "https://%s/%s/industrial-edge-dev.git" $giturl .Values.global.git.account }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: workbench-trusted-ca-bundle
+  namespace: ml-development
+  labels:
+    config.openshift.io/inject-trusted-cabundle: 'true'
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: model-training-data-volume
+  namespace: ml-development
+  finalizers:
+    - kubernetes.io/pvc-protection
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  volumeMode: Filesystem
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: workbench-pvc
+  namespace: ml-development
+  finalizers:
+    - kubernetes.io/pvc-protection
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  volumeMode: Filesystem
+---
+apiVersion: datasciencepipelinesapplications.opendatahub.io/v1
+kind: DataSciencePipelinesApplication
+metadata:
+  name: dspa
+  namespace: ml-development
+spec:
+  apiServer:
+    caBundleFileMountPath: ''
+    caBundleFileName: ''
+    deploy: true
+    enableSamplePipeline: false
+    enableOauth: true
+  database:
+    disableHealthCheck: false
+    mariaDB:
+      deploy: true
+      pipelineDBName: mlpipeline
+      pvcSize: 10Gi
+      username: mlpipeline
+  dspVersion: v2
+  objectStorage:
+    disableHealthCheck: false
+    enableExternalRoute: false
+    externalStorage:
+      bucket: pipeline-bucket
+      host: 'minio.industrial-edge-ml-workspace.svc'
+      port: '9000'
+      s3CredentialsSecret:
+        accessKey: AWS_ACCESS_KEY_ID
+        secretKey: AWS_SECRET_ACCESS_KEY
+        secretName: aws-connection-pipeline-bucket
+      scheme: http
+  persistenceAgent:
+    deploy: true
+    numWorkers: 2
+  scheduledWorkflow:
+    cronScheduleTimezone: UTC
+    deploy: true
+---
+apiVersion: kubeflow.org/v1
+kind: Notebook
+metadata:
+  name: jupyterlab
+  namespace: ml-development
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    notebooks.opendatahub.io/inject-oauth: "true"
+    opendatahub.io/image-display-name: "Standard Data Science"
+    openshift.io/display-name: "Anomaly Detection — Industrial Edge"
+    openshift.io/description: "Workbench for anomaly detection model training, MinIO data lake, and real-time inference testing"
+    notebooks.opendatahub.io/oauth-logout-url: "https://data-science-gateway.{{ .Values.clusterDomain }}/projects/ml-development?notebookLogout=jupyterlab"
+  labels:
+    app: jupyterlab
+    opendatahub.io/dashboard: "true"
+    opendatahub.io/odh-managed: "true"
+spec:
+  template:
+    spec:
+      affinity: {}
+      initContainers:
+        - name: seed-notebooks
+          image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+          command: ["sh", "-c"]
+          args:
+            - |
+              DEST=/opt/app-root/src
+              if [ -f "$DEST/.notebooks-seeded" ]; then
+                echo "Notebooks already seeded, skipping"
+                exit 0
+              fi
+              BASE_URL="https://raw.githubusercontent.com/maximilianoPizarro/field-sourced-content-template/main/examples/helm/components/industrial-edge-data-science-project/notebooks"
+              echo "Seeding Industrial Edge notebooks..."
+              curl -sL "$BASE_URL/1_anomaly_detection_training.ipynb" -o "$DEST/1_anomaly_detection_training.ipynb"
+              curl -sL "$BASE_URL/2_realtime_inference_test.ipynb" -o "$DEST/2_realtime_inference_test.ipynb"
+              touch "$DEST/.notebooks-seeded"
+              ls -lh "$DEST/"
+              echo "Notebook seeding complete"
+          volumeMounts:
+            - mountPath: /opt/app-root/src
+              name: jupyterlab
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+      containers:
+        - name: jupyterlab
+          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.1
+          envFrom:
+            - secretRef:
+                name: aws-connection-user-bucket
+          env:
+            - name: NOTEBOOK_ARGS
+              value: |-
+                --ServerApp.port=8888
+                --ServerApp.token=''
+                --ServerApp.password=''
+                --ServerApp.base_url=/notebook/ml-development/jupyterlab
+                --ServerApp.quit_button=False
+            - name: JUPYTER_IMAGE
+              value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.1
+          ports:
+            - containerPort: 8888
+              name: notebook-port
+              protocol: TCP
+          resources:
+            requests:
+              cpu: "1"
+              memory: 4Gi
+            limits:
+              cpu: "2"
+              memory: 8Gi
+          volumeMounts:
+            - mountPath: /opt/app-root/src
+              name: jupyterlab
+          workingDir: /opt/app-root/src
+          livenessProbe:
+            httpGet:
+              path: /notebook/ml-development/jupyterlab/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 40
+          readinessProbe:
+            httpGet:
+              path: /notebook/ml-development/jupyterlab/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 40
+      volumes:
+        - name: jupyterlab
+          persistentVolumeClaim:
+            claimName: workbench-pvc
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: s3-browser-pvc
+  namespace: ml-development
+  finalizers:
+    - kubernetes.io/pvc-protection
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  volumeMode: Filesystem
+---
+apiVersion: kubeflow.org/v1
+kind: Notebook
+metadata:
+  name: s3-browser
+  namespace: ml-development
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    notebooks.opendatahub.io/inject-oauth: "true"
+    opendatahub.io/image-display-name: "Standard Data Science"
+    openshift.io/display-name: "S3 Data Lake Browser"
+    openshift.io/description: "Browse MinIO S3 data lake — sensor data, trained models, and pipeline artifacts"
+    notebooks.opendatahub.io/oauth-logout-url: "https://data-science-gateway.{{ .Values.clusterDomain }}/projects/ml-development?notebookLogout=s3-browser"
+  labels:
+    app: s3-browser
+    opendatahub.io/dashboard: "true"
+    opendatahub.io/odh-managed: "true"
+spec:
+  template:
+    spec:
+      affinity: {}
+      containers:
+        - name: s3-browser
+          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.1
+          envFrom:
+            - secretRef:
+                name: aws-connection-user-bucket
+          env:
+            - name: NOTEBOOK_ARGS
+              value: |-
+                --ServerApp.port=8888
+                --ServerApp.token=''
+                --ServerApp.password=''
+                --ServerApp.base_url=/notebook/ml-development/s3-browser
+                --ServerApp.quit_button=False
+            - name: JUPYTER_IMAGE
+              value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:2025.1
+          ports:
+            - containerPort: 8888
+              name: notebook-port
+              protocol: TCP
+          resources:
+            requests:
+              cpu: "500m"
+              memory: 2Gi
+            limits:
+              cpu: "1"
+              memory: 4Gi
+          volumeMounts:
+            - mountPath: /opt/app-root/src
+              name: s3-browser
+          workingDir: /opt/app-root/src
+          livenessProbe:
+            httpGet:
+              path: /notebook/ml-development/s3-browser/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 40
+          readinessProbe:
+            httpGet:
+              path: /notebook/ml-development/s3-browser/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 40
+      volumes:
+        - name: s3-browser
+          persistentVolumeClaim:
+            claimName: s3-browser-pvc

@@ -38,8 +38,8 @@ Check upstream at: `~/devel/git/agDv2/showroom/roles/ocp4_workload_showroom/defa
 
 | File | What to Update |
 |------|----------------|
-| `examples/helm/values.yaml` | Image versions in `showroom.*` section |
-| `examples/helm/templates/showroom.yaml` | Pod spec, init containers (if structure changes) |
+| `examples/helm/components/showroom/values.yaml` and `charts/all/developer-experience/values.yaml` | Image versions in `showroom.*` |
+| `examples/helm/components/showroom/templates/showroom.yaml` | Pod spec, init containers (if structure changes) |
 
 ## Update Procedure
 
@@ -60,7 +60,7 @@ Key variables to sync from upstream `defaults/main.yaml`:
 showroom_content_image: quay.io/rhpds/showroom-content:vX.X.X
 showroom_terminal_image: quay.io/rhpds/openshift-showroom-terminal-ocp:latest
 
-# In helm example: examples/helm/values.yaml
+# In helm: examples/helm/components/showroom/values.yaml (copied into charts/all/developer-experience)
 showroom:
   content:
     image: "quay.io/rhpds/showroom-content:vX.X.X"
@@ -85,7 +85,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/rhpds/field-sourced-content-template
-    path: examples/helm
+    path: examples/bootstrap
     helm:
       parameters:
         - name: deployer.domain

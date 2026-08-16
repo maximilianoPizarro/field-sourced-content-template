@@ -1,66 +1,131 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: mqtt2kafka-config
+  name: mqtt2kafka-routes
   namespace: ${{values.namespace}}
 data:
-  application.properties: |
-    kafka.broker.uri=${{values.uniqueName}}-cluster-kafka-bootstrap.${{values.namespace}}.svc:9092
-    kafka.broker.topic.temperature=iot-sensor-sw-temperature
-    kafka.broker.topic.vibration=iot-sensor-sw-vibration
-    mqtt.broker.uri=tcp://broker-amq-mqtt-all-0-svc.${{values.namespace}}.svc:61616
-    mqtt.broker.clientId=MQTT2KafkaRoute-${{values.uniqueName}}
-    mqtt.broker.topic.temperature=iot-sensor/sw/temperature
-    mqtt.broker.topic.vibration=iot-sensor/sw/vibration
+  mqtt-to-kafka.camel.yaml: |
+    - route:
+        id: mqtt-temperature-to-kafka
+        from:
+          uri: paho:iot-sensor/sw/temperature
+          parameters:
+            brokerUrl: tcp://broker-amq-mqtt-all-0-svc.${{values.namespace}}.svc:61616
+            clientId: MQTT2KafkaRoute-${{values.uniqueName}}-temp
+          steps:
+            - log:
+                message: "Temperature reading from MQTT: ${body}"
+            - setHeader:
+                name: kafka.KEY
+                constant: "${{values.uniqueName}}"
+            - to:
+                uri: kafka:iot-sensor-sw-temperature
+                parameters:
+                  brokers: ${{values.uniqueName}}-cluster-kafka-bootstrap.${{values.namespace}}.svc:9092
+            - log:
+                message: "Temperature forwarded to Kafka"
+    - route:
+        id: mqtt-vibration-to-kafka
+        from:
+          uri: paho:iot-sensor/sw/vibration
+          parameters:
+            brokerUrl: tcp://broker-amq-mqtt-all-0-svc.${{values.namespace}}.svc:61616
+            clientId: MQTT2KafkaRoute-${{values.uniqueName}}-vibr
+          steps:
+            - log:
+                message: "Vibration reading from MQTT: ${body}"
+            - setHeader:
+                name: kafka.KEY
+                constant: "${{values.uniqueName}}"
+            - to:
+                uri: kafka:iot-sensor-sw-vibration
+                parameters:
+                  brokers: ${{values.uniqueName}}-cluster-kafka-bootstrap.${{values.namespace}}.svc:9092
+            - log:
+                message: "Vibration forwarded to Kafka"
 ---
-apiVersion: camel.apache.org/v1
-kind: Integration
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: mqtt2kafka-integration
+  name: mqtt2kafka
   namespace: ${{values.namespace}}
-  annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  labels:
+    app: mqtt2kafka
+    app.openshift.io/runtime: camel
 spec:
-  dependencies:
-    - "camel:kafka"
-    - "camel:paho"
-  traits:
-    mount:
-      configs:
-        - configmap:mqtt2kafka-config
-  profile: OpenShift
-  sources:
-    - content: |
-        import org.apache.camel.PropertyInject;
-        import org.apache.camel.builder.RouteBuilder;
-        import org.apache.camel.component.kafka.KafkaConstants;
-        import org.apache.camel.model.OnCompletionDefinition;
-
-        public class MQTT2KafkaRoute extends RouteBuilder {
-            @PropertyInject("kafka.broker.uri")            private String kafka_broker_uri;
-            @PropertyInject("kafka.broker.topic.temperature") private String kafka_topic_temp;
-            @PropertyInject("kafka.broker.topic.vibration")   private String kafka_topic_vibr;
-            @PropertyInject("mqtt.broker.uri")              private String mqtt_broker_uri;
-            @PropertyInject("mqtt.broker.clientId")         private String mqtt_clientid;
-            @PropertyInject("mqtt.broker.topic.temperature")  private String mqtt_topic_temp;
-            @PropertyInject("mqtt.broker.topic.vibration")    private String mqtt_topic_vibr;
-
-            @Override
-            public void configure() throws Exception {
-                from("paho:" + mqtt_topic_temp + "?brokerUrl=" + mqtt_broker_uri
-                        + "&clientId=" + mqtt_clientid + "-temp")
-                    .log("Temperature MQTT → Kafka: ${body}")
-                    .setHeader(KafkaConstants.KEY, constant("${{values.uniqueName}}"))
-                    .to("kafka:" + kafka_topic_temp + "?brokers=" + kafka_broker_uri);
-
-                from("paho:" + mqtt_topic_vibr + "?brokerUrl=" + mqtt_broker_uri
-                        + "&clientId=" + mqtt_clientid + "-vibr")
-                    .log("Vibration MQTT → Kafka: ${body}")
-                    .setHeader(KafkaConstants.KEY, constant("${{values.uniqueName}}"))
-                    .to("kafka:" + kafka_topic_vibr + "?brokers=" + kafka_broker_uri);
-            }
-
-            @Override
-            public OnCompletionDefinition onCompletion() { return super.onCompletion(); }
-        }
-      name: MQTT2KafkaRoute.java
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mqtt2kafka
+  template:
+    metadata:
+      labels:
+        app: mqtt2kafka
+        app.openshift.io/runtime: camel
+    spec:
+      containers:
+        - name: camel
+          image: docker.io/apache/camel-jbang:4.21.0-21-jdk
+          imagePullPolicy: IfNotPresent
+          workingDir: /tmp
+          command: ["camel"]
+          args:
+            - "run"
+            - "/etc/camel/routes/mqtt-to-kafka.camel.yaml"
+            - "--runtime=quarkus"
+          env:
+            - name: HOME
+              value: /tmp
+            - name: JBANG_DIR
+              value: /tmp/.jbang
+          ports:
+            - name: http
+              containerPort: 8080
+          volumeMounts:
+            - name: routes
+              mountPath: /etc/camel/routes
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          startupProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 36
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 20
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 10
+      volumes:
+        - name: routes
+          configMap:
+            name: mqtt2kafka-routes
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mqtt2kafka
+  namespace: ${{values.namespace}}
+  labels:
+    app: mqtt2kafka
+spec:
+  selector:
+    app: mqtt2kafka
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

@@ -20,14 +20,14 @@
 
   // Near Edge — Factory DC
   var kafkaF = ThreeHelper.createNode(ctx.scene,'Kafka\nFactory',0x231F20,-4,0,-3,{width:3});
-  var camelMqtt = ThreeHelper.createNode(ctx.scene,'Camel K\nMQTT\u2192Kafka',0xFF6D00,-4,0,3,{width:3});
+  var camelMqtt = ThreeHelper.createNode(ctx.scene,'Camel\nMQTT\u2192Kafka',0xFF6D00,-4,0,3,{width:3});
   var iot = ThreeHelper.createNode(ctx.scene,'IoT\nConsumer',0x9C27B0,2,0,-3);
   var dash = ThreeHelper.createNode(ctx.scene,'Line\nDashboard',0x42A5F5,2,0,3);
 
   // Core DC
   var kafkaDL = ThreeHelper.createNode(ctx.scene,'Kafka\nData Lake',0x231F20,9,0,0,{width:3});
   var mm2 = ThreeHelper.createNode(ctx.scene,'Mirror\nMaker2',0x1A73E8,9,3,4);
-  var camelS3 = ThreeHelper.createNode(ctx.scene,'Camel K\nKafka\u2192S3',0xFF6D00,15,0,-3,{width:3});
+  var camelS3 = ThreeHelper.createNode(ctx.scene,'Camel\nKafka\u2192S3',0xFF6D00,15,0,-3,{width:3});
   var minio = ThreeHelper.createNode(ctx.scene,'MinIO S3\nData Lake',0x43A047,21,0,-3,{width:3});
   var mlserv = ThreeHelper.createNode(ctx.scene,'KServe\nAnomaly ML',0x0068B5,9,0,-5,{width:3});
   var oai = ThreeHelper.createNode(ctx.scene,'OpenShift AI\nJupyter',0xEE0000,15,0,3,{width:3});
@@ -151,7 +151,7 @@ Los sensores transmiten datos por *MQTT* a Red Hat AMQ, que los enruta con dos f
 * *Desarrollo de modelos* en el centro de datos principal (data lake → JupyterLab → entrenamiento)
 * *Inferencia en vivo* en los centros de datos de fábrica (IoT Consumer → ModelMesh → alertas de anomalías)
 
-*Apache Camel K* proporciona integración MQTT para normalizar y enrutar datos de sensores a Kafka y luego a S3 (MinIO) para el data lake. Los científicos de datos usan las herramientas de *OpenShift AI* para desarrollar, entrenar y desplegar modelos.
+*Apache Camel (Quarkus)* proporciona integración MQTT para normalizar y enrutar datos de sensores a Kafka y luego a S3 (MinIO) para el data lake. Los científicos de datos usan las herramientas de *OpenShift AI* para desarrollar, entrenar y desplegar modelos.
 
 === Fabricación en el borde con GitOps
 
@@ -170,7 +170,7 @@ El CDC con *Debezium* captura cambios en bases de datos relacionales y los publi
 * Auditoría y cumplimiento en tiempo real
 * Analítica e indexación para búsqueda
 
-A escala de 20K dispositivos, el componente CDC gestiona ~5.000 transacciones/s en la base de datos con 5 grupos de consumidores (Camel K, notificaciones, indexador de búsqueda, analítica, registro de auditoría).
+A escala de 20K dispositivos, el componente CDC gestiona ~5.000 transacciones/s en la base de datos con 5 grupos de consumidores (Camel, notificaciones, indexador de búsqueda, analítica, registro de auditoría).
 
 === Réplicas espejo para consultas externas
 
@@ -193,9 +193,9 @@ El escenario de demostración tiene tres capas:
 
 . *Line Data Server (borde lejano):* Sensores de máquina en planta publican lecturas de vibración y temperatura por MQTT cada 5 segundos.
 
-. *Centro de datos de fábrica (borde cercano):* El broker AMQ recibe datos MQTT. Camel K hace de puente MQTT→Kafka. Kafka de fábrica hace streaming de datos. IoT Consumer alimenta ModelMesh para detección de anomalías. Line Dashboard ofrece visualización en tiempo real.
+. *Centro de datos de fábrica (borde cercano):* El broker AMQ recibe datos MQTT. Camel Quarkus hace de puente MQTT→Kafka. Kafka de fábrica hace streaming de datos. IoT Consumer alimenta ModelMesh para detección de anomalías. Line Dashboard ofrece visualización en tiempo real.
 
-. *Centro de datos central (núcleo):* El data lake en Kafka almacena datos espejados. La integración Camel K escribe en MinIO S3. OpenShift AI ofrece notebooks JupyterLab, Data Science Pipelines y servicio ModelMesh.
+. *Centro de datos central (núcleo):* El data lake en Kafka almacena datos espejados. Camel Quarkus escribe en MinIO S3. OpenShift AI ofrece notebooks JupyterLab, Data Science Pipelines y servicio ModelMesh.
 
 === Qué está en ejecución
 
@@ -215,9 +215,9 @@ El escenario de demostración tiene tres capas:
 | Clústeres Dev, Factory y Data Lake para streaming de eventos
 | `industrial-edge-tst-all`, `industrial-edge-stormshift-messaging`, `industrial-edge-data-lake`
 
-| Camel K
+| Camel Quarkus
 | Puente MQTT→Kafka e integración Kafka→S3 del data lake
-| `industrial-edge-tst-all`, `industrial-edge-data-lake`
+| `industrial-edge-tst-all`, `industrial-edge-stormshift-messaging`, `industrial-edge-data-lake`
 
 | Line Dashboard (x2)
 | Visualización en tiempo real de datos de sensores y alertas de anomalías
@@ -258,7 +258,7 @@ image::ROOT:industrialedge3.png[Industrial Edge — Kafka Streams,width=100%]
 
 image::ROOT:industrialedge4.png[Industrial Edge — Line Dashboard,width=100%]
 
-image::ROOT:industrialedge5.png[Industrial Edge — Camel K Integration,width=100%]
+image::ROOT:industrialedge5.png[Industrial Edge — Camel Quarkus,width=100%]
 
 image::ROOT:industrialedge6.png[Industrial Edge — MinIO Data Lake,width=100%]
 

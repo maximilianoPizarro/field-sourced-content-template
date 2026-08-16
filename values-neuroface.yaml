@@ -1,0 +1,45 @@
+# Extra values for the upstream NeuroFace chart (clusterGroup.applications.neuroface).
+# Chart 1.4.2 from https://maximilianopizarro.github.io/neuroface/ (appVersion 1.5.1, images v1.4.1).
+clusterName: hub
+
+backend:
+  image:
+    repository: quay.io/maximilianopizarro/neuroface-backend
+    tag: v1.4.1
+frontend:
+  image:
+    repository: quay.io/maximilianopizarro/neuroface-frontend
+    tag: v1.4.1
+
+ovms:
+  enabled: true
+  externalUrl: "http://neuroface-ovms.neuroface.svc:8000"
+  modelmesh:
+    enabled: false
+litellm:
+  enabled: false
+chat:
+  enabled: true
+  modelEndpoint: "http://granite-llm-metrics.neuroface.svc:8080"
+  modelName: "granite-3.1-2b-instruct"
+ppe:
+  enabled: true
+  endpoint: "http://yolo-ppe-serving.neuroface.svc:8000"
+  classes: "hardhat,safety-vest,goggles"
+  confidence: "0.5"
+  serving:
+    image:
+      repository: quay.io/maximilianopizarro/neuroface-ppe-serving
+      tag: v1.4.1
+  kafka:
+    enabled: true
+    bootstrap: "cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093"
+    user: "cdc-user"
+    topic: "cv.ppe.detections"
+    secretName: "cdc-user"
+    caCertSecret: "cdc-cluster-cluster-ca-cert"
+  dataPersistence:
+    enabled: false
+persistence:
+  enabled: true
+  size: 1Gi

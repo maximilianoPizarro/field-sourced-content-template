@@ -1,0 +1,33 @@
+global:
+  profile: full
+  localClusterDomain: ""
+  hubClusterDomain: ""
+  lightspeed:
+    llmApiKey: "sk-no-key"
+    llmEndpoint: ""
+    model: "qwen25-7b-instruct"
+
+userCount: 30
+clusterDomain: ""
+devspaces:
+  enabled: true
+
+# --- from servicemeshoperator3 ---
+# Vendored from https://gitlab.com/maximilianoPizarro/connectivity-link (servicemeshoperator3)
+enabled: true
+
+# --- from observability ---
+# Vendored from https://gitlab.com/maximilianoPizarro/connectivity-link (observability)
+enabled: true
+
+# --- from kiali ---
+# Vendored from https://gitlab.com/maximilianoPizarro/connectivity-link (kiali)
+enabled: true
+
+# --- from opentelemetry ---
+# Vendored from https://gitlab.com/maximilianoPizarro/connectivity-link (opentelemetry)
+enabled: true
+
+# --- from rhcl-operator ---
+# Vendored from https://gitlab.com/maximilianoPizarro/connectivity-link (rhcl-operator)
+enabled: true

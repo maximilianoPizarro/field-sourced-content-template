@@ -1,0 +1,66 @@
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  annotations:
+    opendatahub.io/runtime-version: 1.7.1
+    opendatahub.io/template-display-name: MLServer ServingRuntime for KServe
+    opendatahub.io/template-name: mlserver-runtime
+    openshift.io/display-name: Anomaly Detection Model Server
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    monitoring.opendatahub.io/scrape: "true"
+    opendatahub.io/kserve-runtime: mlserver
+    prometheus.io/path: /metrics
+    prometheus.io/port: "8082"
+  name: anomaly-detection-model-server
+  namespace: industrial-edge-inference
+  labels:
+    opendatahub.io/dashboard: 'true'
+spec:
+  supportedModelFormats:
+    - autoSelect: true
+      name: sklearn
+      version: '0'
+    - autoSelect: true
+      name: xgboost
+      version: '1'
+    - autoSelect: true
+      name: lightgbm
+      version: '3'
+  multiModel: false
+  protocolVersions:
+    - v2
+  containers:
+    - env:
+        - name: MLSERVER_MODEL_NAME
+          value: '{{.Name}}'
+        - name: MLSERVER_HTTP_PORT
+          value: '8080'
+        - name: MODELS_DIR
+          value: /mnt/models
+      image: 'registry.redhat.io/rhoai/odh-mlserver-rhel9@sha256:e178b7a7f99b9ca9ec0eecb61c06e5d88a08cb31e99b79fc42308b95df8bbb10'
+      name: kserve-container
+      ports:
+        - containerPort: 8080
+          protocol: TCP
+      resources:
+        limits:
+          cpu: '2'
+          memory: 8Gi
+        requests:
+          cpu: '1'
+          memory: 4Gi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        privileged: false
+        runAsNonRoot: true
+      volumeMounts:
+        - mountPath: /dev/shm
+          name: shm
+  volumes:
+    - emptyDir:
+        medium: Memory
+        sizeLimit: 2Gi
+      name: shm

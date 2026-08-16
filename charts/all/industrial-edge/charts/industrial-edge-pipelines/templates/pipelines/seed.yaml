@@ -1,0 +1,81 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: seed
+spec:
+  workspaces:
+  - name: gitrepos
+  - name: config
+  - name: build-artifacts
+  tasks:
+    - name: git-clone-dev
+      taskRef:
+        name: git-clone-with-tags
+      workspaces:
+      - name: gitrepos
+        workspace: gitrepos
+      - name: config
+        workspace: config
+      params:
+      - name: url_configmapkey
+        value: GIT_DEV_REPO_URL
+      - name: revision
+        value: {{ .Values.global.git.dev_revision }}
+      - name: subdirectory
+        value: dev
+      - name: deleteExisting
+        value: "true"
+
+    - name: git-clone-ops
+      taskRef:
+        name: git-clone-with-tags
+      workspaces:
+      - name: gitrepos
+        workspace: gitrepos
+      - name: config
+        workspace: config
+      params:
+      - name: url_configmapkey
+        value: GIT_OPS_REPO_TEST_URL
+      - name: revision
+        value: {{ $.Values.global.targetRevision }}
+      - name: subdirectory
+        value: ops
+      - name: deleteExisting
+        value: "true"
+
+  {{- range .Values.pipeline_components }}
+  {{- if (eq .component_name "iot-frontend") -}}
+  {{- include "build-frontend-base-image" $ | nindent 4 }}
+  {{- end }}
+  {{- include "build-iot-component" (dict "root" $.Values "component" . "seed_prod" "true") | nindent 4 }}
+  {{- end }}
+    - name: commit-ops
+      taskRef:
+        name: git-commit
+      runAfter:
+      {{- range .Values.pipeline_components }}
+        - modify-ops-prod-iot-component-{{ .component_name }}
+      {{- end }}
+      workspaces:
+      - name: gitrepos
+        workspace: gitrepos
+      - name: config
+        workspace: config
+      params:
+      - name: subdirectory
+        value: ops
+
+    - name: push-ops
+      taskRef:
+        name: github-push
+      runAfter:
+      - commit-ops
+      workspaces:
+      - name: gitrepos
+        workspace: gitrepos
+      params:
+      - name: subdirectory
+        value: ops
+      - name: PUSH_FLAGS
+        value: --all

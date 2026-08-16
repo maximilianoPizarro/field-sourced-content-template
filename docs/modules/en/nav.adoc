@@ -17,3 +17,4 @@
 * xref:16-neuroface-cv.adoc[16. NeuroFace CV Pipeline]
 * xref:17-ai-playground-kafka-mcp.adoc[17. AI Playground + Kafka MCP]
 * xref:18-devspaces-continue-ai.adoc[18. DevSpaces + Continue AI]
+* xref:19-openshift-integration-operator.adoc[19. OpenShift Integration Operator]

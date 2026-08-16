@@ -1,0 +1,23 @@
+# DEFAULT — Hub-only, single cluster, reuse OpenShift GitOps from RHDP.
+#
+# Prerequisites: OpenShift + OpenShift GitOps (RHDP) + Validated Patterns Operator.
+# Apply: oc apply -f examples/pattern-cr/hub.yaml
+# RHDP path: examples/bootstrap (Subscription + this Pattern).
+#
+# Does not install ACM, Vault, ESO, or a second GitOps instance.
+---
+apiVersion: gitops.hybrid-cloud-patterns.io/v1alpha1
+kind: Pattern
+metadata:
+  name: event-driven-architecture
+  namespace: openshift-operators
+spec:
+  clusterGroupName: hub
+  gitSpec:
+    targetRepo: https://github.com/maximilianoPizarro/field-sourced-content-template.git
+    targetRevision: main
+  extraValueFiles: []
+  multiSourceConfig:
+    enabled: true
+    clusterGroupChartVersion: "0.9.*"
+    helmRepoUrl: https://charts.validatedpatterns.io

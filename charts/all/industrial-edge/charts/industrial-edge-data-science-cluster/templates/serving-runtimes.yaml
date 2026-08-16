@@ -1,0 +1,53 @@
+kind: Template
+apiVersion: template.openshift.io/v1
+metadata:
+  name: mlserver
+  namespace: redhat-ods-applications
+  labels:
+    opendatahub.io/dashboard: 'true'
+  annotations:
+    opendatahub.io/template-enabled: 'true'
+    opendatahub.io/apiProtocol: REST
+    opendatahub.io/modelServingSupport: '["single"]'
+    tags: 'mlserver,servingruntime,kserve'
+objects:
+  - apiVersion: serving.kserve.io/v1alpha1
+    kind: ServingRuntime
+    metadata:
+      name: mlserver
+      labels:
+        opendatahub.io/dashboard: 'true'
+    spec:
+      supportedModelFormats:
+        - name: sklearn
+          version: '0'
+          autoSelect: true
+        - name: xgboost
+          version: '1'
+          autoSelect: true
+        - name: lightgbm
+          version: '3'
+          autoSelect: true
+      protocolVersions:
+        - v2
+      multiModel: false
+      containers:
+        - name: kserve-container
+          image: 'registry.redhat.io/rhoai/odh-mlserver-rhel9@sha256:e178b7a7f99b9ca9ec0eecb61c06e5d88a08cb31e99b79fc42308b95df8bbb10'
+          env:
+            - name: MLSERVER_MODEL_NAME
+              value: '{{.Name}}'
+            - name: MLSERVER_HTTP_PORT
+              value: '8080'
+            - name: MODELS_DIR
+              value: /mnt/models
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: '5'
+              memory: 1Gi

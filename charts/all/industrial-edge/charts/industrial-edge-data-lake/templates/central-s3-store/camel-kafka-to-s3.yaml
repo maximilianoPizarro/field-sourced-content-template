@@ -1,0 +1,165 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-to-s3-routes
+  namespace: industrial-edge-data-lake
+data:
+  kafka-to-s3.camel.yaml: |
+    - route:
+        id: kafka-vibration-to-s3
+        from:
+          uri: kafka:{{ .Values.kafka.broker.topic.vibration }}
+          parameters:
+            brokers: {{ .Values.kafka.broker.uri }}
+            groupId: camel-quarkus-s3-vibr
+            autoOffsetReset: latest
+            valueDeserializer: org.apache.kafka.common.serialization.StringDeserializer
+          steps:
+            - log:
+                message: "Vibration event from Kafka: ${body}"
+            - convertBodyTo:
+                type: java.lang.String
+            - aggregate:
+                aggregationStrategy: "#class:org.apache.camel.processor.aggregate.GroupedBodyAggregationStrategy"
+                completionSize: {{ .Values.kafka.s3.message.aggregation.count }}
+                correlationExpression:
+                  constant:
+                    expression: "true"
+                steps:
+                  - setHeader:
+                      name: CamelAwsS3Key
+                      simple: "ie-vibration-${date:now:yyyyMMdd-HHmmss}.txt"
+                  - to:
+                      uri: aws2-s3://{{ .Values.kafka.s3.bucket }}
+                      parameters:
+                        accessKey: {{ .Values.kafka.s3.accessKey | default "minioadmin" }}
+                        secretKey: "RAW({{ .Values.kafka.s3.secretKey | default "minioadmin" }})"
+                        region: us-east-1
+                        overrideEndpoint: true
+                        uriEndpointOverride: {{ .Values.kafka.s3.endpointurl }}
+                        forcePathStyle: true
+                  - log:
+                      message: "Uploaded vibration batch to S3"
+    - route:
+        id: kafka-temperature-to-s3
+        from:
+          uri: kafka:{{ .Values.kafka.broker.topic.temperature }}
+          parameters:
+            brokers: {{ .Values.kafka.broker.uri }}
+            groupId: camel-quarkus-s3-temp
+            autoOffsetReset: latest
+            valueDeserializer: org.apache.kafka.common.serialization.StringDeserializer
+          steps:
+            - log:
+                message: "Temperature event from Kafka: ${body}"
+            - convertBodyTo:
+                type: java.lang.String
+            - aggregate:
+                aggregationStrategy: "#class:org.apache.camel.processor.aggregate.GroupedBodyAggregationStrategy"
+                completionSize: {{ .Values.kafka.s3.message.aggregation.count }}
+                correlationExpression:
+                  constant:
+                    expression: "true"
+                steps:
+                  - setHeader:
+                      name: CamelAwsS3Key
+                      simple: "ie-temperature-${date:now:yyyyMMdd-HHmmss}.txt"
+                  - to:
+                      uri: aws2-s3://{{ .Values.kafka.s3.bucket }}
+                      parameters:
+                        accessKey: {{ .Values.kafka.s3.accessKey | default "minioadmin" }}
+                        secretKey: "RAW({{ .Values.kafka.s3.secretKey | default "minioadmin" }})"
+                        region: us-east-1
+                        overrideEndpoint: true
+                        uriEndpointOverride: {{ .Values.kafka.s3.endpointurl }}
+                        forcePathStyle: true
+                  - log:
+                      message: "Uploaded temperature batch to S3"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-to-s3
+  namespace: industrial-edge-data-lake
+  labels:
+    app: kafka-to-s3
+    app.openshift.io/runtime: camel
+    app.kubernetes.io/part-of: industrial-edge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-to-s3
+  template:
+    metadata:
+      labels:
+        app: kafka-to-s3
+        app.openshift.io/runtime: camel
+    spec:
+      containers:
+        - name: camel
+          image: {{ .Values.camel.image | default "docker.io/apache/camel-jbang:4.21.0-21-jdk" }}
+          imagePullPolicy: IfNotPresent
+          workingDir: /tmp
+          command: ["camel"]
+          args:
+            - "run"
+            - "/etc/camel/routes/kafka-to-s3.camel.yaml"
+            - "--runtime=quarkus"
+          env:
+            - name: HOME
+              value: /tmp
+            - name: JBANG_DIR
+              value: /tmp/.jbang
+          ports:
+            - name: http
+              containerPort: 8080
+          volumeMounts:
+            - name: routes
+              mountPath: /etc/camel/routes
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          startupProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 36
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 20
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 10
+      volumes:
+        - name: routes
+          configMap:
+            name: kafka-to-s3-routes
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-to-s3
+  namespace: industrial-edge-data-lake
+  labels:
+    app: kafka-to-s3
+    app.openshift.io/runtime: camel
+spec:
+  selector:
+    app: kafka-to-s3
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

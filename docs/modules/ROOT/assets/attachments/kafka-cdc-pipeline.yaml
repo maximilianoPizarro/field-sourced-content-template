@@ -32,7 +32,9 @@ spec:
       transaction.state.log.replication.factor: 3
       transaction.state.log.min.isr: 2
     storage:
-      type: ephemeral
+      type: persistent-claim
+      size: 10Gi
+      deleteClaim: false
   entityOperator:
     topicOperator: {}
     userOperator: {}

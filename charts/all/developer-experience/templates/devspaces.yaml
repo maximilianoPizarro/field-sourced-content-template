@@ -1,0 +1,80 @@
+{{- $g := .Values.global | default dict }}
+{{- if ne ($g.profile | default "full") "lite" }}
+{{- $ls := $g.lightspeed | default dict }}
+{{- $llmKey := coalesce .Values.llmApiKey $ls.llmApiKey "sk-no-key" }}
+{{- $llmEndpoint := coalesce .Values.llmEndpoint $ls.llmEndpoint "" }}
+{{- $llmModel := coalesce .Values.llmModel $ls.model "qwen25-7b-instruct" }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: continue-ai-config
+  namespace: devspaces
+  labels:
+    controller.devfile.io/mount-to-devworkspace: "true"
+    controller.devfile.io/watch-secret: "true"
+    app.kubernetes.io/part-of: continue-ai
+  annotations:
+    controller.devfile.io/mount-as: env
+    argocd.argoproj.io/sync-wave: "6"
+type: Opaque
+stringData:
+  CONTINUE_API_KEY: {{ $llmKey | quote }}
+  CONTINUE_API_BASE: {{ printf "%s/v1" $llmEndpoint | quote }}
+  CONTINUE_MODEL: {{ $llmModel | quote }}
+---
+apiVersion: org.eclipse.che/v2
+kind: CheCluster
+metadata:
+  annotations:
+    argocd.argoproj.io/compare-options: IgnoreExtraneous=true
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "7"
+  labels:
+    app.kubernetes.io/instance: devspaces
+  name: devspaces
+  namespace: devspaces
+spec:
+  components:
+    cheServer:
+      debug: false
+      logLevel: INFO
+    dashboard: {}
+    devWorkspace: {}
+    devfileRegistry: {}
+    imagePuller:
+      enable: false
+    metrics:
+      enable: true
+    pluginRegistry:
+      openVSXURL: "https://open-vsx.org"
+  containerRegistry: {}
+  devEnvironments:
+    startTimeoutSeconds: 600
+    defaultNamespace:
+      autoProvision: true
+      template: <username>-devspaces
+    secondsOfRunBeforeIdling: 3600
+    defaultPlugins:
+      - editor: che-incubator/che-code/latest
+        plugins:
+          - redhat.vscode-kaoto
+          - kie-group.swf-vscode-extension
+          - redhat.vscode-yaml
+          - redhat.vscode-xml
+          - redhat.java
+          - redhat.vscode-quarkus
+          - redhat.vscode-apache-camel
+          - jbangdev.jbang-vscode
+          - redhat.vscode-openshift-connector
+          - Continue.continue
+    storage:
+      pvcStrategy: per-user
+  gitServices: {}
+  networking:
+    {{- if .Values.clusterDomain }}
+    auth:
+      identityProviderURL: "https://rhbk.{{ .Values.clusterDomain }}/realms/backstage"
+      oAuthClientName: devspaces
+      oAuthSecret: devspaces-oidc-secret
+    {{- end }}
+{{- end }}

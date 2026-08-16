@@ -2,13 +2,13 @@
 
 ## Description
 
-The Industrial Edge IoT stack encompasses the complete manufacturing pipeline: simulated machine sensors, MQTT broker, Kafka event streaming, Camel K integration, real-time dashboards, and ML anomaly detection. This component operates across multiple namespaces replicating the edge-to-datacenter architecture.
+The Industrial Edge IoT stack encompasses the complete manufacturing pipeline: simulated machine sensors, MQTT broker, Kafka event streaming, Camel Quarkus integration, real-time dashboards, and ML anomaly detection. This component operates across multiple namespaces replicating the edge-to-datacenter architecture.
 
 ## Layered architecture
 
 [![Industrial Edge logical architecture](images/industrial-edge-logical.png)](images/industrial-edge-logical.png)
 
-*Layer 1 (Edge/Factory): Sensors -> AMQ Broker -> Camel K -> Kafka -> Dashboard + IoT Consumer. Layer 2 (Datacenter): Kafka data-lake -> Camel K -> S3 -> OpenShift AI -> ModelMesh (anomaly detection).*
+*Layer 1 (Edge/Factory): Sensors -> AMQ Broker -> Camel Quarkus -> Kafka -> Dashboard + IoT Consumer. Layer 2 (Datacenter): Kafka data-lake -> Camel Quarkus -> S3 -> OpenShift AI -> ModelMesh (anomaly detection).*
 
 ## HA Sizing — Minimum production (3 nodes)
 
@@ -44,7 +44,7 @@ Up to **3 separate Kafka clusters** are required (dev, factory, data-lake):
 | **`default.replication.factor`** | 1 | 3 | 3 |
 | **Topics** | 2 (vibration, temperature) | 2+ per production line | 2+ per line, 24 partitions each |
 
-### Camel K Integrations
+### Camel Quarkus routes
 
 | Parameter | Dev/Demo | HA Production (small) | Production (20K devices) |
 |-----------|----------|----------------------|--------------------------|
@@ -52,8 +52,8 @@ Up to **3 separate Kafka clusters** are required (dev, factory, data-lake):
 | **Kafka->S3 replicas** | 1 | 2 | 4 |
 | **CPU request/limit** | 250m / 500m | 500m / 1000m | 1000m / 2000m |
 | **Memory request/limit** | 256Mi / 512Mi | 512Mi / 1Gi | 1Gi / 2Gi |
-| **IntegrationPlatform maxRunningBuilds** | 1 | 3 | 5 |
-| **Base image** | ubi9/openjdk-17-runtime | ubi9/openjdk-17-runtime | ubi9/openjdk-17-runtime |
+| **Startup** | Maven deps on first pod (~few min) | cached image | cached image |
+| **Base image** | apache/camel-jbang:4.21.0-21-jdk | apache/camel-jbang:4.21.0-21-jdk | apache/camel-jbang:4.21.0-21-jdk |
 
 ### Machine Sensors
 
@@ -106,7 +106,7 @@ Up to **3 separate Kafka clusters** are required (dev, factory, data-lake):
 | AMQ Broker | 2 | 1000m / 2000m | 2Gi / 4Gi | 20Gi |
 | Kafka (3 brokers) | 3 | 3000m / 6000m | 6Gi / 12Gi | 150Gi |
 | ZooKeeper | 3 | 1500m / 3000m | 3Gi / 6Gi | 60Gi |
-| Camel K (2 integrations) | 4 | 2000m / 4000m | 2Gi / 4Gi | — |
+| Camel Quarkus (2 integrations) | 4 | 2000m / 4000m | 2Gi / 4Gi | — |
 | Sensors | 2 | 200m / 400m | 256Mi / 512Mi | — |
 | Dashboard | 2 | 400m / 1000m | 512Mi / 1Gi | — |
 | **Edge env subtotal** | **16** | **8100m / 16400m** | **14Gi / 28Gi** | **230Gi** |
@@ -116,7 +116,7 @@ Up to **3 separate Kafka clusters** are required (dev, factory, data-lake):
 | Component | Pods | CPU (req/lim) | Memory (req/lim) | Storage |
 |-----------|------|---------------|------------------|---------|
 | Kafka data-lake | 3+3 ZK | 4500m / 9000m | 9Gi / 18Gi | 210Gi |
-| Camel K -> S3 | 2 | 1000m / 2000m | 1Gi / 2Gi | — |
+| Camel Quarkus -> S3 | 2 | 1000m / 2000m | 1Gi / 2Gi | — |
 | MinIO (distributed) | 4 | 4000m / 8000m | 8Gi / 16Gi | 400Gi |
 | ModelMesh | 3 | 1500m / 6000m | 3Gi / 12Gi | — |
 | DSPA | 2 | 500m / 1000m | 1Gi / 2Gi | — |
@@ -138,7 +138,7 @@ Up to **3 separate Kafka clusters** are required (dev, factory, data-lake):
 |-----------|------|---------------|------------------|---------|
 | AMQ Broker (mesh) | 4 | 8000m / 16000m | 16Gi / 32Gi | 80Gi |
 | Kafka (5 KRaft nodes) | 5 | 20000m / 40000m | 40Gi / 80Gi | 2500Gi |
-| Camel K (MQTT->Kafka) | 4 | 4000m / 8000m | 4Gi / 8Gi | — |
+| Camel Quarkus (MQTT->Kafka) | 4 | 4000m / 8000m | 4Gi / 8Gi | — |
 | Sensors (edge gateways) | 10 | 5000m / 10000m | 5Gi / 10Gi | — |
 | Dashboard (HPA) | 2 | 2000m / 4000m | 2Gi / 4Gi | — |
 | **Edge subtotal** | **25** | **39000m / 78000m** | **67Gi / 134Gi** | **2580Gi** |
@@ -148,7 +148,7 @@ Up to **3 separate Kafka clusters** are required (dev, factory, data-lake):
 | Component | Pods | CPU (req/lim) | Memory (req/lim) | Storage |
 |-----------|------|---------------|------------------|---------|
 | Kafka data-lake (5 KRaft) | 5 | 20000m / 40000m | 40Gi / 80Gi | 2500Gi |
-| Camel K -> S3 | 4 | 4000m / 8000m | 4Gi / 8Gi | — |
+| Camel Quarkus -> S3 | 4 | 4000m / 8000m | 4Gi / 8Gi | — |
 | MinIO (8 distributed) | 8 | 16000m / 32000m | 32Gi / 64Gi | 12288Gi |
 | ModelMesh | 5 | 10000m / 20000m | 20Gi / 40Gi | — |
 | DSPA + pipelines | 3 | 4500m / 9000m | 9Gi / 18Gi | — |
@@ -322,7 +322,7 @@ spec:
 |-----------|---------------|
 | **Kafka** | Add brokers + redistribute partitions |
 | **Sensors** | Add deployments (1 per production line) |
-| **Camel K** | Increase replicas in the Integration CR |
+| **Camel Quarkus** | Increase replicas on the `mqtt2kafka` / `kafka-to-s3` Deployments |
 | **Dashboard** | HPA based on WebSocket connections |
 | **ModelMesh** | Increase replicas in InferenceService |
 | **MinIO** | Add nodes to the erasure coding pool |

@@ -1,5 +1,7 @@
-# Field Content Demo - App of Apps
-# This chart deploys multiple components as separate ArgoCD Applications
+# DEPRECATED GitOps entrypoint. Do not helm-install this chart.
+# RHDP path: examples/bootstrap. Pattern values: repo-root values-global.yaml + values-hub.yaml.
+# This file is kept only as a historical reference of the old App-of-Apps knobs.
+
 
 # ============================================================
 # GitOps Configuration
@@ -42,14 +44,14 @@ connectivityLink:
         namespace: industrial-edge-tst-all
         channel: 7.12.x
         source: redhat-operators
-      - name: camel-k
-        namespace: openshift-operators
-        channel: stable-v2
-        source: community-operators
       - name: rhods-operator
         namespace: redhat-ods-operator
         channel: stable-3.4
         source: redhat-operators
+      - name: openshift-integration-operator
+        namespace: openshift-integration
+        channel: alpha
+        source: community-operators
 
   # Argo CD Applications (order via sync-wave on Application metadata)
   apps:
@@ -413,10 +415,17 @@ connectivityLink:
       enabled: true
       repoURL: "https://maximilianopizarro.github.io/neuroface/"
       chart: neuroface
-      targetRevision: "1.3.0"
+      targetRevision: "1.4.2"
       destinationNamespace: neuroface
       syncWave: "10"
       values:
+        clusterName: hub
+        backend:
+          image:
+            tag: v1.4.1
+        frontend:
+          image:
+            tag: v1.4.1
         ovms:
           enabled: true
           externalUrl: "http://neuroface-ovms.neuroface.svc:8000"
@@ -458,6 +467,12 @@ lightspeed:
 # ============================================================
 litemaas:
   apiUrl: ""
+  apiKey: ""
+  model: ""
+
+# Optional RHDP/MaaS aliases (coalesced after litemaas, before lightspeed)
+maas:
+  endpoint: ""
   apiKey: ""
   model: ""
 

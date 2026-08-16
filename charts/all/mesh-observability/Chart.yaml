@@ -1,0 +1,6 @@
+apiVersion: v2
+name: mesh-observability
+description: Service Mesh CRs, observability, Kiali, OpenTelemetry, Kuadrant CR
+type: application
+version: 0.1.0
+appVersion: "1.0"

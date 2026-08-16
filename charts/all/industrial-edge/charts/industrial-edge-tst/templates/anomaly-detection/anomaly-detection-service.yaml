@@ -1,0 +1,16 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  labels:
+    opendatahub.io/dashboard: "true"
+  name: inference-service
+spec:
+  predictor:
+    model:
+      modelFormat:
+        name: sklearn
+        version: "0"
+      runtime: anomaly-detection-model-server
+      storage:
+        key: aws-connection-user-bucket
+        path: initial_model.joblib

@@ -1,0 +1,48 @@
+# Extra values for the upstream Gitea chart (clusterGroup.applications.gitea).
+# ROOT_URL is set via a Helm override using global.localClusterDomain.
+global:
+  compatibility:
+    openshift:
+      adaptSecurityContext: force
+gitea:
+  admin:
+    username: gitea_admin
+    password: openshift
+    email: admin@gitea.local
+  config:
+    server:
+      ROOT_URL: ""
+image:
+  rootless: true
+podSecurityContext:
+  fsGroup: null
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+initContainers:
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+postgresql-ha:
+  enabled: false
+postgresql:
+  enabled: true
+redis-cluster:
+  enabled: false
+redis:
+  enabled: true
+persistence:
+  enabled: true
+  size: 10Gi
+service:
+  http:
+    type: ClusterIP
+    port: 3000

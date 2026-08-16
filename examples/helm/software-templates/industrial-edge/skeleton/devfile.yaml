@@ -3,7 +3,7 @@ metadata:
   name: ${{values.uniqueName}}
   version: 1.0.0
   displayName: "Industrial Edge — ${{values.name}}"
-  description: IoT manufacturing platform with Camel K integrations, Kaoto designer, and JBang
+  description: IoT manufacturing platform with Camel Quarkus integrations, Kaoto designer, and JBang
   language: java
   projectType: camel
   tags:

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: identity-scm
+description: RHBK plus Gitea Route/Job (upstream Gitea chart is a separate Application)
+type: application
+version: 0.1.0
+appVersion: "1.0"

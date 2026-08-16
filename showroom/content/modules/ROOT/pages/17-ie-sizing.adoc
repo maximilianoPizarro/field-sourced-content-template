@@ -26,7 +26,7 @@
   var sensors = ThreeHelper.createNode(ctx.scene,'20K Sensors\n10 Gateways',0x4CAF50,-10,Y_EDGE,-3);
   var broker  = ThreeHelper.createNode(ctx.scene,'AMQ Broker\n4 mesh',0xE53935,-10,Y_EDGE,3);
   var factK   = ThreeHelper.createNode(ctx.scene,'Factory Kafka\n5 KRaft',0x231F20,-2,Y_EDGE,0);
-  var camel   = ThreeHelper.createNode(ctx.scene,'Camel K',0xF57C00,5,Y_EDGE,-3);
+  var camel   = ThreeHelper.createNode(ctx.scene,'Camel',0xF57C00,5,Y_EDGE,-3);
   var dash    = ThreeHelper.createNode(ctx.scene,'Dashboard',0x1A73E8,5,Y_EDGE,3);
 
   // Layer labels
@@ -506,7 +506,7 @@ Available on: *AWS (ROSA)*, *Azure (ARO)*, *On-premise* (bare metal / VMware).
 Full sizing details with per-component tables, YAML configurations, and operational considerations are available in the Developer Hub TechDocs:
 
 * *Component 1 — CDC*: Producer + consumer sizing, KRaft YAML, Debezium configuration
-* *Component 2 — Industrial Edge IoT*: AMQ, Kafka, Camel K, Sensors, Dashboard, OpenShift AI, MinIO
+* *Component 2 — Industrial Edge IoT*: AMQ, Kafka, Camel Quarkus, Sensors, Dashboard, OpenShift AI, MinIO
 * *Component 3 — Mirror*: MirrorMaker2, external consumer estimation, security (TLS + SCRAM-SHA-512)
 * *NeuroFace CV*: KServe InferenceService (OVMS + llama.cpp), Kafka MCP Server, Mailpit notifications
 

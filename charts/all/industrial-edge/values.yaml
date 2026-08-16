@@ -1,0 +1,248 @@
+userCount: 30
+clusterDomain: ""
+global:
+  imageregistry:
+    type: openshift-internal
+    hostname: ""
+    account: ""
+  localClusterDomain: ""
+  hubClusterDomain: ""
+  git:
+    account: gitea_admin
+    email: admin@example.com
+    dev_revision: main
+
+industrial-edge-minio:
+  clusterDomain: apps.cluster.example.com
+
+  minio:
+    image: quay.io/minio/minio:latest
+    accessKey: minioadmin
+    secretKey: minioadmin
+    storage: 20Gi
+    buckets:
+      - anomaly-detection
+      - cv-detections
+      - user-bucket
+      - pipeline-bucket
+
+industrial-edge-data-science-cluster:
+  clusterDomain: apps.cluster.example.com
+
+industrial-edge-data-science-project:
+  clusterDomain: apps.cluster.example.com
+
+  global:
+    localClusterDomain: apps.cluster.example.com
+    git:
+      hostname: ""
+      account: "gitea_admin"
+      dev_revision: "main"
+
+  s3:
+    default_endpoint: http://minio.industrial-edge-ml-workspace.svc:9000
+    default_region: us-east-1
+
+industrial-edge-data-lake:
+  clusterDomain: apps.cluster.example.com
+
+  kafka:
+    s3:
+      bucket: anomaly-detection
+      endpointurl: http://minio.industrial-edge-ml-workspace.svc:9000
+      message:
+        aggregation:
+          count: 50
+    broker:
+      uri: "prod-cluster-kafka-bootstrap.industrial-edge-data-lake.svc:9092"
+      topic:
+        temperature: "factory-kafka-cluster.industrial-edge-stormshift-messaging.iot-sensor-sw-temperature"
+        vibration: "factory-kafka-cluster.industrial-edge-stormshift-messaging.iot-sensor-sw-vibration"
+
+industrial-edge-tst:
+  clusterDomain: apps.cluster.example.com
+
+  global:
+    localClusterDomain: apps.cluster.example.com
+
+  messaging:
+    vibrationAlert: true
+    vibrationAnomaly: false
+    nodeTlsReject: 0
+
+  machineSensor1:
+    port: 80
+
+  machineSensor2:
+    port: 80
+    sensorTemperature: false
+
+  mqtt:
+    broker:
+      uri: "tcp://broker-amq-mqtt-all-0-svc.industrial-edge-tst-all.svc:61616"
+      clientId: "MQTT2KafkaRouteDev"
+      topic:
+        temperature: "iot-sensor/sw/temperature"
+        vibration: "iot-sensor/sw/vibration"
+
+  kafka:
+    s3:
+      bucket: anomaly-detection
+      endpointurl: http://minio.industrial-edge-ml-workspace.svc:9000
+      message:
+        aggregation:
+          count: 50
+
+    broker:
+      uri: "dev-cluster-kafka-bootstrap.industrial-edge-tst-all.svc:9092"
+      topic:
+        temperature: "iot-sensor-sw-temperature"
+        vibration: "iot-sensor-sw-vibration"
+
+  machine_sensor:
+    bootstrap_image: quay.io/hybridcloudpatterns/iot-software-sensor:0.4.0
+    bootstrap_tag: 0.4.0
+    image_location: quay.io/hybridcloudpatterns/iot-software-sensor
+    repo_name: iot-software-sensor
+    tag: 0.4.0
+    built_tags: []
+
+  iot_consumer:
+    bootstrap_image: quay.io/hybridcloudpatterns/iot-consumer:0.4.0
+    bootstrap_tag: 0.4.0
+    image_location: quay.io/hybridcloudpatterns/iot-consumer
+    repo_name: iot-consumer
+    tag: 0.4.0
+    built_tags: []
+
+  iot_frontend:
+    bootstrap_image: quay.io/hybridcloudpatterns/iot-frontend:0.4.0
+    bootstrap_tag: 0.4.0
+    image_location: quay.io/hybridcloudpatterns/iot-frontend
+    repo_name: iot-frontend
+    tag: 0.4.0
+    built_tags: []
+
+industrial-edge-stormshift:
+  clusterDomain: apps.cluster.example.com
+
+  global:
+    localClusterDomain: apps.cluster.example.com
+    hubClusterDomain: apps.cluster.example.com
+
+    imageregistry:
+      type: openshift-internal
+
+  s3:
+    default_region: us-east-1
+
+  messaging:
+    vibrationAlert: true
+    vibrationAnomaly: false
+    nodeTlsReject: 0
+
+  machineSensor1:
+    port: 80
+
+  machineSensor2:
+    port: 80
+    sensorTemperature: false
+
+  mqtt:
+    broker:
+      uri: "tcp://broker-amq-mqtt-all-0-svc:61616"
+      clientId: "MQTT2KafkaRoute"
+      topic:
+        temperature: "iot-sensor/sw/temperature"
+        vibration: "iot-sensor/sw/vibration"
+
+  kafka:
+    broker:
+      uri: "factory-cluster-kafka-bootstrap:9092"
+      topic:
+        temperature: "industrial-edge-stormshift-messaging.iot-sensor-sw-temperature"
+        vibration: "industrial-edge-stormshift-messaging.iot-sensor-sw-vibration"
+
+  machine_sensor:
+    bootstrap_image: quay.io/hybridcloudpatterns/iot-software-sensor:0.4.0
+    bootstrap_tag: 0.4.0
+    image_location: quay.io/hybridcloudpatterns/iot-software-sensor
+    repo_name: iot-software-sensor
+    tag: 0.4.0
+    built_tags: []
+
+  iot_consumer:
+    bootstrap_image: quay.io/hybridcloudpatterns/iot-consumer:0.4.0
+    bootstrap_tag: 0.4.0
+    image_location: quay.io/hybridcloudpatterns/iot-consumer
+    repo_name: iot-consumer
+    tag: 0.4.0
+    built_tags: []
+
+  iot_frontend:
+    bootstrap_image: quay.io/hybridcloudpatterns/iot-frontend:0.4.0
+    bootstrap_tag: 0.4.0
+    image_location: quay.io/hybridcloudpatterns/iot-frontend
+    repo_name: iot-frontend
+    tag: 0.4.0
+    built_tags: []
+
+industrial-edge-pipelines:
+  clusterDomain: apps.cluster.example.com
+
+  global:
+    pattern: field-content
+    repoURL: "https://github.com/maximilianoPizarro/field-sourced-content-template.git"
+    localClusterDomain: apps.cluster.example.com
+    targetRevision: main
+
+    git:
+      account: gitea_admin
+      email: admin@example.com
+      dev_revision: main
+
+    imageregistry:
+      type: openshift-internal
+
+  clusterGroup:
+    name: hub
+    isHubCluster: true
+
+  iot_consumer:
+    image: iot-consumer
+    yaml_path: '.iot_consumer.tag'
+    built_tags_path: '.iot_consumer.built_tags'
+    test_values_path: overrides/values-test-imagedata.yaml
+    prod_values_path: overrides/values-prod-imagedata.yaml
+
+  iot_frontend:
+    image: iot-frontend
+    yaml_path: '.iot_frontend.tag'
+    built_tags_path: '.iot_frontend.built_tags'
+    test_values_path: overrides/values-test-imagedata.yaml
+    prod_values_path: overrides/values-prod-imagedata.yaml
+
+  machine_sensor:
+    image: iot-software-sensor
+    yaml_path: '.machine_sensor.tag'
+    built_tags_path: '.machine_sensor.built_tags'
+    test_values_path: overrides/values-test-imagedata.yaml
+    prod_values_path: overrides/values-prod-imagedata.yaml
+
+  yq:
+    image: quay.io/hybridcloudpatterns/yq:latest
+
+  pipeline_components:
+    - component_name: iot-consumer
+      builder_image: registry.access.redhat.com/rhscl/nodejs-10-rhel7
+      output_image_name: messaging
+      configmap_prefix: IOT_CONSUMER
+    - component_name: iot-frontend
+      builder_image: quay.io/hybridcloudpatterns/ubi8-s2i-web-app
+      chained_build_dockerfile: "FROM quay.io/hybridcloudpatterns/httpd-ionic\nCOPY --from=0 /opt/app-root/output /var/www/html/"
+      output_image_name: line-dashboard
+      configmap_prefix: IOT_FRONTEND
+    - component_name: iot-software-sensor
+      builder_image: registry.access.redhat.com/redhat-openjdk-18/openjdk18-openshift
+      output_image_name: machine-sensor
+      configmap_prefix: IOT_SWSENSOR

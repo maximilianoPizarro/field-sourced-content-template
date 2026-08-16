@@ -12,7 +12,7 @@
   var devK    = ThreeHelper.createNode(ctx.scene,'Dev Kafka',0x42A5F5,-10,2,0);
   var factK   = ThreeHelper.createNode(ctx.scene,'Factory Kafka',0x4CAF50,-10,-2,0);
   var prodK   = ThreeHelper.createNode(ctx.scene,'Prod Kafka',0xFF8F00,0,0,0);
-  var camelS3 = ThreeHelper.createNode(ctx.scene,'Camel K\u2192S3',0xF57C00,8,0,-3);
+  var camelS3 = ThreeHelper.createNode(ctx.scene,'Camel\u2192S3',0xF57C00,8,0,-3);
   var mirror  = ThreeHelper.createNode(ctx.scene,'MirrorMaker2',0x7B1FA2,8,0,3);
   var minio   = ThreeHelper.createNode(ctx.scene,'MinIO S3',0x00BCD4,16,0,0);
   var edges = [
@@ -27,7 +27,7 @@
 </script>
 ++++
 
-Sensor data flows from MQTT into Kafka via Camel K. In this step you will inspect the Kafka clusters, topics, and consume live messages.
+Sensor data flows from MQTT into Kafka via Camel Quarkus. In this step you will inspect the Kafka clusters, topics, and consume live messages.
 
 image::edge-mfg-messaging-ml.png[Messaging and ML components,align=center]
 
@@ -102,17 +102,17 @@ oc exec -n industrial-edge-stormshift-messaging factory-cluster-factory-0 -- \
   --max-messages 3
 ----
 
-== Inspect Kafka-to-S3 integration (Camel K)
+== Inspect Kafka-to-S3 integration (Camel Quarkus)
 
-The Camel K integration writes Kafka events to MinIO S3 for the data lake:
+The Camel Quarkus route writes Kafka events to MinIO S3 for the data lake:
 
 [source,bash]
 ----
-oc get integration -n industrial-edge-tst-all
-oc get integration -n industrial-edge-data-lake
+oc get deploy -l app.openshift.io/runtime=camel -n industrial-edge-tst-all
+oc get deploy -l app.openshift.io/runtime=camel -n industrial-edge-data-lake
 ----
 
-If integrations show `Running`, data is flowing to S3. If `Building Kit`, the integration images are still being compiled (takes a few minutes on first deploy).
+If the `kafka-to-s3` Deployment is Ready, data is flowing to S3. First start downloads Maven dependencies (a few minutes).
 
 == Check KafkaMirrorMaker2 (data replication)
 
@@ -131,7 +131,7 @@ image::highleveldemo.png[High-level demo diagram showing sensor data flow throug
 
 * 3 Kafka clusters processing IoT data across dev, factory, and data lake
 * Live sensor messages flowing through topics
-* Camel K bridging MQTT->Kafka and Kafka->S3
+* Camel Quarkus bridging MQTT->Kafka and Kafka->S3
 * MirrorMaker2 replicating factory data to the central cluster
 
 == Screenshots

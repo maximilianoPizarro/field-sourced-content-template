@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ds-pipeline-config-custom
+  namespace: ml-development
+type: Opaque
+stringData:
+  odh_dsp.json: |
+    {
+      "display_name": "Data Science Pipeline",
+      "metadata": {
+        "tags": [],
+        "display_name": "Data Science Pipeline",
+        "engine": "Argo",
+        "auth_type": "KUBERNETES_SERVICE_ACCOUNT_TOKEN",
+        "api_endpoint": "https://ds-pipeline-dspa-ml-development.{{ .Values.clusterDomain }}",
+        "public_api_endpoint": "https://data-science-gateway.{{ .Values.clusterDomain }}/experiments/ml-development/",
+        "cos_auth_type": "KUBERNETES_SECRET",
+        "cos_secret": "aws-connection-pipeline-bucket",
+        "cos_endpoint": "{{ .Values.s3.default_endpoint }}",
+        "cos_bucket": "pipeline-bucket",
+        "cos_username": "minioadmin",
+        "cos_password": "minioadmin",
+        "runtime_type": "KUBEFLOW_PIPELINES"
+      },
+      "schema_name": "kfp"
+    }

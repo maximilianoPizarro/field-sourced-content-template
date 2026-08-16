@@ -1,0 +1,54 @@
+---
+# Validated Patterns global values — cluster-independent.
+# The patterns-operator injects global.localClusterDomain (cluster ingress).
+# Reuses the OpenShift GitOps instance RHDP already installed.
+
+main:
+  clusterGroupName: hub
+  multiSourceConfig:
+    enabled: true
+    clusterGroupChartVersion: "0.9.*"
+    helmRepoUrl: https://charts.validatedpatterns.io
+
+global:
+  pattern: event-driven-architecture
+  profile: full
+  singleArgoCD: true
+  vpArgoNamespace: openshift-gitops
+  argoNamespace: openshift-gitops
+  options:
+    useCSV: false
+    syncPolicy: Automatic
+    installPlanApproval: Automatic
+  secretLoader:
+    disabled: true
+  imageregistry:
+    type: openshift-internal
+    hostname: ""
+    account: ""
+
+userCount: 30
+
+lightspeed:
+  llmApiKey: "sk-no-key"
+  llmEndpoint: ""
+  model: "qwen25-7b-instruct"
+
+litemaas:
+  enabled: false
+  apiUrl: ""
+  apiKey: ""
+  model: ""
+
+maas:
+  endpoint: ""
+  apiKey: ""
+  model: ""
+
+neurofaceCv:
+  ppe:
+    enabled: true
+
+workshopRegistration:
+  adminToken: "workshop-admin-2024"
+  keycloakAdminPassword: ""

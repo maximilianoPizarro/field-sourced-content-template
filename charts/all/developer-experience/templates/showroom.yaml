@@ -1,0 +1,584 @@
+{{- if .Values.showroom.enabled }}
+---
+# Showroom Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.showroom.namespace | default "showroom" }}
+  labels:
+    demo.redhat.com/application: "showroom"
+---
+# Showroom ServiceAccount
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.showroom.name }}
+  namespace: {{ .Values.showroom.namespace }}
+---
+# Showroom RoleBinding (own namespace)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: edit-{{ .Values.showroom.name }}-sa
+  namespace: {{ .Values.showroom.namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.showroom.name }}
+  namespace: {{ .Values.showroom.namespace }}
+---
+# Showroom RoleBinding — kafka-cdc namespace (pods, kafkaconnectors, etc.)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: showroom-view-kafka-cdc
+  namespace: kafka-cdc
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.showroom.name }}
+  namespace: {{ .Values.showroom.namespace }}
+---
+# Showroom RoleBinding — kogito-bpm namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: showroom-view-kogito-bpm
+  namespace: kogito-bpm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.showroom.name }}
+  namespace: {{ .Values.showroom.namespace }}
+---
+{{- if .Values.observabilityAccess | default false }}
+# Showroom RoleBinding — observability namespace (only when observability is enabled)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: showroom-view-observability
+  namespace: openshift-cluster-observability-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.showroom.name }}
+  namespace: {{ .Values.showroom.namespace }}
+{{- end }}
+---
+# Showroom RoleBindings — neuroface and industrial-edge namespaces
+{{- $showroomName := .Values.showroom.name }}
+{{- $showroomNs := .Values.showroom.namespace }}
+{{- range $ns := list "neuroface" "industrial-edge-stormshift-machine-sensor" "industrial-edge-stormshift-messaging" "industrial-edge-stormshift-line-dashboard" "industrial-edge-tst-all" "industrial-edge-data-lake" "industrial-edge-ml-workspace" "industrial-edge-inference" "industrial-edge-ci" "ml-development" "openshift-lightspeed" }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: showroom-edit-{{ $ns }}
+  namespace: {{ $ns }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+- kind: ServiceAccount
+  name: {{ $showroomName }}
+  namespace: {{ $showroomNs }}
+---
+{{- end }}
+# Showroom Nginx ConfigMap
+kind: ConfigMap
+metadata:
+  name: {{ .Values.showroom.name }}-proxy-config
+  namespace: {{ .Values.showroom.namespace }}
+apiVersion: v1
+data:
+  nginx.conf: |
+    events {
+    }
+    error_log /dev/stdout info;
+    http {
+      include /etc/nginx/mime.types;
+      proxy_cache off;
+      expires -1;
+      proxy_cache_path /dev/null keys_zone=mycache:10m;
+      map $http_upgrade $connection_upgrade {
+          default upgrade;
+          '' close;
+      }
+      server {
+        listen 8080;
+        absolute_redirect off;
+        location = /ui-config.yml {
+          alias /etc/showroom/ui-config.yml;
+          default_type text/yaml;
+          expires off;
+        }
+        location = / {
+          default_type text/html;
+          root /etc/showroom;
+          try_files /wrapper.html =404;
+        }
+        location = /runner/api/config {
+          default_type application/json;
+          return 200 '{"sessionUuid":"standalone","lifespanEnd":"2099-12-31T23:59:59Z","catalogItem":"Event-Driven Architecture Live"}';
+        }
+        location / {
+          proxy_pass http://127.0.0.1:8000;
+          expires off;
+          proxy_cache off;
+          proxy_pass_request_headers on;
+          proxy_set_header Accept-Encoding "gzip";
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+        }
+        {{- if .Values.showroom.terminal.enabled }}
+        location /terminal/ {
+          proxy_pass http://127.0.0.1:7681;
+          rewrite ^/terminal/(.*)$ /$1 break;
+          proxy_http_version 1.1;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection "upgrade";
+          proxy_read_timeout 43200000;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header Host $http_host;
+          proxy_set_header X-NginX-Proxy true;
+        }
+        {{- end }}
+      }
+    }
+---
+# Showroom User Data ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.showroom.name }}-userdata
+  namespace: {{ .Values.showroom.namespace }}
+data:
+  user_data.yml: |
+    cluster_domain: {{ .Values.deployer.domain }}
+    openshift_console_url: https://console-openshift-console.{{ .Values.deployer.domain }}
+    openshift_cluster_ingress_domain: {{ .Values.deployer.domain }}
+    user_name: '%USER_NAME%'
+    user_password: '%USER_PASSWORD%'
+    kafka_bootstrap: cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9092
+    kafka_console_url: https://kafka-console-kafka-cdc.{{ .Values.deployer.domain }}
+    apicurio_url: https://apicurio-registry-kafka-cdc.{{ .Values.deployer.domain }}
+    grafana_url: https://grafana-observability.{{ .Values.deployer.domain }}
+    mailpit_url: https://n8n-mailpit-openshift-lightspeed.{{ .Values.deployer.domain }}
+    sonataflow_url: https://customer-onboarding-kogito-bpm.{{ .Values.deployer.domain }}
+    devhub_url: https://backstage-developer-hub-developer-hub.{{ .Values.deployer.domain }}
+    devspaces_url: https://devspaces.{{ .Values.deployer.domain }}
+    gitea_url: https://gitea-gitea.{{ .Values.deployer.domain }}
+    postgresql_host: cdc-postgresql.kafka-cdc.svc
+    postgresql_user: cdcuser
+    postgresql_db: cdcdb
+---
+# Showroom UI Config for Nookbag
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.showroom.name }}-ui-config
+  namespace: {{ .Values.showroom.namespace }}
+data:
+  wrapper.html: |
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <meta charset="utf-8">
+    <title>Event-Driven Architecture Live | Red Hat Demo Platform</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iMjU2cHgiIGhlaWdodD0iMjU2cHgiIHZpZXdCb3g9IjAgMCAyNTYgMjU2IiB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgcHJlc2VydmVBc3BlY3RSYXRpbz0ieE1pZFlNaWQiPjxkZWZzPjxjaXJjbGUgaWQ9InAxIiBjeD0iMTI4IiBjeT0iMTI4IiByPSIxMjgiLz48bGluZWFyR3JhZGllbnQgaWQ9ImcxIiB4MT0iMCUiIHkxPSIxMDAlIiB4Mj0iMTAwJSIgeTI9IjAlIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjRjY5OTIzIi8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjRTk3ODI2Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PGNpcmNsZSBmaWxsPSJ1cmwoI2cxKSIgY3g9IjEyOCIgY3k9IjEyOCIgcj0iMTIzIi8+PHBhdGggZD0iTTEyOCAyNTZDNTcuMyAyNTYgMCAxOTguNyAwIDEyOFM1Ny4zIDAgMTI4IDBzMTI4IDU3LjMgMTI4IDEyOC01Ny4zIDEyOC0xMjggMTI4em0wLTkuOGM1My45IDAgOTguOS0zNi4zIDExMi43LTg1LjdDMjE0LjEgMTExLjggMTYxLjggNzUuNiA5OCA3NS41Yy0yLS4wMi0zLjcuMDEtNS41LjA2LTIgLjA2LTQuOC43LTggMS44QzEzOC41IDExOC4yIDE1Ny45IDE5MS45IDEyNC42IDI1NS45IDEyNS44IDI1NS45IDEyNi45IDI1NiAxMjggMjU2eiIgZmlsbD0iI0U5NzgyNiIgb3BhY2l0eT0iLjc1Ii8+PHBhdGggZD0iTTg0LjggNzcuNEM2Ni45IDgzLjQgMzIuOCAxMDQuNS4xIDEzMi44IDIuNiAyMDAuMSA1Ny4xIDI1NC4xIDEyNC42IDI1NS45YzMzLjItNjQgMTMuOS0xMzcuNy00MC0xNzguNXoiIGZpbGw9IiMyODE3MEIiIG9wYWNpdHk9Ii43NSIvPjxwYXRoIGQ9Ik0xMjguNyA1NGMtMTEgNS41IDAgMjcuNSAwIDI3LjUtMzMgMjcuNS0yNiA3NC40LTY0LjQgNzQuNEMyMy4zIDE1NS45IDIuMSAxMzEuOC4xIDExNy4xYy0uMyAzLjUtLjguNy0uOCA0LjVDLS43IDE3NS43IDI1LjYgMjE3LjUgNjQuNyAyMzkuNSA3NS43IDIzOC4xIDg3LjUgMjM1LjQgOTUuOCAyMjkuOWMzMi4yLTIwLjggNDIuOS01Ny42IDYwLjUtODQuMSAxMS0xNi41IDYyLjQtMTUgNjUuOS0yMiA1LjUtMTEtMTEtMjcuNS0xNi41LTI3LjVIMTcyLjdjLTMuMSAwLTcuOS01LjUtMTEtNS41SDE0NS4ycy03LjMtMTEuMS0xMy44LTExLjVjLS45LS4xLTEuOCAwLTIuNy40eiIgZmlsbD0iI0ZGRiIvPjwvc3ZnPg==">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;700&family=Red+Hat+Text:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{height:100%;overflow:hidden;background:#151515}
+    .header{background:#151515;padding:12px 32px;display:flex;align-items:center;gap:16px;height:56px;border-bottom:1px solid #333}
+    .header-logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+    .header-logo img{height:32px;border-radius:6px}
+    .header-logo .logo-text{color:#fff;font-family:'Red Hat Display',sans-serif;font-size:.95rem;line-height:1.2}
+    .header-logo .logo-text span{display:block;font-weight:700}
+    .header h1{color:#fff;font-family:'Red Hat Display',sans-serif;font-size:1.05rem;font-weight:500;margin-left:auto;white-space:nowrap}
+    #eda-user-box{display:flex;align-items:center;gap:10px;padding-left:16px}
+    #eda-user-box .badge{background:#c00;color:#fff;padding:2px 10px;border-radius:3px;font-weight:600;font-size:12px;font-family:'Red Hat Text',sans-serif}
+    #eda-user-box .creds{color:#aaa;font-size:10px;font-family:'Red Hat Text',sans-serif}
+    #eda-user-box .reg-link{color:#ee0;font-size:11px;text-decoration:none;border-left:1px solid #555;padding-left:10px;margin-left:4px;font-weight:500;cursor:pointer;font-family:'Red Hat Text',sans-serif}
+    #eda-user-box .reg-link:hover{color:#ff0}
+    iframe{width:100%;height:calc(100vh - 56px);border:0;display:block}
+    @media (max-width:768px){
+      .header{padding:10px 16px;height:48px}
+      .header-logo img{height:26px}
+      .header-logo .logo-text{font-size:.8rem}
+      .header h1{font-size:.85rem}
+      #eda-user-box .creds{display:none}
+      iframe{height:calc(100vh - 48px)}
+    }
+    </style>
+    <script>
+    (function(){
+      var REGISTRATION_URL = 'https://workshop-registration.{{ .Values.deployer.domain }}/';
+      var params = new URLSearchParams(window.location.search);
+      var user = params.get('USER_NAME');
+      if (user) {
+        sessionStorage.setItem('EDA_USER_NAME', user);
+        sessionStorage.setItem('EDA_CLUSTER_DOMAIN', params.get('CLUSTER_DOMAIN') || '');
+      } else {
+        user = sessionStorage.getItem('EDA_USER_NAME');
+        if (user) {
+          var domain = sessionStorage.getItem('EDA_CLUSTER_DOMAIN') || '';
+          var fresh = window.location.pathname + '?USER_NAME=' + encodeURIComponent(user) + '&CLUSTER_DOMAIN=' + encodeURIComponent(domain);
+          window.location.replace(fresh);
+        } else {
+          window.location.replace(REGISTRATION_URL);
+        }
+      }
+    })();
+    </script>
+    </head>
+    <body>
+    <div class="header">
+      <a class="header-logo" href="#">
+        <img src="data:image/png;base64,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" alt="Red Hat">
+        <div class="logo-text">Red Hat<span>Demo Platform</span></div>
+      </a>
+      <h1>Event-Driven Architecture Live</h1>
+      <div id="eda-user-box"></div>
+    </div>
+    <iframe id="sf" src="/index.html" allow="clipboard-write clipboard-read fullscreen" allowfullscreen></iframe>
+    <script>
+    (function(){
+      var pp = new URLSearchParams(window.location.search);
+      var u = pp.get('USER_NAME') || '';
+      var domain = '{{ .Values.deployer.domain }}';
+      var box = document.getElementById('eda-user-box');
+      if (u) {
+        var badge = document.createElement('span');
+        badge.className = 'badge';
+        badge.textContent = u;
+        box.appendChild(badge);
+        var creds = document.createElement('span');
+        creds.className = 'creds';
+        creds.textContent = 'Pass: Welcome123!';
+        box.appendChild(creds);
+      }
+      var reg = document.createElement('a');
+      reg.href = '#';
+      reg.className = 'reg-link';
+      reg.textContent = 'Registro';
+      reg.onclick = function(){ sessionStorage.clear(); window.top.location.href='https://workshop-registration.'+domain+'/'; return false; };
+      box.appendChild(reg);
+    })();
+    </script>
+    </body>
+    </html>
+  ui-config.yml: |
+    ---
+    type: showroom
+    default_width: 35
+    persist_url_state: true
+    antora:
+      name: "event-driven-demo"
+      version: "1.0"
+    view_switcher:
+      enabled: true
+      default_mode: split
+    tabs:
+      - name: Terminal
+        url: '/terminal/'
+      - name: Developer Hub
+        url: 'https://backstage-developer-hub-developer-hub.{{ .Values.deployer.domain }}'
+      - name: Kafka Console
+        url: 'https://kafka-console-kafka-cdc.{{ .Values.deployer.domain }}'
+      - name: Console
+        url: 'https://console-openshift-console.{{ .Values.deployer.domain }}'
+        external: true
+      - name: DevSpaces
+        url: 'https://devspaces.{{ .Values.deployer.domain }}'
+        external: true
+      - name: Gitea
+        url: 'https://gitea-gitea.{{ .Values.deployer.domain }}'
+        external: true
+      - name: Grafana
+        url: 'https://grafana-observability.{{ .Values.deployer.domain }}'
+        external: true
+      - name: NeuroFace
+        url: 'https://neuroface-neuroface.{{ .Values.deployer.domain }}'
+        external: true
+      - name: OpenShift AI
+        url: 'https://data-science-gateway.{{ .Values.deployer.domain }}'
+        external: true
+      - name: Mailpit
+        url: 'https://n8n-mailpit-openshift-lightspeed.{{ .Values.deployer.domain }}'
+        external: true
+---
+# Showroom PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.showroom.name }}-terminal-lab-user-home
+  namespace: {{ .Values.showroom.namespace }}
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: "5Gi"
+---
+# Showroom Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.showroom.name }}
+  namespace: {{ .Values.showroom.namespace }}
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app.kubernetes.io/name: {{ .Values.showroom.name }}
+---
+# Showroom Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.showroom.name }}
+  namespace: {{ .Values.showroom.namespace }}
+  labels:
+    demo.redhat.com/application: "showroom"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.showroom.name }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Values.showroom.name }}
+    spec:
+      serviceAccountName: {{ .Values.showroom.name }}
+      initContainers:
+      - name: git-cloner
+        image: "quay.io/rhpds/git-cloner:v1.1.2"
+        env:
+        - name: GIT_REPO_URL
+          value: {{ .Values.showroom.content.repoUrl | quote }}
+        - name: GIT_REPO_REF
+          value: {{ .Values.showroom.content.repoRef | quote }}
+        - name: CLONE_DIR
+          value: "/showroom/repo"
+        volumeMounts:
+        - mountPath: /showroom/repo
+          name: showroom-files
+          subPath: repo
+      - name: domain-injector
+        image: "quay.io/rhpds/git-cloner:v1.1.2"
+        imagePullPolicy: IfNotPresent
+        command: ["sh", "-c"]
+        args:
+          - |
+            SITE_FILE="/showroom/repo/{{ .Values.showroom.content.antoraPlaybook }}"
+            if [ -f "$SITE_FILE" ]; then
+              sed -i 's|%cluster_domain%|{{ .Values.deployer.domain }}|g' "$SITE_FILE"
+              echo "Injected cluster_domain={{ .Values.deployer.domain }} into $SITE_FILE"
+            else
+              echo "WARNING: $SITE_FILE not found"
+            fi
+        volumeMounts:
+        - mountPath: /showroom/repo
+          name: showroom-files
+          subPath: repo
+      - name: antora-builder
+        image: "quay.io/rhpds/antora:v1.0.1"
+        env:
+        - name: FILES_DIR
+          value: "/showroom/repo"
+        - name: OUTPUT_DIR
+          value: "/showroom/www"
+        - name: ANTORA_SITE_FILE
+          value: {{ .Values.showroom.content.antoraPlaybook | quote }}
+        volumeMounts:
+        - mountPath: /showroom/repo
+          name: showroom-files
+          subPath: repo
+        - name: user-data
+          mountPath: /user_data/
+        - mountPath: /showroom/www
+          name: showroom-files
+          subPath: www
+      - name: ui-config-copier
+        image: "quay.io/rhpds/git-cloner:v1.1.2"
+        imagePullPolicy: IfNotPresent
+        command: ["sh", "-c", "cp /ui-config/ui-config.yml /showroom/www/ui-config.yml && echo 'ui-config.yml copied to www root'"]
+        volumeMounts:
+        - mountPath: /showroom/www
+          name: showroom-files
+          subPath: www
+        - mountPath: /ui-config
+          name: ui-config
+      - name: psql-installer
+        image: "registry.redhat.io/rhel9/postgresql-16:latest"
+        imagePullPolicy: IfNotPresent
+        command: ["bash", "-c"]
+        args:
+          - |
+            mkdir -p /psql-bin/lib
+            cp /usr/bin/psql /psql-bin/psql.real && chmod +x /psql-bin/psql.real
+            for lib in $(ldd /usr/bin/psql 2>/dev/null | grep '=>' | awk '{print $3}'); do
+              base=$(basename "$lib")
+              case "$base" in libpq*|libreadline*|libtinfo*) cp -n "$lib" /psql-bin/lib/ 2>/dev/null ;; esac
+            done
+            cat > /psql-bin/psql <<'WRAPPER'
+            #!/bin/bash
+            exec env LD_LIBRARY_PATH=/opt/psql/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH} /opt/psql/psql.real "$@"
+            WRAPPER
+            chmod +x /psql-bin/psql
+            echo "psql installed: $(/psql-bin/psql.real --version 2>/dev/null)"
+        volumeMounts:
+        - name: psql-bin
+          mountPath: /psql-bin
+      containers:
+      - name: nginx
+        image: "quay.io/rhpds/nginx:1.25"
+        imagePullPolicy: "IfNotPresent"
+        volumeMounts:
+        - mountPath: /etc/nginx/nginx.conf
+          name: nginx-config
+          subPath: nginx.conf
+        - mountPath: /etc/showroom/ui-config.yml
+          name: ui-config
+          subPath: ui-config.yml
+        - mountPath: /etc/showroom/wrapper.html
+          name: ui-config
+          subPath: wrapper.html
+        - mountPath: /var/cache/nginx
+          name: nginx-cache
+        - mountPath: /var/run
+          name: nginx-pid
+        ports:
+        - name: web
+          containerPort: 8080
+      - name: content
+        image: {{ .Values.showroom.content.image | quote }}
+        imagePullPolicy: "IfNotPresent"
+        env:
+        - name: GIT_REPO_URL
+          value: {{ .Values.showroom.content.repoUrl | quote }}
+        - name: GIT_REPO_REF
+          value: {{ .Values.showroom.content.repoRef | quote }}
+        - name: ANTORA_PLAYBOOK
+          value: {{ .Values.showroom.content.antoraPlaybook | quote }}
+        - name: DOMAIN
+          value: {{ .Values.deployer.domain | quote }}
+        {{- if .Values.showroom.nookbag.enabled }}
+        - name: ZT_BUNDLE
+          value: {{ .Values.showroom.nookbag.bundleUrl | quote }}
+        - name: ZT_UI_ENABLED
+          value: "true"
+        - name: GUID
+          value: {{ .Values.showroom.namespace | quote }}
+        {{- end }}
+        volumeMounts:
+        - name: user-data
+          mountPath: /user_data/
+        - mountPath: /showroom/repo
+          name: showroom-files
+          subPath: repo
+        - mountPath: /showroom/www
+          name: showroom-files
+          subPath: www
+        ports:
+        - containerPort: 8000
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8000
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8000
+      {{- if .Values.showroom.terminal.enabled }}
+      - name: terminal
+        image: {{ .Values.showroom.terminal.image | quote }}
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: PATH
+          value: "/opt/psql:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+        volumeMounts:
+        - name: terminal-lab-user-home
+          mountPath: /home/lab-user
+        - name: psql-bin
+          mountPath: /opt/psql
+        ports:
+        - containerPort: 7681
+          protocol: TCP
+        resources:
+          limits:
+            cpu: {{ .Values.showroom.terminal.resources.limits.cpu }}
+            memory: {{ .Values.showroom.terminal.resources.limits.memory }}
+          requests:
+            cpu: {{ .Values.showroom.terminal.resources.requests.cpu }}
+            memory: {{ .Values.showroom.terminal.resources.requests.memory }}
+      {{- end }}
+      volumes:
+      - name: showroom-files
+        emptyDir: {}
+      - name: user-data
+        configMap:
+          name: {{ .Values.showroom.name }}-userdata
+      - name: ui-config
+        configMap:
+          name: {{ .Values.showroom.name }}-ui-config
+      - name: nginx-config
+        configMap:
+          defaultMode: 420
+          name: {{ .Values.showroom.name }}-proxy-config
+      - name: nginx-pid
+        emptyDir: {}
+      - name: nginx-cache
+        emptyDir: {}
+      - name: psql-bin
+        emptyDir: {}
+      - name: terminal-lab-user-home
+        persistentVolumeClaim:
+          claimName: {{ .Values.showroom.name }}-terminal-lab-user-home
+---
+# Showroom Route
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ .Values.showroom.name }}
+  namespace: {{ .Values.showroom.namespace }}
+  annotations:
+    haproxy.router.openshift.io/timeout: 1h
+    haproxy.router.openshift.io/timeout-tunnel: 1h
+spec:
+  to:
+    kind: Service
+    name: {{ .Values.showroom.name }}
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+{{- end }}

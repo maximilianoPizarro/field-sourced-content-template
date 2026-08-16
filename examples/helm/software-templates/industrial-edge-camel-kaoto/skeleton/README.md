@@ -1,15 +1,15 @@
 # ${{ values.name }} — Industrial Edge Camel Routes (Kaoto)
 
-Visual Camel Quarkus routes that replicate the Industrial Edge Camel K integrations.
+Visual Camel Quarkus routes for Industrial Edge (MQTT→Kafka, Kafka→S3, alerts→Mailpit).
 Edit routes visually with **Kaoto**, test locally with **JBang**, deploy with **OpenShift Toolkit**.
 
 ## Routes
 
-| Route File | What it does | Camel K Equivalent |
-|---|---|---|
-| `routes/mqtt-to-kafka.camel.yaml` | Bridges MQTT sensor data (temperature + vibration) to Kafka topics | `MQTT2KafkaRoute.java` |
-| `routes/kafka-to-s3.camel.yaml` | Aggregates Kafka data and stores batches in MinIO S3 data lake | `Kafka2S3Route.java` |
-| `routes/anomaly-to-mailpit.camel.yaml` | Detects vibration anomalies and sends alert emails via Mailpit | *(new)* |
+| Route File | What it does |
+|---|---|
+| `routes/mqtt-to-kafka.camel.yaml` | Bridges MQTT sensor data (temperature + vibration) to Kafka topics |
+| `routes/kafka-to-s3.camel.yaml` | Aggregates Kafka data and stores batches in MinIO S3 data lake |
+| `routes/anomaly-to-mailpit.camel.yaml` | Detects vibration anomalies and sends alert emails via Mailpit |
 
 ## Quick Start in DevSpaces
 

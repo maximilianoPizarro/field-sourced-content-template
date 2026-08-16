@@ -1,0 +1,45 @@
+# =============================================================================
+# Lite overlay — Helm replaces lists; application maps merge by key.
+# Load via Pattern spec.extraValueFiles: ["/values-lite.yaml"]
+# or bootstrap --set pattern.extraValueFiles[0]=/values-lite.yaml
+# =============================================================================
+# Child charts also see global.profile via Application overrides.
+
+global:
+  profile: lite
+
+clusterGroup:
+  applications:
+    mesh-observability:
+      disabled: true
+    ai-ml:
+      disabled: true
+    neuroface:
+      disabled: true
+    industrial-edge:
+      disabled: true
+    litemaas:
+      disabled: true
+  subscriptions:
+    cluster-observability-operator:
+      disabled: true
+    grafana:
+      disabled: true
+    kiali:
+      disabled: true
+    amq-broker:
+      disabled: true
+    rhods:
+      disabled: true
+    servicemesh:
+      disabled: true
+    rhcl:
+      disabled: true
+    logic-operator:
+      disabled: true
+    opentelemetry:
+      disabled: true
+    lightspeed:
+      disabled: true
+    devspaces:
+      disabled: true

@@ -1,0 +1,169 @@
+{{- $domain := .Values.clusterDomain -}}
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-showroom
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI0VFMDAwMCI+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMThjLTQuNDEgMC04LTMuNTktOC04czMuNTktOCA4LTggOCAzLjU5IDggOC0zLjU5IDgtOCA4em0tMi0xMmgydjZoLTJ6bTAtMmgydjJoLTJ6Ii8+PC9zdmc+"
+    section: "Event-Driven Architecture Live"
+  href: "https://showroom-showroom.{{ $domain }}"
+  location: ApplicationMenu
+  text: "Showroom Demo Guide"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-kafka-console
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/png;base64,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"
+    section: "Event-Driven Architecture Live"
+  href: "https://kafka-console-kafka-cdc.{{ $domain }}"
+  location: ApplicationMenu
+  text: "Kafka Console"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-apicurio-registry
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzFBNzNFOCI+PHBhdGggZD0iTTE5LjM1IDEwLjA0QzE4LjY3IDYuNTkgMTUuNjQgNCA1LjI2IDRoLS4wNkMxMC45IDQgOC4yNiA1LjIyIDcgNy4yNiA0LjMgNyAyIDkuMyAyIDEyYzAgMi43NiAyLjI0IDUgNSA1aDEwYzIuMjEgMCA0LTEuNzkgNC00IDAtMi4wMy0xLjUzLTMuNzEtMy42NS0yLjk2eiIvPjwvc3ZnPg=="
+    section: "Event-Driven Architecture Live"
+  href: "https://apicurio-registry-kafka-cdc.{{ $domain }}"
+  location: ApplicationMenu
+  text: "Apicurio Registry"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-mailpit
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzQyQTVGNSI+PHBhdGggZD0iTTIwIDRINGMtMS4xIDAtMS45OS45LTEuOTkgMkwyIDEwYzAgMS4xLjkgMiAyIDJoMTZjMS4xIDAgMi0uOSAyLTJ2LTRjMC0xLjEtLjktMi0yLTJ6bTAgNEg0bDgtNSA4IDV6bTAgMTBINGMtMS4xIDAtMi0uOS0yLTJ2LThsOCA1IDgtNXY4YzAgMS4xLS45IDItMiAyeiIvPjwvc3ZnPg=="
+    section: "Event-Driven Architecture Live"
+  href: "https://n8n-mailpit-openshift-lightspeed.{{ $domain }}"
+  location: ApplicationMenu
+  text: "Mailpit (Email Testing)"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-grafana
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI0Y0NjgwMCI+PHBhdGggZD0iTTIyIDloLTR2LTJoNHYyem0tNi0ydi0ySDh2Mmg4em0tMTAgMHYtMkgzdjJoM3ptMTYgNGgtOHYtMmg4djJ6bS0xMCAwdi0ySDV2Mmg3em0tOSAwdi0ySDJ2Mmgxem0xNiA0SDR2LTJoMTV2MnptLTYgNEg2di0yaDd2MnptLTkgMEg0di0yaDR2MnoiLz48L3N2Zz4="
+    section: "Event-Driven Architecture Live"
+  href: "https://grafana-observability.{{ $domain }}"
+  location: ApplicationMenu
+  text: "Grafana Dashboards"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-sonataflow
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzAwNjZDQyI+PHBhdGggZD0iTTE0IDEyYy0xLjEgMC0yLS45LTItMnMuOS0yIDItMiAyIC45IDIgMi0uOSAyLTIgMnptLTIgNmMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6bTAtMTRjLTQuNDIgMC04IDMuNTgtOCA4czMuNTggOCA4IDggOC0zLjU4IDgtOC0zLjU4LTgtOC04eiIvPjwvc3ZnPg=="
+    section: "Event-Driven Architecture Live"
+  href: "https://sonataflow-management-console-kogito-bpm.{{ $domain }}"
+  location: ApplicationMenu
+  text: "SonataFlow Management Console"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-sonataflow-devui
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzAwNjZDQyI+PHBhdGggZD0iTTE0IDEyYy0xLjEgMC0yLS45LTItMnMuOS0yIDItMiAyIC45IDIgMi0uOSAyLTIgMnptLTIgNmMtMy4zMSAwLTYtMi42OS02LTZzMi42OS02IDYtNiA2IDIuNjkgNiA2LTIuNjkgNi02IDZ6bTAtMTRjLTQuNDIgMC04IDMuNTgtOCA4czMuNTggOCA4IDggOC0zLjU4IDgtOC0zLjU4LTgtOC04eiIvPjwvc3ZnPg=="
+    section: "Event-Driven Architecture Live"
+  href: "https://swagger-ui-onboarding-kogito-bpm.{{ $domain }}"
+  location: ApplicationMenu
+  text: "SonataFlow Swagger UI"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-developer-hub
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/png;base64,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"
+    section: "Event-Driven Architecture Live"
+  href: "https://backstage-developer-hub-developer-hub.{{ $domain }}"
+  location: ApplicationMenu
+  text: "Kafka Hub"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI0VGNzUyMSI+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMThjLTQuNDEgMC04LTMuNTktOC04czMuNTktOCA4LTggOCAzLjU5IDggOC0zLjU5IDgtOCA4em0wLTE0Yy0zLjMxIDAtNiAyLjY5LTYgNnMyLjY5IDYgNiA2IDYtMi42OSA2LTYtMi42OS02LTYtNnptMCA4Yy0xLjEgMC0yLS45LTItMnMuOS0yIDItMiAyIC45IDIgMi0uOSAyLTIgMnoiLz48L3N2Zz4="
+    section: "Event-Driven Architecture Live"
+  href: "https://openshift-gitops-server-openshift-gitops.{{ $domain }}"
+  location: ApplicationMenu
+  text: "ArgoCD"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-workshop-registration
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI0VFMDAwMCI+PHBhdGggZD0iTTE1IDEyYy0yLjIxIDAtNC0xLjc5LTQtNHMxLjc5LTQgNC00IDQgMS43OSA0IDQtMS43OSA0LTQgNHptLTktMmMtMS42NiAwLTMtMS4zNC0zLTNzMS4zNC0zIDMtMyAzIDEuMzQgMyAzLTEuMzQgMy0zIDN6bTkgNGMtMi42NyAwLTggMS4zNC04IDR2MmgxNnYtMmMwLTIuNjYtNS4zMy00LTgtNHptLTktMmMtMi4wNyAwLTYgMS4wMy02IDN2Mmgzdi0yYzAtLjkuMzMtMS43My44OS0yLjQzQzQuNDYgMTQuODkgMyAxNS4yMyAzIDE1LjV2Mmgzdi0yLjA5eiIvPjwvc3ZnPg=="
+    section: "Event-Driven Architecture Live"
+  href: "https://workshop-registration.{{ $domain }}"
+  location: ApplicationMenu
+  text: "Demo Registration"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-gitea
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzYwOTkyNiI+PHBhdGggZD0iTTYgMTljMCAxLjEuOSAyIDIgMmg4YzEuMSAwIDItLjkgMi0yVjdINnYxMnpNOCA5aDh2MTBIOFY5em0xMC00aC0yVjNIOHYySDZ2MmgxMlY1em0tOC0xaDR2MWgtNFY0eiIvPjxwYXRoIGQ9Ik0xOSAxMGMxLjEgMCAyIC45IDIgMnMtLjkgMi0yIDJoLTF2LTRoMXoiIGZpbGw9IiM0YzdhMTAiLz48L3N2Zz4="
+    section: "Event-Driven Architecture Live"
+  href: "https://gitea-gitea.{{ $domain }}"
+  location: ApplicationMenu
+  text: "Gitea"
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: eda-minio
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  applicationMenu:
+    imageURL: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI0M3MkM0OCI+PHBhdGggZD0iTTIgMjBoMjB2LTRIMnY0em0yLTNoMnYySDR2LTJ6TTIgNHY0aDIwVjRIMnptNCAzSDRWNWgydjJ6bS00IDdoMjB2LTRIMnY0em0yLTNoMnYySDR2LTJ6Ii8+PC9zdmc+"
+    section: "Event-Driven Architecture Live"
+  href: "https://minio-console-industrial-edge-ml-workspace.{{ $domain }}"
+  location: ApplicationMenu
+  text: "MinIO Console"

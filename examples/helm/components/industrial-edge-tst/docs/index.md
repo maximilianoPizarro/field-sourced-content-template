@@ -15,11 +15,11 @@ IoT manufacturing platform based on [Red Hat Validated Patterns — Industrial E
 
 | Namespace | Purpose |
 |-----------|---------|
-| `industrial-edge-tst-all` | Dev/test environment: sensors, MQTT broker, Kafka dev-cluster, dashboard, Camel K |
+| `industrial-edge-tst-all` | Dev/test environment: sensors, MQTT broker, Kafka dev-cluster, dashboard, Camel Quarkus |
 | `industrial-edge-stormshift-messaging` | Factory edge: MQTT broker, Kafka factory-cluster, consumer |
 | `industrial-edge-stormshift-machine-sensor` | Simulated factory sensors |
 | `industrial-edge-stormshift-line-dashboard` | Production line dashboard (factory) |
-| `industrial-edge-data-lake` | Kafka prod-cluster + Camel K -> S3 data lake |
+| `industrial-edge-data-lake` | Kafka prod-cluster + Camel Quarkus -> S3 data lake |
 | `industrial-edge-ml-workspace` | MinIO S3 for training data and models |
 | `ml-development` | OpenShift AI: JupyterLab, Data Science Pipelines, ModelMesh |
 
@@ -43,7 +43,7 @@ IoT manufacturing platform based on [Red Hat Validated Patterns — Industrial E
 
 [![Messaging and ML components](images/edge-mfg-messaging-ml.png)](images/edge-mfg-messaging-ml.png)
 
-*Detail of interaction between MQTT sensors, Kafka, Camel K, data lake, and ModelMesh.*
+*Detail of interaction between MQTT sensors, Kafka, Camel Quarkus, data lake, and ModelMesh.*
 
 ## Technology stack
 
@@ -52,7 +52,7 @@ IoT manufacturing platform based on [Red Hat Validated Patterns — Industrial E
 | **Sensors** | Node.js MQTT publisher (simulated) |
 | **MQTT Broker** | Red Hat AMQ Broker (ActiveMQArtemis) |
 | **Event Streaming** | Red Hat AMQ Streams (Kafka / Strimzi) |
-| **Integration** | Red Hat Camel K (MQTT->Kafka, Kafka->S3) |
+| **Integration** | Red Hat Camel Quarkus (MQTT->Kafka, Kafka->S3) |
 | **Data Lake** | MinIO S3-compatible storage |
 | **ML Training** | OpenShift AI (JupyterLab, scikit-learn) |
 | **ML Inference** | ModelMesh (MLServer + sklearn runtime) |

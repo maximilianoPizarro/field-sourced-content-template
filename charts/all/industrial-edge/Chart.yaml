@@ -1,0 +1,28 @@
+apiVersion: v2
+name: industrial-edge
+description: MinIO, RHOAI DSC/DSP, data lake, TST, StormShift, pipelines
+type: application
+version: 0.1.0
+appVersion: "1.0"
+dependencies:
+  - name: industrial-edge-minio
+    version: 0.1.0
+    repository: "file://charts/industrial-edge-minio"
+  - name: industrial-edge-data-science-cluster
+    version: 0.1.0
+    repository: "file://charts/industrial-edge-data-science-cluster"
+  - name: industrial-edge-data-science-project
+    version: 0.1.0
+    repository: "file://charts/industrial-edge-data-science-project"
+  - name: industrial-edge-data-lake
+    version: 0.0.1
+    repository: "file://charts/industrial-edge-data-lake"
+  - name: industrial-edge-tst
+    version: 0.1.0
+    repository: "file://charts/industrial-edge-tst"
+  - name: industrial-edge-stormshift
+    version: 0.1.0
+    repository: "file://charts/industrial-edge-stormshift"
+  - name: industrial-edge-pipelines
+    version: 0.0.1
+    repository: "file://charts/industrial-edge-pipelines"

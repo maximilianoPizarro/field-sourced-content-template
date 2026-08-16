@@ -1,0 +1,405 @@
+---
+# Hub clusterGroup — namespaces, OLM subscriptions, grouped Helm applications.
+# No ACM, Vault, ESO, or managedClusterGroups. Single cluster.
+
+clusterGroup:
+  name: hub
+  isHubCluster: true
+  targetCluster: in-cluster
+  sharedValueFiles: []
+  managedClusterGroups: {}
+  imperative:
+    jobs: []
+
+  argoProjects:
+    - hub
+    - platform
+    - workshop
+    - data
+    - mesh
+    - ai
+    - edge
+
+  namespaces:
+    openshift-gitops:
+      operatorGroup: false
+    kuadrant-operator:
+      operatorGroup: false
+    kuadrant-system:
+      operatorGroup: true
+      targetNamespaces: []
+    rhbk-operator:
+      operatorGroup: true
+      targetNamespaces:
+        - rhbk-operator
+    rhdh-operator:
+      operatorGroup: true
+      targetNamespaces: []
+      labels:
+        operators.coreos.com/rhdh-operator.rhdh-operator: ""
+    developer-hub:
+      operatorGroup: false
+    openshift-devspaces:
+      operatorGroup: false
+    devspaces:
+      operatorGroup: false
+    istio-system:
+      operatorGroup: false
+      labels:
+        istio-discovery: enabled
+    istio-cni:
+      operatorGroup: false
+      labels:
+        istio-discovery: enabled
+    ztunnel:
+      operatorGroup: false
+      labels:
+        istio.io/dataplane-mode: ambient
+        istio-discovery: enabled
+        pod-security.kubernetes.io/enforce: privileged
+    mcp-system:
+      operatorGroup: false
+      labels:
+        purpose: mcp-gateway
+    openshift-serverless-logic:
+      operatorGroup: false
+    kogito-bpm:
+      operatorGroup: false
+    n8n-test:
+      operatorGroup: false
+    gitea:
+      operatorGroup: false
+    showroom:
+      operatorGroup: false
+    kafka-cdc:
+      operatorGroup: false
+    openshift-lightspeed:
+      operatorGroup: true
+      targetNamespaces: []
+    openshift-integration:
+      operatorGroup: true
+      targetNamespaces: []
+    neuroface:
+      operatorGroup: false
+    openshift-ai:
+      operatorGroup: false
+    litemaas:
+      operatorGroup: false
+    openshift-cluster-observability-operator:
+      operatorGroup: true
+      targetNamespaces: []
+    openshift-opentelemetry:
+      operatorGroup: false
+    openshift-opentelemetry-operator:
+      operatorGroup: true
+      targetNamespaces: []
+    openshift-serverless:
+      operatorGroup: false
+    industrial-edge-tst-all:
+      operatorGroup: true
+      targetNamespaces: []
+      labels:
+        opendatahub.io/dashboard: "true"
+    industrial-edge-ci:
+      operatorGroup: false
+    industrial-edge-data-lake:
+      operatorGroup: false
+    industrial-edge-ml-workspace:
+      operatorGroup: false
+    ml-development:
+      operatorGroup: false
+      labels:
+        opendatahub.io/dashboard: "true"
+    industrial-edge-stormshift-line-dashboard:
+      operatorGroup: false
+    industrial-edge-stormshift-machine-sensor:
+      operatorGroup: false
+    industrial-edge-stormshift-messaging:
+      operatorGroup: false
+    industrial-edge-inference:
+      operatorGroup: false
+      labels:
+        opendatahub.io/dashboard: "true"
+    redhat-ods-applications:
+      operatorGroup: false
+    redhat-ods-operator:
+      operatorGroup: false
+
+  subscriptions:
+    cluster-observability-operator:
+      name: cluster-observability-operator
+      namespace: openshift-cluster-observability-operator
+      channel: stable
+      source: redhat-operators
+    grafana:
+      name: grafana-operator
+      namespace: openshift-operators
+      channel: v5
+      source: community-operators
+    kiali:
+      name: kiali-ossm
+      namespace: openshift-operators
+      channel: stable
+      source: redhat-operators
+    amq-broker:
+      name: amq-broker-rhel8
+      namespace: industrial-edge-tst-all
+      channel: 7.12.x
+      source: redhat-operators
+    rhods:
+      name: rhods-operator
+      namespace: redhat-ods-operator
+      channel: stable-3.4
+      source: redhat-operators
+    amq-streams:
+      name: amq-streams
+      namespace: openshift-operators
+      channel: stable
+      source: redhat-operators
+    amq-streams-console:
+      name: amq-streams-console
+      namespace: openshift-operators
+      channel: stable
+      source: redhat-operators
+    rhbk:
+      name: rhbk-operator
+      namespace: rhbk-operator
+      channel: stable-v26.4
+      source: redhat-operators
+      csv: rhbk-operator.v26.4.9-opr.1
+    rhdh:
+      name: rhdh
+      namespace: rhdh-operator
+      channel: fast
+      source: redhat-operators
+      csv: rhdh-operator.v1.8.3
+    servicemesh:
+      name: servicemeshoperator3
+      namespace: openshift-operators
+      channel: stable
+      source: redhat-operators
+    rhcl:
+      name: rhcl-operator
+      namespace: kuadrant-system
+      channel: stable
+      source: redhat-operators
+    pipelines:
+      name: openshift-pipelines-operator-rh
+      namespace: openshift-operators
+      channel: latest
+      source: redhat-operators
+    apicurio:
+      name: service-registry-operator
+      namespace: openshift-operators
+      channel: 2.x
+      source: redhat-operators
+    logic-operator:
+      name: logic-operator-rhel8
+      namespace: openshift-operators
+      channel: alpha
+      source: redhat-operators
+    image-puller:
+      name: kubernetes-imagepuller-operator
+      namespace: openshift-operators
+      channel: stable
+      source: community-operators
+    opentelemetry:
+      name: opentelemetry-product
+      namespace: openshift-opentelemetry-operator
+      channel: stable
+      source: redhat-operators
+      csv: opentelemetry-operator.v0.144.0-1
+    devspaces:
+      name: devspaces
+      namespace: openshift-operators
+      channel: stable
+      source: redhat-operators
+      csv: devspacesoperator.v3.26.0
+    lightspeed:
+      name: lightspeed-operator
+      namespace: openshift-lightspeed
+      channel: stable
+      source: redhat-operators
+    openshift-integration-operator:
+      name: openshift-integration-operator
+      namespace: openshift-integration
+      channel: alpha
+      source: community-operators
+
+  applications:
+    platform:
+      name: platform
+      namespace: openshift-gitops
+      argoProject: platform
+      path: charts/all/platform
+      syncWave: "0"
+      annotations:
+        argocd.argoproj.io/sync-wave: "0"
+        argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+      extraLocalClusterDomainFields:
+        - clusterDomain
+        - deployer.domain
+      overrides: &commonOverrides
+        - name: userCount
+          value: '{{ .Values.userCount | default 30 }}'
+        - name: global.profile
+          value: '{{ .Values.global.profile | default "full" }}'
+
+    identity-scm:
+      name: identity-scm
+      namespace: rhbk-operator
+      argoProject: workshop
+      path: charts/all/identity-scm
+      syncWave: "2"
+      annotations:
+        argocd.argoproj.io/sync-wave: "2"
+        argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+      extraLocalClusterDomainFields:
+        - clusterDomain
+      overrides: *commonOverrides
+
+    gitea:
+      name: gitea
+      namespace: gitea
+      argoProject: workshop
+      chart: gitea
+      chartVersion: "12.5.0"
+      repoURL: https://dl.gitea.com/charts/
+      extraValueFiles:
+        - /values-gitea.yaml
+      syncWave: "2"
+      annotations:
+        argocd.argoproj.io/sync-wave: "2"
+      overrides:
+        - name: gitea.config.server.ROOT_URL
+          value: 'https://gitea-gitea.{{ .Values.global.localClusterDomain }}'
+
+    developer-experience:
+      name: developer-experience
+      namespace: developer-hub
+      argoProject: workshop
+      path: charts/all/developer-experience
+      syncWave: "3"
+      annotations:
+        argocd.argoproj.io/sync-wave: "3"
+        argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+      extraLocalClusterDomainFields:
+        - clusterDomain
+        - deployer.domain
+      overrides:
+        - name: userCount
+          value: '{{ .Values.userCount | default 30 }}'
+        - name: global.profile
+          value: '{{ .Values.global.profile | default "full" }}'
+        - name: registration.maxUsers
+          value: '{{ .Values.userCount | default 30 }}'
+        - name: registration.enabled
+          value: "true"
+        - name: registration.adminToken
+          value: '{{ .Values.workshopRegistration.adminToken | default "workshop-admin-2024" }}'
+        - name: keycloak.url
+          value: 'https://rhbk.{{ .Values.global.localClusterDomain }}'
+        - name: keycloak.adminPassword
+          value: '{{ .Values.workshopRegistration.keycloakAdminPassword | default "" }}'
+        - name: showroom.url
+          value: 'https://showroom-showroom.{{ .Values.global.localClusterDomain }}'
+        - name: llmApiKey
+          value: '{{ coalesce .Values.litemaas.apiKey .Values.maas.apiKey .Values.lightspeed.llmApiKey "sk-no-key" }}'
+        - name: llmEndpoint
+          value: '{{ coalesce .Values.litemaas.apiUrl .Values.maas.endpoint .Values.lightspeed.llmEndpoint "" }}'
+        - name: llmModel
+          value: '{{ coalesce .Values.litemaas.model .Values.maas.model .Values.lightspeed.model "qwen25-7b-instruct" }}'
+
+    mesh-observability:
+      name: mesh-observability
+      namespace: istio-system
+      argoProject: mesh
+      path: charts/all/mesh-observability
+      syncWave: "3"
+      annotations:
+        argocd.argoproj.io/sync-wave: "3"
+        argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+      extraLocalClusterDomainFields:
+        - clusterDomain
+      overrides: *commonOverrides
+
+    cdc-pipeline:
+      name: cdc-pipeline
+      namespace: kafka-cdc
+      argoProject: data
+      path: charts/all/cdc-pipeline
+      syncWave: "4"
+      annotations:
+        argocd.argoproj.io/sync-wave: "4"
+        argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+      extraLocalClusterDomainFields:
+        - clusterDomain
+      overrides: *commonOverrides
+
+    ai-ml:
+      name: ai-ml
+      namespace: openshift-lightspeed
+      argoProject: ai
+      path: charts/all/ai-ml
+      syncWave: "5"
+      annotations:
+        argocd.argoproj.io/sync-wave: "5"
+        argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+      extraLocalClusterDomainFields:
+        - clusterDomain
+      overrides:
+        - name: userCount
+          value: '{{ .Values.userCount | default 30 }}'
+        - name: global.profile
+          value: '{{ .Values.global.profile | default "full" }}'
+        - name: llmApiKey
+          value: '{{ coalesce .Values.litemaas.apiKey .Values.maas.apiKey .Values.lightspeed.llmApiKey "sk-no-key" }}'
+        - name: llmEndpoint
+          value: '{{ coalesce .Values.litemaas.apiUrl .Values.maas.endpoint .Values.lightspeed.llmEndpoint "" }}'
+        - name: llmModel
+          value: '{{ coalesce .Values.litemaas.model .Values.maas.model .Values.lightspeed.model "qwen25-7b-instruct" }}'
+        - name: ppe.enabled
+          value: '{{ .Values.neurofaceCv.ppe.enabled | default true }}'
+
+    neuroface:
+      name: neuroface
+      namespace: neuroface
+      argoProject: ai
+      chart: neuroface
+      chartVersion: "1.4.2"
+      repoURL: https://maximilianopizarro.github.io/neuroface/
+      extraValueFiles:
+        - /values-neuroface.yaml
+      syncWave: "5"
+      annotations:
+        argocd.argoproj.io/sync-wave: "5"
+
+    industrial-edge:
+      name: industrial-edge
+      namespace: industrial-edge-ml-workspace
+      argoProject: edge
+      path: charts/all/industrial-edge
+      syncWave: "5"
+      annotations:
+        argocd.argoproj.io/sync-wave: "5"
+        argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+      extraLocalClusterDomainFields:
+        - clusterDomain
+        - industrial-edge-minio.clusterDomain
+        - industrial-edge-data-science-cluster.clusterDomain
+        - industrial-edge-data-science-project.clusterDomain
+        - industrial-edge-data-lake.clusterDomain
+        - industrial-edge-tst.clusterDomain
+        - industrial-edge-stormshift.clusterDomain
+        - industrial-edge-pipelines.clusterDomain
+      overrides: *commonOverrides
+
+    litemaas:
+      name: litemaas
+      namespace: litemaas
+      argoProject: ai
+      path: charts/all/litemaas
+      disabled: true
+      syncWave: "7"
+      annotations:
+        argocd.argoproj.io/sync-wave: "7"

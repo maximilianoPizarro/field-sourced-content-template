@@ -1,0 +1,42 @@
+global:
+  profile: full
+  localClusterDomain: ""
+  hubClusterDomain: ""
+  lightspeed:
+    llmApiKey: "sk-no-key"
+    llmEndpoint: ""
+    model: "qwen25-7b-instruct"
+
+userCount: 30
+clusterDomain: ""
+devspaces:
+  enabled: true
+
+# --- from kafka ---
+clusterDomain: "apps.cluster.example.com"
+
+# --- from kafka-console ---
+clusterDomain: "apps.cluster.example.com"
+
+# --- from apicurio-registry ---
+clusterDomain: "apps.cluster.example.com"
+
+# --- from cdc-demo ---
+clusterDomain: "apps.cluster.example.com"
+
+postgresql:
+  database: cdcdb
+  username: cdcuser
+  password: cdc-demo-2024
+
+# --- from camel-cdc ---
+clusterDomain: "apps.cluster.example.com"
+
+# --- from kogito-bpm ---
+clusterDomain: "apps.cluster.example.com"
+
+# --- from mailpit ---
+clusterDomain: ""
+
+# --- from cleanup ---
+clusterDomain: "apps.cluster.example.com"

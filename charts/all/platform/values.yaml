@@ -1,0 +1,28 @@
+global:
+  profile: full
+  localClusterDomain: ""
+  hubClusterDomain: ""
+  lightspeed:
+    llmApiKey: "sk-no-key"
+    llmEndpoint: ""
+    model: "qwen25-7b-instruct"
+
+userCount: 30
+clusterDomain: ""
+devspaces:
+  enabled: true
+
+# --- from namespaces ---
+# Vendored from https://gitlab.com/maximilianoPizarro/connectivity-link (namespaces)
+enabled: true
+userCount: 30
+
+# --- from oauth-users ---
+userCount: 30
+
+# --- from console-links ---
+clusterDomain: "apps.cluster.example.com"
+
+# --- from openshift-gitops ---
+# Vendored from https://gitlab.com/maximilianoPizarro/connectivity-link (openshift-gitops)
+enabled: true

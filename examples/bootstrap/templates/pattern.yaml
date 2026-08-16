@@ -1,0 +1,28 @@
+{{- $g := .Values.global | default dict }}
+{{- $repo := coalesce .Values.gitops.repoUrl $g.repoURL "https://github.com/maximilianoPizarro/field-sourced-content-template.git" }}
+{{- $rev := coalesce .Values.gitops.revision $g.targetRevision "main" }}
+apiVersion: gitops.hybrid-cloud-patterns.io/v1alpha1
+kind: Pattern
+metadata:
+  name: {{ .Values.pattern.name | default "event-driven-architecture" }}
+  namespace: openshift-operators
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  clusterGroupName: {{ .Values.pattern.clusterGroupName | default "hub" }}
+  gitSpec:
+    targetRepo: {{ $repo | quote }}
+    targetRevision: {{ $rev | quote }}
+  extraValueFiles:
+    {{- if .Values.pattern.extraValueFiles }}
+    {{- toYaml .Values.pattern.extraValueFiles | nindent 4 }}
+    {{- else }}
+    []
+    {{- end }}
+  multiSourceConfig:
+    enabled: true
+    clusterGroupChartVersion: "0.9.*"
+    helmRepoUrl: https://charts.validatedpatterns.io
+  gitOpsSpec:
+    manualSync: false

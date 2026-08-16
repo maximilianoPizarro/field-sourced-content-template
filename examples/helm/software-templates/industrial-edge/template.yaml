@@ -5,7 +5,7 @@ metadata:
   title: "Industrial Edge: IoT Manufacturing Platform"
   description: >
     Deploys a complete Industrial Edge IoT stack: 2 machine sensors (MQTT),
-    AMQ Broker, Kafka cluster (KRaft), MQTT→Kafka Camel K integration,
+    AMQ Broker, Kafka cluster (KRaft), MQTT→Kafka Camel Quarkus integration,
     IoT consumer with anomaly detection, and a real-time Line Dashboard.
     Each instance gets its own namespace, Kafka cluster, and ArgoCD Application.
   tags:
@@ -145,7 +145,7 @@ spec:
             - Email: "${{ parameters.owner }}@redhat.local"
               Name: "${{ parameters.owner }}"
           Subject: "Industrial Edge — New IoT Instance Deployed"
-          Text: "Industrial Edge Notification — Your IoT manufacturing instance ${{ parameters.owner }}-${{ parameters.name }} has been provisioned in namespace ${{ parameters.owner }}-${{ parameters.name }}. Components: ${{ parameters.sensorCount }} sensors, AMQ Broker, Kafka (${{ parameters.kafkaReplicas }}-node KRaft), Camel K, Line Dashboard."
+          Text: "Industrial Edge Notification — Your IoT manufacturing instance ${{ parameters.owner }}-${{ parameters.name }} has been provisioned in namespace ${{ parameters.owner }}-${{ parameters.name }}. Components: ${{ parameters.sensorCount }} sensors, AMQ Broker, Kafka (${{ parameters.kafkaReplicas }}-node KRaft), Camel Quarkus, Line Dashboard."
           HTML: "<div style='font-family:Red Hat Text,Helvetica,Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden'><div style='background:#EE0000;padding:24px 32px;text-align:center'><h1 style='color:#fff;margin:0;font-size:22px;font-weight:600;letter-spacing:0.5px'>Industrial Edge</h1><p style='color:#ffcccc;margin:4px 0 0;font-size:12px'>IoT Manufacturing Platform</p></div><div style='padding:32px'><h2 style='color:#151515;margin:0 0 16px;font-size:18px'>Edge Instance Deployed</h2><p style='color:#6a6e73;font-size:14px;line-height:1.6;margin:0 0 20px'>Your IoT manufacturing line has been provisioned.</p><table style='width:100%;border-collapse:collapse;font-size:14px;margin-bottom:24px'><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:10px 0;color:#6a6e73;width:140px'>Instance</td><td style='padding:10px 0;color:#151515;font-weight:500'>${{ parameters.owner }}-${{ parameters.name }}</td></tr><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:10px 0;color:#6a6e73'>Namespace</td><td style='padding:10px 0;color:#151515;font-weight:500'>${{ parameters.owner }}-${{ parameters.name }}</td></tr><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:10px 0;color:#6a6e73'>Sensors</td><td style='padding:10px 0;color:#151515;font-weight:500'>${{ parameters.sensorCount }} machines</td></tr><tr style='border-bottom:1px solid #f0f0f0'><td style='padding:10px 0;color:#6a6e73'>Kafka</td><td style='padding:10px 0;color:#151515;font-weight:500'>${{ parameters.kafkaReplicas }}-node KRaft cluster</td></tr><tr><td style='padding:10px 0;color:#6a6e73'>Status</td><td style='padding:10px 0;color:#151515;font-weight:500'><span style='background:#faeae8;color:#c9190b;padding:2px 8px;border-radius:12px;font-size:12px'>Deploying</span></td></tr></table></div><div style='background:#f0f0f0;padding:16px 32px;text-align:center;font-size:11px;color:#6a6e73'>Industrial Edge &bull; Powered by Red Hat Developer Hub</div></div>"
   output:
     links:

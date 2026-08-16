@@ -20,14 +20,14 @@
 
   // Near Edge — Factory DC
   var kafkaF = ThreeHelper.createNode(ctx.scene,'Kafka\nFactory',0x231F20,-4,0,-3,{width:3});
-  var camelMqtt = ThreeHelper.createNode(ctx.scene,'Camel K\nMQTT\u2192Kafka',0xFF6D00,-4,0,3,{width:3});
+  var camelMqtt = ThreeHelper.createNode(ctx.scene,'Camel\nMQTT\u2192Kafka',0xFF6D00,-4,0,3,{width:3});
   var iot = ThreeHelper.createNode(ctx.scene,'IoT\nConsumer',0x9C27B0,2,0,-3);
   var dash = ThreeHelper.createNode(ctx.scene,'Line\nDashboard',0x42A5F5,2,0,3);
 
   // Core DC
   var kafkaDL = ThreeHelper.createNode(ctx.scene,'Kafka\nData Lake',0x231F20,9,0,0,{width:3});
   var mm2 = ThreeHelper.createNode(ctx.scene,'Mirror\nMaker2',0x1A73E8,9,3,4);
-  var camelS3 = ThreeHelper.createNode(ctx.scene,'Camel K\nKafka\u2192S3',0xFF6D00,15,0,-3,{width:3});
+  var camelS3 = ThreeHelper.createNode(ctx.scene,'Camel\nKafka\u2192S3',0xFF6D00,15,0,-3,{width:3});
   var minio = ThreeHelper.createNode(ctx.scene,'MinIO S3\nData Lake',0x43A047,21,0,-3,{width:3});
   var mlserv = ThreeHelper.createNode(ctx.scene,'KServe\nAnomaly ML',0x0068B5,9,0,-5,{width:3});
   var oai = ThreeHelper.createNode(ctx.scene,'OpenShift AI\nJupyter',0xEE0000,15,0,3,{width:3});
@@ -151,7 +151,7 @@ Sensors transmit data via *MQTT* to Red Hat AMQ, which routes it for two purpose
 * *Model development* in the core data center (data lake → JupyterLab → training)
 * *Live inference* at the factory data centers (IoT Consumer → ModelMesh → anomaly alerts)
 
-*Apache Camel K* provides MQTT integration to normalize and route sensor data to Kafka and then to S3 (MinIO) for the data lake. Data scientists use *OpenShift AI* tools to develop, train, and deploy models.
+*Apache Camel (Quarkus)* provides MQTT integration to normalize and route sensor data to Kafka and then to S3 (MinIO) for the data lake. Data scientists use *OpenShift AI* tools to develop, train, and deploy models.
 
 === Edge Manufacturing with GitOps
 
@@ -170,7 +170,7 @@ CDC with *Debezium* captures changes from relational databases and publishes the
 * Real-time auditing and compliance
 * Analytics and search indexing
 
-At 20K device scale, the CDC component handles ~5,000 DB transactions/sec with 5 consumer groups (Camel K, notifications, search indexer, analytics, audit logger).
+At 20K device scale, the CDC component handles ~5,000 DB transactions/sec with 5 consumer groups (Camel, notifications, search indexer, analytics, audit logger).
 
 === Mirror/Replicas for External Queries
 
@@ -193,9 +193,9 @@ The demo scenario has three layers:
 
 . *Line Data Server (far edge):* Machine sensors on the shop floor publishing vibration and temperature readings via MQTT every 5 seconds.
 
-. *Factory Data Center (near edge):* AMQ Broker receives MQTT data. Camel K bridges MQTT→Kafka. Factory Kafka streams data. IoT Consumer feeds ModelMesh for anomaly detection. Line Dashboard provides real-time visualization.
+. *Factory Data Center (near edge):* AMQ Broker receives MQTT data. Camel Quarkus bridges MQTT→Kafka. Factory Kafka streams data. IoT Consumer feeds ModelMesh for anomaly detection. Line Dashboard provides real-time visualization.
 
-. *Central Data Center (core):* Kafka data lake stores mirrored data. Camel K integration writes to MinIO S3. OpenShift AI provides JupyterLab notebooks, Data Science Pipelines, and ModelMesh serving.
+. *Central Data Center (core):* Kafka data lake stores mirrored data. Camel Quarkus writes to MinIO S3. OpenShift AI provides JupyterLab notebooks, Data Science Pipelines, and ModelMesh serving.
 
 === What's Running
 
@@ -215,9 +215,9 @@ The demo scenario has three layers:
 | Dev, Factory, and Data Lake clusters for event streaming
 | `industrial-edge-tst-all`, `industrial-edge-stormshift-messaging`, `industrial-edge-data-lake`
 
-| Camel K
+| Camel Quarkus
 | MQTT→Kafka bridge and Kafka→S3 data lake integration
-| `industrial-edge-tst-all`, `industrial-edge-data-lake`
+| `industrial-edge-tst-all`, `industrial-edge-stormshift-messaging`, `industrial-edge-data-lake`
 
 | Line Dashboard (x2)
 | Real-time visualization of sensor data and anomaly alerts
@@ -258,7 +258,7 @@ image::ROOT:industrialedge3.png[Industrial Edge — Kafka Streams,width=100%]
 
 image::ROOT:industrialedge4.png[Industrial Edge — Line Dashboard,width=100%]
 
-image::ROOT:industrialedge5.png[Industrial Edge — Camel K Integration,width=100%]
+image::ROOT:industrialedge5.png[Industrial Edge — Camel Quarkus,width=100%]
 
 image::ROOT:industrialedge6.png[Industrial Edge — MinIO Data Lake,width=100%]
 

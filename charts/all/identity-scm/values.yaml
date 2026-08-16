@@ -1,0 +1,26 @@
+global:
+  profile: full
+  localClusterDomain: ""
+  hubClusterDomain: ""
+  lightspeed:
+    llmApiKey: "sk-no-key"
+    llmEndpoint: ""
+    model: "qwen25-7b-instruct"
+
+userCount: 30
+clusterDomain: ""
+devspaces:
+  enabled: true
+
+# --- from rhbk ---
+# Vendored from https://gitlab.com/maximilianoPizarro/connectivity-link (rhbk)
+enabled: true
+clusterDomain: ""
+userCount: 30
+
+# --- from gitea ---
+clusterDomain: ""
+adminUser: gitea_admin
+adminPassword: "openshift"
+adminEmail: "admin@gitea.local"
+userCount: 30

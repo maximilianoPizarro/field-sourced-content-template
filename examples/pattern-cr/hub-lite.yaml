@@ -1,0 +1,18 @@
+# Lite profile — same Pattern CR with extraValueFiles: ["/values-lite.yaml"]
+---
+apiVersion: gitops.hybrid-cloud-patterns.io/v1alpha1
+kind: Pattern
+metadata:
+  name: event-driven-architecture
+  namespace: openshift-operators
+spec:
+  clusterGroupName: hub
+  gitSpec:
+    targetRepo: https://github.com/maximilianoPizarro/field-sourced-content-template.git
+    targetRevision: main
+  extraValueFiles:
+    - /values-lite.yaml
+  multiSourceConfig:
+    enabled: true
+    clusterGroupChartVersion: "0.9.*"
+    helmRepoUrl: https://charts.validatedpatterns.io

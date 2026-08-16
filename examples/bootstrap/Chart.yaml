@@ -1,0 +1,6 @@
+apiVersion: v2
+name: field-content-bootstrap
+description: RHDP entrypoint — install Validated Patterns Operator and apply the Pattern CR. Reuses the OpenShift GitOps instance RHDP already installed.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

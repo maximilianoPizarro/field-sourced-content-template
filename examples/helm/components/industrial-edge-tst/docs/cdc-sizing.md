@@ -8,7 +8,7 @@ Change Data Capture (CDC) with Debezium captures changes from relational databas
 
 [![Messaging and data architecture](images/edge-mfg-messaging-ml.png)](images/edge-mfg-messaging-ml.png)
 
-*Data flow architecture: PostgreSQL databases feed Debezium (KafkaConnect) which captures changes via WAL replication and publishes them to the Kafka CDC Cluster. Consumers (Camel K, custom applications) process CDC events for view materialization, notifications, and indexing.*
+*Data flow architecture: PostgreSQL databases feed Debezium (KafkaConnect) which captures changes via WAL replication and publishes them to the Kafka CDC Cluster. Consumers (Camel Quarkus, custom applications) process CDC events for view materialization, notifications, and indexing.*
 
 ## HA Sizing — Minimum production (3 nodes)
 
@@ -68,7 +68,7 @@ Change Data Capture (CDC) with Debezium captures changes from relational databas
 
 | Consumer application | Pods | CPU (req/lim) | Memory (req/lim) | Purpose |
 |---------------------|------|---------------|------------------|---------|
-| Camel K (view materialization) | 3 | 1500m / 3000m | 1.5Gi / 3Gi | Materializes views from CDC events |
+| Camel Quarkus (view materialization) | 3 | 1500m / 3000m | 1.5Gi / 3Gi | Materializes views from CDC events |
 | Notification service | 2 | 500m / 1000m | 512Mi / 1Gi | Sends alerts on specific changes |
 | Search indexer | 3 | 3000m / 6000m | 3Gi / 6Gi | Indexes CDC events for full-text search |
 | Analytics pipeline | 2 | 1000m / 2000m | 2Gi / 4Gi | Aggregates CDC events for reporting |

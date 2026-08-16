@@ -1,3 +1,26 @@
+{{- $g := .Values.global | default dict }}
+{{- $ls := $g.lightspeed | default dict }}
+{{- $llmKey := coalesce .Values.llmApiKey $ls.llmApiKey "sk-no-key" }}
+{{- $llmEndpoint := coalesce .Values.llmEndpoint $ls.llmEndpoint "" }}
+{{- $llmModel := coalesce .Values.llmModel $ls.model "qwen25-7b-instruct" }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: continue-ai-config
+  namespace: devspaces
+  labels:
+    controller.devfile.io/mount-to-devworkspace: "true"
+    controller.devfile.io/watch-secret: "true"
+    app.kubernetes.io/part-of: continue-ai
+  annotations:
+    controller.devfile.io/mount-as: env
+    argocd.argoproj.io/sync-wave: "6"
+type: Opaque
+stringData:
+  CONTINUE_API_KEY: {{ $llmKey | quote }}
+  CONTINUE_API_BASE: {{ printf "%s/v1" $llmEndpoint | quote }}
+  CONTINUE_MODEL: {{ $llmModel | quote }}
+---
 apiVersion: org.eclipse.che/v2
 kind: CheCluster
 metadata:

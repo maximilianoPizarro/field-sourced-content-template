@@ -2,106 +2,166 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: kafka-to-s3-config
+  name: kafka-to-s3-routes
   namespace: ${{values.namespace}}
 data:
-  application.properties: |
-    kafka.broker.uri=${{values.uniqueName}}-cluster-kafka-bootstrap.${{values.namespace}}.svc:9092
-    kafka.broker.topic.temperature=iot-sensor-sw-temperature
-    kafka.broker.topic.vibration=iot-sensor-sw-vibration
-    s3.region=none
-    s3.bucket.name=sensor-data
-    s3.message.aggregation.count=5
-    s3.custom.endpoint.enabled=true
-    s3.custom.endpoint.url=http://minio.${{values.namespace}}.svc:9000
+  kafka-to-s3.camel.yaml: |
+    - route:
+        id: kafka-vibration-to-s3
+        from:
+          uri: kafka:iot-sensor-sw-vibration
+          parameters:
+            brokers: ${{values.uniqueName}}-cluster-kafka-bootstrap.${{values.namespace}}.svc:9092
+            groupId: camel-quarkus-s3-vibr
+            autoOffsetReset: latest
+            valueDeserializer: org.apache.kafka.common.serialization.StringDeserializer
+          steps:
+            - log:
+                message: "Vibration event from Kafka: ${body}"
+            - convertBodyTo:
+                type: java.lang.String
+            - aggregate:
+                aggregationStrategy: "#class:org.apache.camel.processor.aggregate.GroupedBodyAggregationStrategy"
+                completionSize: 5
+                correlationExpression:
+                  constant:
+                    expression: "true"
+                steps:
+                  - setHeader:
+                      name: CamelAwsS3Key
+                      simple: "${{values.uniqueName}}-vibration-${date:now:yyyyMMdd-HHmmss}.txt"
+                  - to:
+                      uri: aws2-s3://sensor-data
+                      parameters:
+                        accessKey: minio
+                        secretKey: "RAW(minio123)"
+                        region: us-east-1
+                        overrideEndpoint: true
+                        uriEndpointOverride: http://minio.${{values.namespace}}.svc:9000
+                        forcePathStyle: true
+                  - log:
+                      message: "Uploaded vibration batch to S3"
+    - route:
+        id: kafka-temperature-to-s3
+        from:
+          uri: kafka:iot-sensor-sw-temperature
+          parameters:
+            brokers: ${{values.uniqueName}}-cluster-kafka-bootstrap.${{values.namespace}}.svc:9092
+            groupId: camel-quarkus-s3-temp
+            autoOffsetReset: latest
+            valueDeserializer: org.apache.kafka.common.serialization.StringDeserializer
+          steps:
+            - log:
+                message: "Temperature event from Kafka: ${body}"
+            - convertBodyTo:
+                type: java.lang.String
+            - aggregate:
+                aggregationStrategy: "#class:org.apache.camel.processor.aggregate.GroupedBodyAggregationStrategy"
+                completionSize: 5
+                correlationExpression:
+                  constant:
+                    expression: "true"
+                steps:
+                  - setHeader:
+                      name: CamelAwsS3Key
+                      simple: "${{values.uniqueName}}-temperature-${date:now:yyyyMMdd-HHmmss}.txt"
+                  - to:
+                      uri: aws2-s3://sensor-data
+                      parameters:
+                        accessKey: minio
+                        secretKey: "RAW(minio123)"
+                        region: us-east-1
+                        overrideEndpoint: true
+                        uriEndpointOverride: http://minio.${{values.namespace}}.svc:9000
+                        forcePathStyle: true
+                  - log:
+                      message: "Uploaded temperature batch to S3"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-to-s3
+  namespace: ${{values.namespace}}
+  labels:
+    app: kafka-to-s3
+    app.openshift.io/runtime: camel
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-to-s3
+  template:
+    metadata:
+      labels:
+        app: kafka-to-s3
+        app.openshift.io/runtime: camel
+    spec:
+      containers:
+        - name: camel
+          image: docker.io/apache/camel-jbang:4.21.0-21-jdk
+          imagePullPolicy: IfNotPresent
+          workingDir: /tmp
+          command: ["camel"]
+          args:
+            - "run"
+            - "/etc/camel/routes/kafka-to-s3.camel.yaml"
+            - "--runtime=quarkus"
+          env:
+            - name: HOME
+              value: /tmp
+            - name: JBANG_DIR
+              value: /tmp/.jbang
+          ports:
+            - name: http
+              containerPort: 8080
+          volumeMounts:
+            - name: routes
+              mountPath: /etc/camel/routes
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          startupProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 36
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 20
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 10
+      volumes:
+        - name: routes
+          configMap:
+            name: kafka-to-s3-routes
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
-kind: Secret
+kind: Service
 metadata:
-  name: s3-anomaly
+  name: kafka-to-s3
   namespace: ${{values.namespace}}
-type: Opaque
-stringData:
-  application.properties: |
-    AWS_ACCESS_KEY_ID=minio
-    AWS_SECRET_ACCESS_KEY=minio123
----
-apiVersion: camel.apache.org/v1
-kind: Integration
-metadata:
-  name: kafka-to-s3-integration
-  namespace: ${{values.namespace}}
-  annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  labels:
+    app: kafka-to-s3
 spec:
-  traits:
-    mount:
-      configs:
-        - configmap:kafka-to-s3-config
-        - secret:s3-anomaly
-  profile: OpenShift
-  sources:
-    - content: |
-        import java.io.ByteArrayInputStream;
-        import java.util.Iterator;
-        import java.util.List;
-        import org.apache.camel.Exchange;
-        import org.apache.camel.Processor;
-        import org.apache.camel.PropertyInject;
-        import org.apache.camel.builder.RouteBuilder;
-        import org.apache.camel.component.aws2.s3.AWS2S3Constants;
-        import org.apache.camel.model.OnCompletionDefinition;
-        import org.apache.camel.processor.aggregate.GroupedBodyAggregationStrategy;
-
-        public class Kafka2S3Route extends RouteBuilder {
-            @PropertyInject("kafka.broker.uri")       private String kafka_broker_uri;
-            @PropertyInject("kafka.broker.topic.vibration")    private String kafka_topic_vibration;
-            @PropertyInject("kafka.broker.topic.temperature")  private String kafka_topic_temperature;
-            @PropertyInject("s3.custom.endpoint.enabled")      private String s3_override;
-            @PropertyInject("s3.custom.endpoint.url")          private String s3_url;
-            @PropertyInject("AWS_ACCESS_KEY_ID")               private String s3_key;
-            @PropertyInject("AWS_SECRET_ACCESS_KEY")           private String s3_secret;
-            @PropertyInject("s3.message.aggregation.count")    private String s3_agg;
-            @PropertyInject("s3.bucket.name")                  private String s3_bucket;
-            @PropertyInject("s3.region")                       private String s3_region;
-
-            @Override
-            public void configure() throws Exception {
-                String s3p = "accessKey=RAW(" + s3_key + ")&overrideEndpoint=" + s3_override
-                    + "&forcePathStyle=true&uriEndpointOverride=" + s3_url
-                    + "&secretKey=RAW(" + s3_secret + ")&region=" + s3_region;
-
-                from("kafka:" + kafka_topic_vibration + "?brokers=" + kafka_broker_uri)
-                    .convertBodyTo(String.class)
-                    .aggregate(simple("true"), new GroupedBodyAggregationStrategy()).completionSize(s3_agg)
-                    .process(exchange -> {
-                        List data = exchange.getIn().getBody(List.class);
-                        StringBuilder sb = new StringBuilder();
-                        for (Object o : data) sb.append(o).append("\n");
-                        exchange.getIn().setBody(new ByteArrayInputStream(sb.toString().getBytes()));
-                    })
-                    .setHeader(AWS2S3Constants.KEY, simple("${{values.uniqueName}}-vibration-${date:now}.txt"))
-                    .to("aws2-s3://" + s3_bucket + "?" + s3p)
-                    .log("Uploaded vibration dataset to S3");
-
-                from("kafka:" + kafka_topic_temperature + "?brokers=" + kafka_broker_uri)
-                    .convertBodyTo(String.class)
-                    .aggregate(simple("true"), new GroupedBodyAggregationStrategy()).completionSize(s3_agg)
-                    .process(exchange -> {
-                        List data = exchange.getIn().getBody(List.class);
-                        StringBuilder sb = new StringBuilder();
-                        for (Object o : data) sb.append(o).append("\n");
-                        exchange.getIn().setBody(new ByteArrayInputStream(sb.toString().getBytes()));
-                    })
-                    .setHeader(AWS2S3Constants.KEY, simple("${{values.uniqueName}}-temperature-${date:now}.txt"))
-                    .to("aws2-s3://" + s3_bucket + "?" + s3p)
-                    .log("Uploaded temperature dataset to S3");
-            }
-
-            @Override
-            public OnCompletionDefinition onCompletion() { return super.onCompletion(); }
-        }
-      name: Kafka2S3Route.java
+  selector:
+    app: kafka-to-s3
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
 {%- else %}
-# Kafka→S3 integration disabled — anomaly detection not enabled
+# Kafka→S3 Camel Quarkus route disabled — anomaly detection not enabled
 {%- endif %}

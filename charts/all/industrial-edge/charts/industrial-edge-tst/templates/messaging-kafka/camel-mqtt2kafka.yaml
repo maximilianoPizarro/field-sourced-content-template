@@ -1,0 +1,133 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mqtt2kafka-routes
+  namespace: industrial-edge-tst-all
+data:
+  mqtt-to-kafka.camel.yaml: |
+    - route:
+        id: mqtt-temperature-to-kafka
+        from:
+          uri: paho:{{ .Values.mqtt.broker.topic.temperature }}
+          parameters:
+            brokerUrl: {{ .Values.mqtt.broker.uri }}
+            clientId: {{ .Values.mqtt.broker.clientId }}-temp
+          steps:
+            - log:
+                message: "Temperature reading from MQTT: ${body}"
+            - setHeader:
+                name: kafka.KEY
+                constant: industrial-edge-tst
+            - to:
+                uri: kafka:{{ .Values.kafka.broker.topic.temperature }}
+                parameters:
+                  brokers: {{ .Values.kafka.broker.uri }}
+            - log:
+                message: "Temperature forwarded to Kafka"
+    - route:
+        id: mqtt-vibration-to-kafka
+        from:
+          uri: paho:{{ .Values.mqtt.broker.topic.vibration }}
+          parameters:
+            brokerUrl: {{ .Values.mqtt.broker.uri }}
+            clientId: {{ .Values.mqtt.broker.clientId }}-vibr
+          steps:
+            - log:
+                message: "Vibration reading from MQTT: ${body}"
+            - setHeader:
+                name: kafka.KEY
+                constant: industrial-edge-tst
+            - to:
+                uri: kafka:{{ .Values.kafka.broker.topic.vibration }}
+                parameters:
+                  brokers: {{ .Values.kafka.broker.uri }}
+            - log:
+                message: "Vibration forwarded to Kafka"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mqtt2kafka
+  namespace: industrial-edge-tst-all
+  labels:
+    app: mqtt2kafka
+    app.openshift.io/runtime: camel
+    app.kubernetes.io/part-of: industrial-edge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mqtt2kafka
+  template:
+    metadata:
+      labels:
+        app: mqtt2kafka
+        app.openshift.io/runtime: camel
+    spec:
+      containers:
+        - name: camel
+          image: {{ .Values.camel.image | default "docker.io/apache/camel-jbang:4.21.0-21-jdk" }}
+          imagePullPolicy: IfNotPresent
+          workingDir: /tmp
+          command: ["camel"]
+          args:
+            - "run"
+            - "/etc/camel/routes/mqtt-to-kafka.camel.yaml"
+            - "--runtime=quarkus"
+          env:
+            - name: HOME
+              value: /tmp
+            - name: JBANG_DIR
+              value: /tmp/.jbang
+          ports:
+            - name: http
+              containerPort: 8080
+          volumeMounts:
+            - name: routes
+              mountPath: /etc/camel/routes
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          startupProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 36
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 20
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 10
+      volumes:
+        - name: routes
+          configMap:
+            name: mqtt2kafka-routes
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mqtt2kafka
+  namespace: industrial-edge-tst-all
+  labels:
+    app: mqtt2kafka
+    app.openshift.io/runtime: camel
+spec:
+  selector:
+    app: mqtt2kafka
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

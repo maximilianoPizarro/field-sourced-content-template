@@ -1,0 +1,73 @@
+metadata_version: "1.0"
+name: event-driven-architecture
+pattern_version: "1.0"
+description: >
+  Single-cluster Event-Driven Architecture workshop on OpenShift: Kafka CDC,
+  Developer Hub, Keycloak, Gitea, Lightspeed/MCP, Industrial Edge, and NeuroFace.
+  Hub-only Validated Pattern (no ACM, Vault, or ESO). GitOps reuses openshift-gitops.
+display_name: Event-Driven Architecture Workshop
+repo_url: https://github.com/maximilianoPizarro/field-sourced-content-template
+docs_repo_url: https://github.com/maximilianoPizarro/field-sourced-content-template
+issues_url: https://github.com/maximilianoPizarro/field-sourced-content-template/issues
+docs_url: https://maximilianopizarro.github.io/field-sourced-content-template/
+ci_url: https://github.com/maximilianoPizarro/field-sourced-content-template/actions
+tier: sandbox
+org: maximilianoPizarro
+owners:
+  - maximilianoPizarro
+clustergroupname: hub
+maintainers:
+  - name: Maximiliano Pizarro
+    email: mapizarr@redhat.com
+    role: Specialist Solution Architect
+minOCPVersion: "4.20"
+gitBranch: main
+industries:
+  - energy
+  - manufacturing
+useCases:
+  - event-driven
+  - ai-ml
+  - devops
+products:
+  - name: Red Hat OpenShift Container Platform
+    version: "4.21"
+  - name: Red Hat OpenShift GitOps
+    version: "1.14"
+  - name: Red Hat Developer Hub
+    version: fast
+  - name: Red Hat Streams for Apache Kafka
+    version: stable
+  - name: Red Hat OpenShift AI
+    version: "3.4"
+  - name: Red Hat OpenShift Service Mesh
+    version: "3"
+  - name: Red Hat Connectivity Link
+    version: stable
+  - name: Red Hat OpenShift Lightspeed
+    version: stable
+  - name: Red Hat Build of Keycloak
+    version: "26.4"
+  - name: OpenShift DevSpaces
+    version: stable
+requirements:
+  hub:
+    controlPlane:
+      platform:
+        aws:
+          replicas: 3
+          type: m5.2xlarge
+    compute:
+      platform:
+        aws:
+          replicas: 4
+          type: m5.8xlarge
+extra_features:
+  spoke_support: false
+  hub_only_support: true
+  hypershift_support: false
+external_requirements:
+  cluster_sizing_note: >
+    Full lab (30 users): 3 workers × 64 vCPU / 128 Gi, or 4 × m5.8xlarge
+    (32 vCPU / 128 Gi). Do not treat m5.8xlarge as 64 vCPU.
+  pattern_cr_examples: examples/pattern-cr/

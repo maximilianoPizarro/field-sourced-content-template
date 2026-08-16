@@ -32,7 +32,7 @@ https://camel.apache.org/[Apache Camel] is an open source integration framework 
 
 *Red Hat build of Apache Camel for Quarkus* is the supported distribution for OpenShift — cloud-native, fast startup, GraalVM native.
 
-NOTE: Red Hat Camel K (serverless) reached End of Life in June 2025. The migration path is *Camel for Quarkus*, which offers the same route model but with traditional deployment.
+NOTE: Red Hat Camel K (serverless) reached End of Life in June 2025. This workshop deploys *Camel for Quarkus* (JBang `--runtime=quarkus` Deployments plus Kaoto YAML routes). It does not install the Camel K operator. The xref:19-openshift-integration-operator.adoc[OpenShift Integration Operator] (OperatorHub community catalog) adds Kaoto and `IntegrationFlow` lifecycle in the OpenShift console.
 
 == What is Kaoto?
 
@@ -173,6 +173,7 @@ image::ROOT:camel.png[Kaoto — Visual Camel Route Designer in DevSpaces,width=1
 * https://docs.redhat.com/en/documentation/red_hat_build_of_apache_camel/4.8/html/getting_started_with_camel_quarkus/index[Getting Started with Camel Quarkus^] — Quick start guide with Camel for Quarkus
 * https://camel.apache.org/components/4.x/[Apache Camel Components^] — Full component catalog (Kafka, HTTP, JSON, etc.)
 * https://camel.apache.org/camel-quarkus/next/index.html[Camel Quarkus Documentation^] — Camel on Quarkus (upstream)
+* xref:19-openshift-integration-operator.adoc[OpenShift Integration Operator] — Kaoto and IntegrationFlow in the OpenShift console (OperatorHub)
 * https://kaoto.io/docs/[Kaoto Documentation^] — Visual Camel route designer
 * https://docs.redhat.com/en/documentation/red_hat_openshift_dev_spaces[Red Hat OpenShift Dev Spaces^] — Cloud-native IDE with Kaoto pre-installed
 * https://camel.apache.org/camel-quarkus/next/reference/extensions/kafka.html[Camel Kafka Component^] — Kafka component reference in Camel

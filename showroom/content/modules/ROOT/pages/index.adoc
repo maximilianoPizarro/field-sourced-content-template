@@ -46,6 +46,8 @@
 
 Welcome to *Event-Driven Architecture Live* -- a hands-on, real-time Change Data Capture (CDC) pipeline running on Red Hat OpenShift.
 
+This lab assumes the *full* Validated Pattern (`values-global.yaml` + `values-hub.yaml`, 30 users). Skip modules that need DevSpaces, Grafana, Lightspeed, BPM, Industrial Edge, or NeuroFace if the cluster was ordered with `values-lite.yaml`.
+
 This environment wires a production-style event backbone: relational data changes are captured at the database, streamed through Apache Kafka, processed by integration and workflow services, and observed end-to-end. Use the steps below to follow the data from insert to notification and beyond.
 
 == What's running

@@ -1,3 +1,6 @@
 # Vendored from https://gitlab.com/maximilianoPizarro/connectivity-link (devspaces)
 enabled: true
 clusterDomain: ""
+llmApiKey: "sk-no-key"
+llmEndpoint: ""
+llmModel: "qwen25-7b-instruct"

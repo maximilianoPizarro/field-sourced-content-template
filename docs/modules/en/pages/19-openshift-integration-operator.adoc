@@ -1,0 +1,198 @@
+= OpenShift Integration Operator
+:navtitle: OpenShift Integration Operator
+
+++++
+<div id="scene-oio" style="width:100%;min-height:400px;"></div>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../_/js/three-helper.js"></script>
+<script>
+(function(){
+  var ctx = ThreeHelper.initScene('scene-oio', {height:400, camY:10, camZ:22});
+  if(!ctx) return;
+  var cons = ThreeHelper.createNode(ctx.scene,'Console + Kaoto',0x0066CC,-10,0,0,{width:3.2});
+  var cr   = ThreeHelper.createNode(ctx.scene,'IntegrationFlow',0xCC0000,-3,0,0,{width:3});
+  var op   = ThreeHelper.createNode(ctx.scene,'Operator',0xF57C00,4,0,0,{width:2.4});
+  var wrk  = ThreeHelper.createNode(ctx.scene,'Camel Worker',0x4CAF50,10,0,-3,{width:2.6});
+  var git  = ThreeHelper.createNode(ctx.scene,'GitOps',0x9C27B0,10,0,3,{width:2.2});
+  var edges = [
+    ThreeHelper.createEdge(ctx.scene,cons,cr,0x0066CC,{speed:0.009}),
+    ThreeHelper.createEdge(ctx.scene,cr,op,0xCC0000,{speed:0.008}),
+    ThreeHelper.createEdge(ctx.scene,op,wrk,0xF57C00,{speed:0.01}),
+    ThreeHelper.createEdge(ctx.scene,op,git,0x9C27B0,{speed:0.006})
+  ];
+  ThreeHelper.animate(ctx, edges);
+})();
+</script>
+++++
+
+== What this operator adds
+
+https://maximilianopizarro.github.io/openshift-integration-operator/[OpenShift Integration Operator^] is the lifecycle and UX layer for Apache Camel on OpenShift. It does not replace Camel Quarkus. You design flows visually, try them ephemerally, then promote them to GitOps.
+
+The operator is listed in the https://operatorhub.io/operator/openshift-integration-operator[OperatorHub community catalog^] (`community-operators`, package `openshift-integration-operator`, channel `alpha`). Current CSV on OperatorHub is *0.8.2*. It is community software (Apache 2.0), not a Red Hat supported product.
+
+This full lab installs it with the Validated Patterns `clusterGroup.subscriptions` entry in `values-hub.yaml`. OpenShift GitOps reconciles a Subscription in namespace `openshift-integration` (`AllNamespaces`). After the CSV is `Succeeded`, the OpenShift Console shows *Integration Platform*.
+
+This module complements xref:05-kaoto-camel.adoc[Kaoto in DevSpaces]. DevSpaces edits YAML routes in a workspace. The console plugin edits `IntegrationFlow` custom resources on the cluster.
+
+image::ROOT:oio-reconciliation-loop.svg[Operator reconciliation: IntegrationFlow CR to worker Deployment,width=100%]
+
+== How this lab installs it
+
+The Pattern creates namespace `openshift-integration` with a cluster-scoped OperatorGroup and this Subscription:
+
+[source,yaml]
+----
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: openshift-integration-operator
+  namespace: openshift-integration
+spec:
+  channel: alpha
+  name: openshift-integration-operator
+  source: community-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic
+----
+
+Lite (`values-lite.yaml`) leaves this Subscription enabled so you still get Kaoto in the console when DevSpaces is off.
+
+== Open the console plugin
+
+. Log in to the OpenShift Console.
+. Open *Integration Platform* → *Integration Flows*.
+. Search, filter by type or phase, and follow links to Pods and Tekton Pipelines.
+
+image::ROOT:oio-console-plugin.png[Integration Flows list — search, filters, links to Pods and Builds,width=100%]
+
+== Console tour
+
+Screenshots below come from the https://maximilianopizarro.github.io/openshift-integration-operator/[operator documentation site^].
+
+=== Inspect the visual diagram
+
+The SVG diagram shows saga branching (choice, multicast). Click a node to highlight the matching YAML.
+
+image::ROOT:oio-console-plugin-saga.png[Visual saga flow diagram with branching logic,width=100%]
+
+=== Edit in Kaoto
+
+The plugin embeds the Kaoto canvas so you drag Camel components in the console — the same designer you use in DevSpaces, bound to `spec.kaotoDesign`.
+
+image::ROOT:oio-console-plugin-kaoto.png[Kaoto designer embedded in the OpenShift Console,width=100%]
+
+=== Sync YAML to Git
+
+In GitOps mode the YAML editor keeps `kaotoDesign` in sync with the configured repository.
+
+image::ROOT:oio-console-plugin-editor.png[YAML editor for kaotoDesign with Git sync,width=100%]
+
+=== Configure spec and status
+
+The spec panel exposes deployment mode, engine, targeting, resilience, and circuit-breaker state.
+
+image::ROOT:oio-console-plugin-spec.png[IntegrationFlow spec and status — resilience, targeting, lifecycle,width=100%]
+
+=== Check platform health
+
+The status dashboard reports Operator API, Kaoto, Gitea, Argo CD, Tekton, and OpenTelemetry Collector.
+
+image::ROOT:oio-console-plugin-status.png[Platform Status — Operator, Kaoto, Gitea, Argo CD, Tekton health,width=100%]
+
+=== Monitor KPIs
+
+Overview cards show total flows, running count, error rate, and distribution by type and mode.
+
+image::ROOT:oio-console-plugin-overview.png[Flow Overview — KPIs, plugin version, catalog mode,width=100%]
+
+=== Stream worker logs
+
+The Logs tab tails the worker pod (ephemeral or GitOps), with container selector and follow mode.
+
+image::ROOT:oio-console-plugin-logs.png[Flow logs — live worker pod streaming,width=100%]
+
+=== Pause, resume, stop
+
+Lifecycle controls confirm Pause, Resume, and Stop against the current phase.
+
+image::ROOT:oio-console-plugin-pause-flow.png[Lifecycle controls — Pause, Resume, Stop,width=100%]
+
+== Quick Try (ephemeral)
+
+Quick Try deploys a precompiled Camel Quarkus worker from `kaotoDesign` without Git, Tekton, or Argo CD. Set `deploymentMode: EPHEMERAL` and a TTL. Deleting the CR removes owned Deployments.
+
+Apply this sample in `openshift-integration` (or any namespace the operator watches):
+
+[source,yaml]
+----
+apiVersion: platform.io/v1alpha1
+kind: IntegrationFlow
+metadata:
+  name: ephemeral-camel-demo
+  namespace: openshift-integration
+spec:
+  engine: CAMEL
+  integrationType: CAMEL_ROUTE
+  deploymentMode: EPHEMERAL
+  kaotoDesign: |
+    - route:
+        id: quick-try
+        from:
+          uri: "timer:tick"
+          parameters:
+            period: 10000
+        steps:
+          - log:
+              message: "Ephemeral quick-try flow"
+  ephemeral:
+    ttlSeconds: 3600
+----
+
+[source,bash]
+----
+oc apply -f ephemeral-camel-demo.yaml
+oc get integrationflow ephemeral-camel-demo -n openshift-integration -w
+----
+
+The CDC processor in `kafka-cdc` stays a Camel Quarkus Deployment from the cdc-pipeline chart. Use IntegrationFlow for new routes you want to try in the console, then promote to GitOps when the route is ready.
+
+Do not point a long-running workshop flow at production credentials from Quick Try. TTL expires the worker; extend it from the console if you need more time.
+
+== Workers, MCP, and telemetry
+
+The operator selects a precompiled worker image from the route (or you pin `spec.ephemeral.workerImage`). Domain images cover core, messaging, HTTP, data, cloud, and AI extensions.
+
+image::ROOT:oio-worker-autoscaling.svg[HPA v2 scales each IntegrationFlow worker independently,width=100%]
+
+Camel routes can expose MCP tools, and flows can call models. That complements xref:08-mcp-lightspeed.adoc[Lightspeed MCP] and xref:17-ai-playground-kafka-mcp.adoc[AI Playground + Kafka MCP] already in this lab.
+
+image::ROOT:oio-mcp-bridge.svg[MCP bridge — AI tools discover and invoke Camel routes,width=100%]
+
+Workers emit OpenTelemetry. The console colors canvas nodes from an SSE telemetry stream.
+
+image::ROOT:oio-telemetry-pipeline.svg[OpenTelemetry collector to console SSE overlay,width=100%]
+
+== Verify on the cluster
+
+[source,bash]
+----
+oc get csv -n openshift-integration
+oc get subscription openshift-integration-operator -n openshift-integration
+oc get consoleplugin
+oc get crd integrationflows.platform.io
+----
+
+Expect CSV `openshift-integration-operator.v0.8.2` (or newer on channel `alpha`) in phase `Succeeded`, and ConsolePlugin `integration-console-plugin`. Then open *Integration Platform* in the console.
+
+== Official documentation
+
+* https://maximilianopizarro.github.io/openshift-integration-operator/[OpenShift Integration Operator (GitHub Pages)^] — product site used for the screenshots on this page
+* https://maximilianopizarro.github.io/openshift-integration-operator/quickstart.html[Quick Start^] — ephemeral Track A and GitOps Track B
+* https://maximilianopizarro.github.io/openshift-integration-operator/architecture.html[Architecture^]
+* https://maximilianopizarro.github.io/openshift-integration-operator/try-it-now.html[Try It Now / OperatorHub^]
+* https://operatorhub.io/operator/openshift-integration-operator[OperatorHub listing^]
+* https://artifacthub.io/packages/olm/community-operators/openshift-integration-operator[Artifact Hub (OLM + Trivy report)^]
+* https://github.com/maximilianoPizarro/openshift-integration-operator[Operator source on GitHub^]
+* xref:05-kaoto-camel.adoc[Kaoto + Apache Camel] — CDC route and DevSpaces designer

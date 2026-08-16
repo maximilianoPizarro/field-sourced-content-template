@@ -24,7 +24,7 @@
   "profiles": {
     "full": {
       "description": "All components enabled — AI/ML, Service Mesh, Observability, DevSpaces, BPM, Industrial Edge. Matches GitHub Pages and Showroom labs.",
-      "valuesFiles": ["examples/helm/values.yaml"],
+      "valuesFiles": ["values-global.yaml", "values-hub.yaml"],
       "estimatedResources": {
         "fixedCPU": "66 vCPU requests / ~15 vCPU measured idle",
         "fixedRAM": "122 Gi requests / ~87 Gi measured idle",
@@ -36,8 +36,8 @@
       }
     },
     "lite": {
-      "description": "Core EDA workshop only — Kafka CDC, Developer Hub, Keycloak, Gitea, Mailpit. No AI/ML, DevSpaces, Service Mesh, Observability, or NeuroFace. RHDP does not load this overlay unless you pass it as a Helm valueFile.",
-      "valuesFiles": ["examples/helm/values.yaml", "examples/helm/values-lite.yaml"],
+      "description": "Core EDA workshop only — Kafka CDC, Developer Hub, Keycloak, Gitea, Mailpit. No AI/ML, DevSpaces, Service Mesh, Observability, or NeuroFace. Set Pattern extraValueFiles to /values-lite.yaml (RHDP: pattern.extraValueFiles on the bootstrap chart).",
+      "valuesFiles": ["values-global.yaml", "values-hub.yaml", "values-lite.yaml"],
       "estimatedResources": {
         "fixedCPU": "20-25 vCPU",
         "fixedRAM": "30-40 Gi",

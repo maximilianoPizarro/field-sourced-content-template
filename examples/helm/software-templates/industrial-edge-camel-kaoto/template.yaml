@@ -4,7 +4,7 @@ metadata:
   name: industrial-edge-camel-kaoto
   title: "Industrial Edge — Camel Routes (Kaoto)"
   description: >
-    Camel Quarkus routes that replicate the Industrial Edge Camel K integrations
+    Camel Quarkus routes for Industrial Edge
     (MQTT→Kafka, Kafka→S3, anomaly alerts→Mailpit) as visual YAML routes
     editable with the Kaoto designer in DevSpaces. Includes Continue AI,
     OpenShift Toolkit for one-click deploy, and JBang for quick testing.
@@ -42,7 +42,7 @@ spec:
         description:
           title: Description
           type: string
-          default: "Industrial Edge Camel routes — Kaoto visual alternative to Camel K integrations"
+          default: "Industrial Edge Camel Quarkus routes — Kaoto visual designer"
         clusterDomain:
           title: Cluster Domain
           type: string

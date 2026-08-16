@@ -14,7 +14,9 @@ spec:
     type: jbod
     volumes:
       - id: 0
-        type: ephemeral
+        type: persistent-claim
+        size: 10Gi
+        deleteClaim: false
         kraftMetadata: shared
 ---
 apiVersion: kafka.strimzi.io/v1beta2

@@ -1,0 +1,55 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: model-init
+  namespace: ml-development
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: init
+          image: registry.access.redhat.com/ubi9/python-311:latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              pip install -q minio scikit-learn==1.3.0 numpy==1.24.3 joblib==1.3.1
+              python3 << 'PYEOF'
+              from sklearn.ensemble import IsolationForest
+              import numpy as np
+              import joblib
+              from minio import Minio
+              from minio.error import S3Error
+
+              client = Minio(
+                  '{{ .Values.s3.default_endpoint | replace "http://" "" }}',
+                  access_key='minioadmin',
+                  secret_key='minioadmin',
+                  secure=False,
+              )
+
+              for bucket in ['anomaly-detection', 'user-bucket', 'pipeline-bucket']:
+                  if not client.bucket_exists(bucket):
+                      client.make_bucket(bucket)
+                      print(f'Created bucket: {bucket}')
+                  else:
+                      print(f'Bucket exists: {bucket}')
+
+              try:
+                  client.stat_object('user-bucket', 'initial_model.joblib')
+                  print('Model already exists in user-bucket, skipping creation')
+              except S3Error:
+                  np.random.seed(42)
+                  data = np.random.normal(loc=0.0, scale=1.0, size=(500, 2))
+                  model = IsolationForest(n_estimators=100, contamination=0.05, random_state=42)
+                  model.fit(data)
+                  joblib.dump(model, '/tmp/initial_model.joblib')
+                  client.fput_object('user-bucket', 'initial_model.joblib', '/tmp/initial_model.joblib')
+                  print(f'Created and uploaded initial_model.joblib (numpy {np.__version__}, sklearn 1.3.0)')
+              PYEOF

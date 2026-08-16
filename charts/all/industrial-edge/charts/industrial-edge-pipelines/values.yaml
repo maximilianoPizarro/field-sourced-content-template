@@ -1,0 +1,58 @@
+clusterDomain: apps.cluster.example.com
+
+global:
+  pattern: field-content
+  repoURL: "https://github.com/maximilianoPizarro/field-sourced-content-template.git"
+  localClusterDomain: apps.cluster.example.com
+  targetRevision: main
+
+  git:
+    account: gitea_admin
+    email: admin@example.com
+    dev_revision: main
+
+  imageregistry:
+    type: openshift-internal
+
+clusterGroup:
+  name: hub
+  isHubCluster: true
+
+iot_consumer:
+  image: iot-consumer
+  yaml_path: '.iot_consumer.tag'
+  built_tags_path: '.iot_consumer.built_tags'
+  test_values_path: overrides/values-test-imagedata.yaml
+  prod_values_path: overrides/values-prod-imagedata.yaml
+
+iot_frontend:
+  image: iot-frontend
+  yaml_path: '.iot_frontend.tag'
+  built_tags_path: '.iot_frontend.built_tags'
+  test_values_path: overrides/values-test-imagedata.yaml
+  prod_values_path: overrides/values-prod-imagedata.yaml
+
+machine_sensor:
+  image: iot-software-sensor
+  yaml_path: '.machine_sensor.tag'
+  built_tags_path: '.machine_sensor.built_tags'
+  test_values_path: overrides/values-test-imagedata.yaml
+  prod_values_path: overrides/values-prod-imagedata.yaml
+
+yq:
+  image: quay.io/hybridcloudpatterns/yq:latest
+
+pipeline_components:
+  - component_name: iot-consumer
+    builder_image: registry.access.redhat.com/rhscl/nodejs-10-rhel7
+    output_image_name: messaging
+    configmap_prefix: IOT_CONSUMER
+  - component_name: iot-frontend
+    builder_image: quay.io/hybridcloudpatterns/ubi8-s2i-web-app
+    chained_build_dockerfile: "FROM quay.io/hybridcloudpatterns/httpd-ionic\nCOPY --from=0 /opt/app-root/output /var/www/html/"
+    output_image_name: line-dashboard
+    configmap_prefix: IOT_FRONTEND
+  - component_name: iot-software-sensor
+    builder_image: registry.access.redhat.com/redhat-openjdk-18/openjdk18-openshift
+    output_image_name: machine-sensor
+    configmap_prefix: IOT_SWSENSOR

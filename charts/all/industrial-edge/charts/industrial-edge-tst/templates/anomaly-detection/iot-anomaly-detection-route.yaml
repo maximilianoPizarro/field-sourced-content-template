@@ -1,0 +1,15 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: anomaly-detection
+  labels:
+    component: serving
+spec:
+  port:
+    targetPort: http
+  to:
+    kind: Service
+    name: modelmesh-serving
+  tls:
+    insecureEdgeTerminationPolicy: Allow
+    termination: edge

@@ -565,7 +565,7 @@ spec:
       serviceAccountName: mcp-controller
       containers:
         - name: controller
-          image: ghcr.io/kuadrant/mcp-controller:latest
+          image: ghcr.io/kuadrant/mcp-controller:v0.7.1
           command:
             - ./mcp_controller
           args:

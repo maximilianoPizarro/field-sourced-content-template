@@ -7,6 +7,7 @@ metadata:
   labels:
     opendatahub.io/dashboard: "true"
   name: inference-service
+  namespace: industrial-edge-tst-all
 spec:
   predictor:
     model:

@@ -4,6 +4,7 @@ metadata:
   labels:
     app: line-dashboard
   name: line-dashboard
+  namespace: industrial-edge-tst-all
 spec:
   port:
     targetPort: 8080-tcp

@@ -394,10 +394,18 @@ spec:
             SITE_FILE="/showroom/repo/{{ .Values.showroom.content.antoraPlaybook }}"
             if [ -f "$SITE_FILE" ]; then
               sed -i 's|%cluster_domain%|{{ .Values.deployer.domain }}|g' "$SITE_FILE"
-              # Antora requires url to be a git repo. The playbook is under showroom/.
-              sed -i '/url: \.\s*$/s/url: \./url: ../' "$SITE_FILE"
+              # Relative urls are resolved against playbook.dir. In this image that is
+              # FILES_DIR (/showroom/repo), so ".." becomes /showroom (not a git repo).
+              # Pin the content source to the clone root and keep start_path under showroom/.
+              sed -i 's|^[[:space:]]*- url: \.\+|    - url: /showroom/repo|' "$SITE_FILE"
               sed -i 's/start_path: content$/start_path: showroom\/content/' "$SITE_FILE"
+              if [ ! -e /showroom/repo/.git ]; then
+                git -C /showroom/repo init
+                git -C /showroom/repo add -A
+                git -C /showroom/repo -c user.email=showroom@local -c user.name=showroom commit -m 'antora local source' --quiet || true
+              fi
               echo "Injected cluster_domain={{ .Values.deployer.domain }} into $SITE_FILE"
+              grep -E 'url:|start_path:' "$SITE_FILE" | head -8
             else
               echo "WARNING: $SITE_FILE not found"
             fi

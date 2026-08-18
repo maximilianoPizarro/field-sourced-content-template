@@ -1313,6 +1313,21 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 ---
+{{- $argoSecret := lookup "v1" "Secret" "openshift-gitops" "openshift-gitops-cluster" }}
+{{- if $argoSecret }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-admin-password
+  namespace: mcp-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+type: Opaque
+data:
+  password: {{ index $argoSecret.data "admin.password" }}
+{{- end }}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:

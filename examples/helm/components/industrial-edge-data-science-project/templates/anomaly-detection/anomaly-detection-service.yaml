@@ -9,6 +9,7 @@ metadata:
   labels:
     opendatahub.io/dashboard: "true"
   name: inference-service
+  namespace: ml-development
 spec:
   predictor:
     model:

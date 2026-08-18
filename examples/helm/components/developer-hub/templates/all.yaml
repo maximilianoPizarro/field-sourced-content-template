@@ -1,3 +1,10 @@
+{{- $llmInjected := trim (printf "%s" (.Values.llmEndpoint | default "")) }}
+{{- $rhdhLlmURL := $llmInjected }}
+{{- $rhdhLlmModel := coalesce .Values.llmModel "qwen25-7b-instruct" }}
+{{- if not (or (hasPrefix "http://" $llmInjected) (hasPrefix "https://" $llmInjected)) }}
+{{- $rhdhLlmURL = "http://granite-llm-predictor.neuroface.svc.cluster.local/v1" }}
+{{- $rhdhLlmModel = "granite-3.1-2b-instruct" }}
+{{- end }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -936,8 +943,8 @@ data:
           - https://cdn.jsdelivr.net
     lightspeed:
       servers:
-        - id: qwen25-7b-instruct
-          url: http://openshift-mcp-server-helm-litellm.openshift-lightspeed.svc:4000/v1
+        - id: {{ $rhdhLlmModel }}
+          url: {{ $rhdhLlmURL }}
           token: "${VLLM_API_KEY}"
       prompts:
         - title: "Getting Started with Developer Hub"
@@ -957,12 +964,12 @@ metadata:
 type: Opaque
 stringData:
   ENABLE_VLLM: "1"
-  VLLM_URL: "http://openshift-mcp-server-helm-litellm.openshift-lightspeed.svc:4000/v1"
+  VLLM_URL: {{ $rhdhLlmURL | quote }}
   VLLM_API_KEY: "sk-openshift-mcp-1234"
   VLLM_MAX_TOKENS: "4096"
   VLLM_TLS_VERIFY: "false"
   VALIDATION_PROVIDER: "vllm"
-  VALIDATION_MODEL_NAME: "qwen25-7b-instruct"
+  VALIDATION_MODEL_NAME: {{ $rhdhLlmModel | quote }}
 ---
 apiVersion: rhdh.redhat.com/v1alpha4
 kind: Backstage

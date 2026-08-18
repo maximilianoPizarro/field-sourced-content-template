@@ -3,6 +3,7 @@
 {{- $maas := (.Values.maas | default dict) }}
 {{- $gls := ((.Values.global | default dict).lightspeed | default dict) }}
 {{- $llmURL := trim (printf "%s" (coalesce .Values.llmEndpoint $gls.llmEndpoint $ls.llmEndpoint $lm.apiUrl $maas.endpoint "")) }}
+{{- $llmModel := coalesce .Values.llmModel $gls.model $ls.model $lm.model $maas.model "qwen25-7b-instruct" }}
 {{- if not (or (hasPrefix "http://" $llmURL) (hasPrefix "https://" $llmURL)) }}
 {{- $existing := lookup "ols.openshift.io/v1alpha1" "OLSConfig" "openshift-lightspeed" "cluster" }}
 {{- if not $existing }}
@@ -15,6 +16,10 @@
 {{- end }}
 {{- end }}
 {{- end }}
+{{- end }}
+{{- if not (or (hasPrefix "http://" $llmURL) (hasPrefix "https://" $llmURL)) }}
+{{- $llmURL = "http://granite-llm-predictor.neuroface.svc.cluster.local/v1" }}
+{{- $llmModel = "granite-3.1-2b-instruct" }}
 {{- end }}
 ##
 ## LLM credentials for OLS (apitoken). RHDP injects litemaas.* when LiteMaaS/MaaS
@@ -34,9 +39,8 @@ stringData:
   apitoken: {{ .Values.llmApiKey | default "sk-no-key" | quote }}
 ---
 ##
-## OLSConfig — LiteLLM + MCP servers for tool calling
-## The CRD rejects url: "". Only emit url when it is http(s); otherwise keep
-## a RHDP-injected endpoint via lookup / ignoreDifferences.
+## OLSConfig — OpenAI-compatible LLM + MCP servers for tool calling.
+## Prefer RHDP-injected endpoint; otherwise Granite in neuroface.
 ##
 apiVersion: ols.openshift.io/v1alpha1
 kind: OLSConfig
@@ -59,10 +63,10 @@ spec:
         credentialsSecretRef:
           name: llm-credentials
         models:
-          - name: {{ .Values.llmModel | default "granite-3-2-8b-instruct" }}
+          - name: {{ $llmModel | quote }}
   ols:
     defaultProvider: litellm
-    defaultModel: {{ .Values.llmModel | default "granite-3-2-8b-instruct" }}
+    defaultModel: {{ $llmModel | quote }}
     logLevel: INFO
     querySystemPrompt: |
       You have MCP tool functions available. When the user asks about

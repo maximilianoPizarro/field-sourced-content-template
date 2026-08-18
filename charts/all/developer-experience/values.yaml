@@ -69,7 +69,7 @@ deployer:
 # --- from workshop-registration ---
 registration:
   enabled: true
-  maxUsers: 200
+  maxUsers: 30
   adminToken: "workshop-admin-2024"
 
 keycloak:

@@ -27,7 +27,7 @@ data:
     import http.server, json, os, datetime, urllib.request, urllib.parse, ssl, threading, hashlib
 
     DATA_FILE = os.environ.get('DATA_FILE', '/data/users.json')
-    MAX_USERS = int(os.environ.get('MAX_USERS', '200'))
+    MAX_USERS = int(os.environ.get('MAX_USERS', '30'))
     ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', 'change-me')
     SHOWROOM_URL = os.environ.get('SHOWROOM_URL', '')
     CLUSTER_DOMAIN = os.environ.get('CLUSTER_DOMAIN', '')

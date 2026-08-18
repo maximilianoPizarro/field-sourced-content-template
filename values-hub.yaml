@@ -358,6 +358,10 @@ clusterGroup:
           kind: Job
           jsonPointers:
             - /spec
+        - group: gateway.networking.k8s.io
+          kind: HTTPRoute
+          jsonPointers:
+            - /status
       overrides:
         - name: userCount
           value: '{{ .Values.userCount | default 30 }}'

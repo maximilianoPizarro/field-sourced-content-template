@@ -671,55 +671,10 @@ spec:
   wildcardPolicy: None
 ---
 ##
-## 9. HTTPRoute — openshift-mcp-server backend
-##
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: openshift-mcp-route
-  namespace: openshift-lightspeed
-  annotations:
-    argocd.argoproj.io/sync-wave: "3"
-spec:
-  parentRefs:
-    - name: mcp-gateway
-      namespace: mcp-system
-      sectionName: mcp
-  hostnames:
-    - field-content-ols.openshift-lightspeed.svc.cluster.local
-  rules:
-    - backendRefs:
-        - group: ""
-          kind: Service
-          name: field-content-ols
-          port: 8080
-          weight: 1
----
-##
-## 10. HTTPRoute — kubernetes-mcp-server backend
-##
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: kubernetes-mcp-route
-  namespace: openshift-lightspeed
-  annotations:
-    argocd.argoproj.io/sync-wave: "3"
-spec:
-  parentRefs:
-    - name: mcp-gateway
-      namespace: mcp-system
-      sectionName: mcp
-  hostnames:
-    - field-content-ols-k8s-mcp.openshift-lightspeed.svc.cluster.local
-  rules:
-    - backendRefs:
-        - group: ""
-          kind: Service
-          name: field-content-ols-k8s-mcp
-          port: 8085
-          weight: 1
----
+## OLS already deploys openshift-mcp-server (HTTPS :8443) from OLSConfig.
+## Do not federate the old field-content-ols / field-content-ols-k8s-mcp
+## Services: they are not created on a fresh install, HTTPRoutes stay
+## Degraded, and Argo waits forever on ai-ml.
 ##
 ## Kafka MCP Server — Deployment, Service, HTTPRoute, MCPServerRegistration
 ##
@@ -858,7 +813,7 @@ data:
     if __name__ == "__main__":
         mcp.run(transport="streamable-http")
   requirements.txt: |
-    mcp[cli]>=1.27.0
+    mcp[cli]>=1.27.0,<2
     confluent-kafka>=2.6.0
 ---
 apiVersion: apps/v1
@@ -990,44 +945,6 @@ spec:
     group: gateway.networking.k8s.io
     kind: HTTPRoute
     name: kafka-mcp-route
----
-##
-## 11. MCPServerRegistration — openshift-mcp-server
-##
-apiVersion: mcp.kuadrant.io/v1alpha1
-kind: MCPServerRegistration
-metadata:
-  name: openshift-mcp-server
-  namespace: openshift-lightspeed
-  annotations:
-    argocd.argoproj.io/sync-wave: "4"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-spec:
-  toolPrefix: ocp_
-  path: /mcp
-  targetRef:
-    group: gateway.networking.k8s.io
-    kind: HTTPRoute
-    name: openshift-mcp-route
----
-##
-## 12. MCPServerRegistration — kubernetes-mcp-server
-##
-apiVersion: mcp.kuadrant.io/v1alpha1
-kind: MCPServerRegistration
-metadata:
-  name: kubernetes-mcp-server
-  namespace: openshift-lightspeed
-  annotations:
-    argocd.argoproj.io/sync-wave: "4"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-spec:
-  toolPrefix: k8s_
-  path: /mcp
-  targetRef:
-    group: gateway.networking.k8s.io
-    kind: HTTPRoute
-    name: kubernetes-mcp-route
 ---
 ##
 ## ArgoCD MCP Server — ConfigMap, ServiceAccount, RBAC, Deployment, Service, HTTPRoute, MCPServerRegistration
@@ -1303,7 +1220,7 @@ data:
     if __name__ == "__main__":
         mcp.run(transport="streamable-http")
   requirements.txt: |
-    mcp[cli]>=1.27.0
+    mcp[cli]>=1.27.0,<2
 ---
 apiVersion: v1
 kind: ServiceAccount

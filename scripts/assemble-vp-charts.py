@@ -57,6 +57,11 @@ LITE_WRAP = {
     "cdc-pipeline": ["kogito-bpm.yaml"],
 }
 
+# Templates that live only under charts/all (not examples/helm/components).
+KEEP_TEMPLATES = {
+    "developer-experience": ["userinfo.yaml"],
+}
+
 CHART_META = {
     "platform": "Namespaces, OAuth htpasswd users, workshop RBAC, console links, GitOps tuning",
     "identity-scm": "RHBK plus Gitea Route/Job (upstream Gitea chart is a separate Application)",
@@ -153,9 +158,16 @@ def assemble_flat() -> None:
     for group, comps in FLAT_GROUPS.items():
         gdir = DST / group
         tdir = gdir / "templates"
+        keep = {}
+        for fname in KEEP_TEMPLATES.get(group, []):
+            p = tdir / fname
+            if p.exists():
+                keep[fname] = p.read_text()
         if tdir.exists():
             shutil.rmtree(tdir)
         tdir.mkdir(parents=True, exist_ok=True)
+        for fname, text in keep.items():
+            (tdir / fname).write_text(text)
         write_chart_yaml(gdir / "Chart.yaml", group, CHART_META[group])
         values_bits = [
             "global:",
@@ -166,6 +178,8 @@ def assemble_flat() -> None:
             '    llmApiKey: "sk-no-key"',
             '    llmEndpoint: ""',
             '    model: "qwen25-7b-instruct"',
+            "  # Empty = cluster default StorageClass. Do not pin ocs-external-* (RHDP clusters often lack it).",
+            '  storageClass: ""',
             "userCount: 30",
             'clusterDomain: ""',
         ]

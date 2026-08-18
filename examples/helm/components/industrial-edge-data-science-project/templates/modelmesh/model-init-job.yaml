@@ -5,6 +5,8 @@ metadata:
   namespace: ml-development
   annotations:
     argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/compare-options: IgnoreExtraneous
 spec:
   backoffLimit: 5
   template:

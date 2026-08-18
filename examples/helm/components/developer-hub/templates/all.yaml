@@ -556,21 +556,7 @@ data:
       - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-plugin-scaffolder-backend-module-gitea:bs_1.45.3__0.2.15!backstage-plugin-scaffolder-backend-module-gitea
         disabled: false
       - package: ./dynamic-plugins/dist/backstage-community-plugin-tekton
-        pluginConfig:
-          dynamicPlugins:
-            frontend:
-              backstage-community.plugin-tekton:
-                mountPoints:
-                  - mountPoint: entity.page.ci/cards
-                    importName: TektonCI
-                    config:
-                      layout:
-                        gridColumn: "1 / -1"
-                        gridRowStart: 1
-                      if:
-                        allOf:
-                          - isTektonCIAvailable
-        disabled: false
+        disabled: true
       - package: ./dynamic-plugins/dist/backstage-community-plugin-topology
         disabled: false
       - package: ./dynamic-plugins/dist/backstage-plugin-kubernetes
@@ -592,7 +578,7 @@ data:
       - package: ./dynamic-plugins/dist/roadiehq-scaffolder-backend-module-http-request-dynamic
         disabled: false
       - package: ./dynamic-plugins/dist/roadiehq-backstage-plugin-argo-cd-backend-dynamic
-        disabled: false
+        disabled: true
       - package: oci://ghcr.io/redhat-developer/rhdh-plugin-export-overlays/backstage-community-plugin-argocd:bs_1.45.3__2.4.3!backstage-community-plugin-argocd
         disabled: false
         pluginConfig:

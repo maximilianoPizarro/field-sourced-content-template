@@ -842,6 +842,8 @@ metadata:
   namespace: neuroface
   annotations:
     argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/compare-options: IgnoreExtraneous
 spec:
   backoffLimit: 6
   template:

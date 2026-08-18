@@ -354,6 +354,10 @@ clusterGroup:
           kind: OLSConfig
           jsonPointers:
             - /spec/llm/providers
+        - group: batch
+          kind: Job
+          jsonPointers:
+            - /spec
       overrides:
         - name: userCount
           value: '{{ .Values.userCount | default 30 }}'
@@ -389,7 +393,12 @@ clusterGroup:
       syncWave: "5"
       annotations:
         argocd.argoproj.io/sync-wave: "5"
-        argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+        argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,RespectIgnoreDifferences=true
+      ignoreDifferences:
+        - group: batch
+          kind: Job
+          jsonPointers:
+            - /spec
       extraLocalClusterDomainFields:
         - clusterDomain
         - industrial-edge-minio.clusterDomain

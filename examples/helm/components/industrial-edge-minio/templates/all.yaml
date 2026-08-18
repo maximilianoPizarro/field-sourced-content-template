@@ -130,9 +130,9 @@ kind: Job
 metadata:
   name: minio-create-buckets
   annotations:
-    argocd.argoproj.io/hook: PostSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "2"
 spec:
+  backoffLimit: 8
   template:
     spec:
       restartPolicy: OnFailure
@@ -146,7 +146,15 @@ spec:
             - /bin/sh
             - -c
             - |
-              mc alias set local http://minio:9000 {{ .Values.minio.accessKey }} {{ .Values.minio.secretKey }}
+              set -euo pipefail
+              for i in $(seq 1 36); do
+                if mc alias set local http://minio:9000 {{ .Values.minio.accessKey }} {{ .Values.minio.secretKey }}; then
+                  break
+                fi
+                echo "MinIO not ready yet (${i}/36); retrying..."
+                sleep 5
+              done
               {{- range .Values.minio.buckets }}
               mc mb --ignore-existing local/{{ . }}
               {{- end }}
+              echo "Buckets ready"

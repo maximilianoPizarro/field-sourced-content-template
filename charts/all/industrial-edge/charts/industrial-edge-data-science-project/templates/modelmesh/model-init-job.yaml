@@ -5,8 +5,6 @@ metadata:
   namespace: ml-development
   annotations:
     argocd.argoproj.io/sync-wave: "3"
-    argocd.argoproj.io/hook: PostSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   backoffLimit: 5
   template:
@@ -24,6 +22,7 @@ spec:
               from sklearn.ensemble import IsolationForest
               import numpy as np
               import joblib
+              import time
               from minio import Minio
               from minio.error import S3Error
 
@@ -33,6 +32,15 @@ spec:
                   secret_key='minioadmin',
                   secure=False,
               )
+              for attempt in range(36):
+                  try:
+                      client.list_buckets()
+                      break
+                  except Exception as exc:
+                      print(f'MinIO not ready ({attempt+1}/36): {exc}')
+                      time.sleep(5)
+              else:
+                  raise SystemExit('MinIO did not become ready')
 
               for bucket in ['anomaly-detection', 'user-bucket', 'pipeline-bucket']:
                   if not client.bucket_exists(bucket):

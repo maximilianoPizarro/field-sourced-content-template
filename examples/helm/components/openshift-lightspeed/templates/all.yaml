@@ -1,3 +1,21 @@
+{{- $ls := (.Values.lightspeed | default dict) }}
+{{- $lm := (.Values.litemaas | default dict) }}
+{{- $maas := (.Values.maas | default dict) }}
+{{- $gls := ((.Values.global | default dict).lightspeed | default dict) }}
+{{- $llmURL := trim (printf "%s" (coalesce .Values.llmEndpoint $gls.llmEndpoint $ls.llmEndpoint $lm.apiUrl $maas.endpoint "")) }}
+{{- if not (or (hasPrefix "http://" $llmURL) (hasPrefix "https://" $llmURL)) }}
+{{- $existing := lookup "ols.openshift.io/v1alpha1" "OLSConfig" "openshift-lightspeed" "cluster" }}
+{{- if not $existing }}
+{{- $existing = lookup "ols.openshift.io/v1alpha1" "OLSConfig" "" "cluster" }}
+{{- end }}
+{{- if $existing }}
+{{- range (((($existing.spec | default dict).llm | default dict).providers | default list)) }}
+{{- if and .url (or (hasPrefix "http://" .url) (hasPrefix "https://" .url)) }}
+{{- $llmURL = .url }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
 ##
 ## LLM credentials for OLS (apitoken). RHDP injects litemaas.* when LiteMaaS/MaaS
 ## is on the order; otherwise lightspeed.llmApiKey (default sk-no-key).
@@ -17,6 +35,7 @@ stringData:
 ---
 ##
 ## OLSConfig — LiteLLM + MCP servers for tool calling
+## The CRD rejects url: "". Only emit url when it is http(s).
 ##
 apiVersion: ols.openshift.io/v1alpha1
 kind: OLSConfig
@@ -33,7 +52,9 @@ spec:
     providers:
       - name: litellm
         type: openai
-        url: {{ .Values.llmEndpoint | default "" | quote }}
+{{- if or (hasPrefix "http://" $llmURL) (hasPrefix "https://" $llmURL) }}
+        url: {{ $llmURL | quote }}
+{{- end }}
         credentialsSecretRef:
           name: llm-credentials
         models:

@@ -346,9 +346,14 @@ clusterGroup:
       syncWave: "5"
       annotations:
         argocd.argoproj.io/sync-wave: "5"
-        argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+        argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,RespectIgnoreDifferences=true
       extraLocalClusterDomainFields:
         - clusterDomain
+      ignoreDifferences:
+        - group: ols.openshift.io
+          kind: OLSConfig
+          jsonPointers:
+            - /spec/llm/providers
       overrides:
         - name: userCount
           value: '{{ .Values.userCount | default 30 }}'

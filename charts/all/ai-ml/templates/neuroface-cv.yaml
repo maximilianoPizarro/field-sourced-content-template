@@ -842,10 +842,8 @@ metadata:
   namespace: neuroface
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-    argocd.argoproj.io/hook: Skip
 spec:
-  backoffLimit: 3
-  ttlSecondsAfterFinished: 600
+  backoffLimit: 6
   template:
     spec:
       restartPolicy: OnFailure
@@ -856,16 +854,30 @@ spec:
             - bash
             - -c
             - |
+              set -euo pipefail
               MODEL_DIR=/models
               MODEL_FILE="$MODEL_DIR/granite-3.1-2b-instruct-Q4_K_M.gguf"
+              URL="https://huggingface.co/bartowski/granite-3.1-2b-instruct-GGUF/resolve/main/granite-3.1-2b-instruct-Q4_K_M.gguf"
+              mkdir -p "$MODEL_DIR"
               if [ -f "$MODEL_FILE" ]; then
-                echo "Model already exists, skipping download"
-                ls -lh "$MODEL_FILE"
-                exit 0
+                magic=$(head -c 4 "$MODEL_FILE" || true)
+                if [ "$magic" = "GGUF" ]; then
+                  echo "Model already exists, skipping download"
+                  ls -lh "$MODEL_FILE"
+                  exit 0
+                fi
+                echo "Existing file is not GGUF; re-downloading"
+                rm -f "$MODEL_FILE"
               fi
               echo "Downloading Granite 3.1 2B Instruct GGUF (~1.6 GB)..."
-              curl -L --progress-bar -o "$MODEL_FILE" \
-                "https://huggingface.co/bartowski/granite-3.1-2b-instruct-GGUF/resolve/main/granite-3.1-2b-instruct-Q4_K_M.gguf"
+              curl -fL --retry 10 --retry-delay 8 --retry-all-errors -o "$MODEL_FILE.part" "$URL"
+              magic=$(head -c 4 "$MODEL_FILE.part" || true)
+              if [ "$magic" != "GGUF" ]; then
+                echo "Download did not produce a GGUF file"
+                head -c 200 "$MODEL_FILE.part" || true
+                exit 1
+              fi
+              mv "$MODEL_FILE.part" "$MODEL_FILE"
               ls -lh "$MODEL_FILE"
               echo "Download complete"
           resources:
@@ -951,7 +963,7 @@ metadata:
   name: granite-llm
   namespace: neuroface
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: "3"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     serving.kserve.io/deploymentMode: RawDeployment
     openshift.io/display-name: "Granite 3.1 2B Instruct"

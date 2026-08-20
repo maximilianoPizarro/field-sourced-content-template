@@ -183,8 +183,10 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/compare-options: IgnoreExtraneous
+    argocd.argoproj.io/ignore-healthcheck: "true"
 spec:
   backoffLimit: 6
+  ttlSecondsAfterFinished: 86400
   template:
     spec:
       restartPolicy: OnFailure
@@ -1452,21 +1454,20 @@ spec:
           command: ["sh", "-c"]
           args:
             - |
-              MODEL_DIR=/models
-              MODEL_FILE="$MODEL_DIR/{{ .Values.ppe.yolo.modelName }}.pt"
-              if [ -f "$MODEL_FILE" ]; then
-                echo "Model already downloaded"
+              MODEL_FILE="{{ .Values.ppe.yolo.modelPath }}"
+              MODEL_DIR=$(dirname "$MODEL_FILE")
+              mkdir -p "$MODEL_DIR"
+              if [ -f "$MODEL_FILE" ] && [ -s "$MODEL_FILE" ]; then
+                echo "Model already present"
                 ls -lh "$MODEL_FILE"
                 exit 0
               fi
-              mkdir -p "$MODEL_DIR"
-              echo "Downloading {{ .Values.ppe.yolo.modelName }} ..."
-              curl -sL "{{ .Values.ppe.yolo.modelUrl }}" -o "$MODEL_FILE"
+              echo "Downloading {{ .Values.ppe.yolo.modelName }} to $MODEL_FILE ..."
+              curl -fL "{{ .Values.ppe.yolo.modelUrl }}" -o "$MODEL_FILE"
               ls -lh "$MODEL_FILE"
-              echo "Download complete"
           volumeMounts:
             - name: model-store
-              mountPath: /models
+              mountPath: /mnt/models
           resources:
             requests:
               cpu: 100m
@@ -1477,26 +1478,23 @@ spec:
       containers:
         - name: yolo
           image: {{ .Values.ppe.yolo.image }}
-          command: ["/bin/sh", "-c"]
-          args:
-            - |
-              pip install --quiet ultralytics &&
-              pip install --quiet --force-reinstall --no-deps opencv-python-headless &&
-              python /config/serve.py
+          imagePullPolicy: Always
           env:
-            - name: YOLO_MODEL_PATH
-              value: "/models/{{ .Values.ppe.yolo.modelName }}.pt"
-            - name: PORT
-              value: "{{ .Values.ppe.yolo.port }}"
+            - name: MODEL_PATH
+              value: "{{ .Values.ppe.yolo.modelPath }}"
+            - name: MODEL_NAME
+              value: "yolo-ppe"
+            - name: CLUSTER_NAME
+              value: "hub"
+            - name: YOLO_CONFIG_DIR
+              value: "/tmp/Ultralytics"
           ports:
-            - containerPort: {{ .Values.ppe.yolo.port }}
+            - containerPort: {{ .Values.ppe.yolo.containerPort }}
               protocol: TCP
               name: http
           volumeMounts:
             - name: model-store
-              mountPath: /models
-            - name: serving-script
-              mountPath: /config
+              mountPath: /mnt/models
           resources:
             requests:
               cpu: {{ .Values.ppe.yolo.resources.requests.cpu }}
@@ -1506,24 +1504,21 @@ spec:
               memory: {{ .Values.ppe.yolo.resources.limits.memory }}
           readinessProbe:
             httpGet:
-              path: /health
-              port: {{ .Values.ppe.yolo.port }}
-            initialDelaySeconds: 120
-            periodSeconds: 15
-            failureThreshold: 20
+              path: /v2/health/ready
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 18
           livenessProbe:
             httpGet:
               path: /health
-              port: {{ .Values.ppe.yolo.port }}
-            initialDelaySeconds: 180
+              port: http
+            initialDelaySeconds: 30
             periodSeconds: 30
             failureThreshold: 5
       volumes:
         - name: model-store
           emptyDir: {}
-        - name: serving-script
-          configMap:
-            name: yolo-serving-script
 ---
 apiVersion: v1
 kind: Service
@@ -1538,7 +1533,7 @@ spec:
   type: ClusterIP
   ports:
     - port: {{ .Values.ppe.yolo.port }}
-      targetPort: {{ .Values.ppe.yolo.port }}
+      targetPort: http
       protocol: TCP
       name: http
   selector:

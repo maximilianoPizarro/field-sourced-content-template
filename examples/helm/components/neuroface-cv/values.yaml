@@ -5,11 +5,12 @@ global:
   storageClass: ""
 
 ppe:
-  enabled: false
+  enabled: true
   yolo:
-    image: "registry.access.redhat.com/ubi9/python-312:latest"
+    image: "quay.io/maximilianopizarro/neuroface-ppe-serving:v1.5.1"
     modelName: "yolov8n"
     modelUrl: "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8n.pt"
+    modelPath: "/mnt/models/best.pt"
     replicas: 1
     resources:
       requests:
@@ -18,7 +19,10 @@ ppe:
       limits:
         cpu: "2"
         memory: 4Gi
+    # Service port stays 8000 (NeuroFace backend NEUROFACE_PPE_ENDPOINT).
+    # The prebuilt image listens on 8080.
     port: 8000
+    containerPort: 8080
   kafka:
     topic: "cv.ppe.detections"
     dlqTopic: "dlq.ppe-errors"

@@ -1,15 +1,15 @@
 # Extra values for the upstream NeuroFace chart (clusterGroup.applications.neuroface).
-# Chart 1.4.2 from https://maximilianopizarro.github.io/neuroface/ (appVersion 1.5.1, images v1.4.1).
+# Chart 1.4.2 from https://maximilianopizarro.github.io/neuroface/ (appVersion 1.5.1, images v1.5.1).
 clusterName: hub
 
 backend:
   image:
     repository: quay.io/maximilianopizarro/neuroface-backend
-    tag: v1.4.1
+    tag: v1.5.1
 frontend:
   image:
     repository: quay.io/maximilianopizarro/neuroface-frontend
-    tag: v1.4.1
+    tag: v1.5.1
 
 ovms:
   enabled: true
@@ -30,7 +30,7 @@ ppe:
   serving:
     image:
       repository: quay.io/maximilianopizarro/neuroface-ppe-serving
-      tag: v1.4.1
+      tag: v1.5.1
   kafka:
     enabled: true
     bootstrap: "cdc-cluster-kafka-bootstrap.kafka-cdc.svc:9093"

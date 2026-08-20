@@ -362,6 +362,11 @@ clusterGroup:
           kind: HTTPRoute
           jsonPointers:
             - /status
+        - group: apps
+          kind: Deployment
+          name: yolo-ppe-serving
+          jsonPointers:
+            - /spec
       overrides:
         - name: userCount
           value: '{{ .Values.userCount | default 30 }}'
